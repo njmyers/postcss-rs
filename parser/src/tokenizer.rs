@@ -12,33 +12,34 @@ const AT_CHAR: &char = &'@';
 const SINGLE_QUOTE: &char = &'\'';
 const DOUBLE_QUOTE: &char = &'"';
 const BACKWARD_SLASH: &char = &'\\';
-// const FORWARD_SLASH: &char = &'/';
+const FORWARD_SLASH: &char = &'/';
+const ASTERISK: &char = &'*';
 
-// const OPEN_SQUARE: &char = &'[';
-// const CLOSE_SQUARE: &char = &']';
-// const OPEN_PARENTHESES: &char = &'(';
-// const CLOSE_PARENTHESES: &char = &')';
+const OPEN_SQUARE_BRACKET: &char = &'[';
+const CLOSE_SQUARE_BRACKET: &char = &']';
+const OPEN_PARENTHESES: &char = &'(';
+const CLOSE_PARENTHESES: &char = &')';
 const OPEN_CURLY: &char = &'{';
 const CLOSE_CURLY: &char = &'}';
 const SEMICOLON: &char = &';';
 const COLON: &char = &':';
-// const ASTERISK: &char = &'*';
 
 #[derive(Eq, PartialEq, Debug)]
-pub enum TokenType {
+pub enum Kind {
     Space,
     Word,
     Brackets,
     String,
     AtWord,
     Symbol,
+    Comment,
 }
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct Token {
     start: usize,
     end: usize,
-    token_type: TokenType,
+    kind: Kind,
 }
 
 pub fn tokenizer(css: &str) -> Vec<Token> {
@@ -58,7 +59,7 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
         match char {
             char if is_whitespace(char) => {
                 let advance = tokenize_space(current_slice);
-                let (token, next_end) = create_token(last_end, advance, TokenType::Space);
+                let (token, next_end) = create_token(last_end, advance, Kind::Space);
 
                 tokens.push(token);
                 last_end = next_end;
@@ -66,7 +67,7 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
 
             char if is_leading_word_token(char) => {
                 let advance = tokenize_word(&current_slice[1..]);
-                let (token, next_end) = create_token(last_end, advance + 1, TokenType::Word);
+                let (token, next_end) = create_token(last_end, advance + 1, Kind::Word);
 
                 tokens.push(token);
                 last_end = next_end;
@@ -74,15 +75,23 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
 
             char if is_control(char) => {
                 let advance = 0;
-                let (token, next_end) = create_token(last_end, advance, TokenType::Symbol);
+                let (token, next_end) = create_token(last_end, advance, Kind::Symbol);
 
                 tokens.push(token);
                 last_end = next_end;
             }
 
             BACKWARD_SLASH => {
-                let advance = 1;
-                let (token, next_end) = create_token(last_end, advance, TokenType::Word);
+                let advance = tokenize_backslash(&current_slice[1..]);
+                let (token, next_end) = create_token(last_end, advance + 1, Kind::Word);
+
+                tokens.push(token);
+                last_end = next_end;
+            }
+
+            OPEN_PARENTHESES => {
+                let advance = tokenize_brackets(&current_slice[1..]);
+                let (token, next_end) = create_token(last_end, advance + 1, Kind::Brackets);
 
                 tokens.push(token);
                 last_end = next_end;
@@ -90,7 +99,17 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
 
             SINGLE_QUOTE | DOUBLE_QUOTE => {
                 let advance = tokenize_string(&current_slice[1..]);
-                let (token, next_end) = create_token(last_end, advance + 1, TokenType::String);
+                let (token, next_end) = create_token(last_end, advance + 1, Kind::String);
+
+                println!("creating token {} {} {}", advance, last_end, next_end);
+
+                tokens.push(token);
+                last_end = next_end;
+            }
+
+            AT_CHAR => {
+                let advance = tokenize_word(current_slice);
+                let (token, next_end) = create_token(last_end, advance, Kind::AtWord);
 
                 tokens.push(token);
                 last_end = next_end;
@@ -98,7 +117,7 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
 
             _ => {
                 let advance = tokenize_word(current_slice);
-                let (token, next_end) = create_token(last_end, advance, TokenType::Word);
+                let (token, next_end) = create_token(last_end, advance, Kind::Word);
 
                 tokens.push(token);
                 last_end = next_end;
@@ -111,14 +130,10 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
     return tokens;
 }
 
-fn create_token(last_end: usize, advance: usize, token_type: TokenType) -> (Token, usize) {
+fn create_token(last_end: usize, advance: usize, kind: Kind) -> (Token, usize) {
     let start = last_end;
     let end = start + advance;
-    let token = Token {
-        start,
-        end,
-        token_type,
-    };
+    let token = Token { start, end, kind };
 
     return (token, end + 1);
 }
@@ -127,7 +142,24 @@ fn tokenize_word(letters: &[char]) -> usize {
     let result = letters.iter().position(|char| {
         return match char as &char {
             char if is_whitespace(char) => true,
+            char if is_control(char) => true,
             EXCLAMATION_POINT | AT_CHAR => true,
+            OPEN_PARENTHESES => true,
+            _ => false,
+        };
+    });
+
+    let position = unwrap_position(result, letters);
+    return back(position);
+}
+
+/**
+ * Demarcating token
+ */
+fn tokenize_string(letters: &[char]) -> usize {
+    let result = letters.iter().position(|char| {
+        return match char as &char {
+            SINGLE_QUOTE | DOUBLE_QUOTE => true,
             _ => false,
         };
     });
@@ -135,10 +167,25 @@ fn tokenize_word(letters: &[char]) -> usize {
     return unwrap_position(result, letters);
 }
 
-fn tokenize_string(letters: &[char]) -> usize {
+fn tokenize_backslash(letters: &[char]) -> usize {
     let result = letters.iter().position(|char| {
         return match char as &char {
-            SINGLE_QUOTE | DOUBLE_QUOTE => true,
+            BACKWARD_SLASH => false,
+            _ => true,
+        };
+    });
+
+    let position = unwrap_position(result, letters);
+    return back(position);
+}
+
+/**
+ * Demarcating token
+ */
+fn tokenize_brackets(letters: &[char]) -> usize {
+    let result = letters.iter().position(|char| {
+        return match char as &char {
+            CLOSE_PARENTHESES => true,
             _ => false,
         };
     });
@@ -152,7 +199,8 @@ fn tokenize_space(letters: &[char]) -> usize {
         _ => true,
     });
 
-    return unwrap_position(result, letters);
+    let position = unwrap_position(result, letters);
+    return back(position);
 }
 
 fn unwrap_position(result: Option<usize>, letters: &[char]) -> usize {
@@ -161,11 +209,15 @@ fn unwrap_position(result: Option<usize>, letters: &[char]) -> usize {
         None => letters.iter().count(),
     };
 
-    if position == 0 {
-        return position;
+    return position;
+}
+
+fn back(index: usize) -> usize {
+    if index == 0 {
+        return index;
     }
 
-    return position - 1;
+    return index - 1;
 }
 
 fn is_whitespace(letter: &char) -> bool {
@@ -184,6 +236,8 @@ fn is_control(letter: &char) -> bool {
     return match letter {
         OPEN_CURLY => true,
         CLOSE_CURLY => true,
+        OPEN_SQUARE_BRACKET => true,
+        CLOSE_SQUARE_BRACKET => true,
         SEMICOLON => true,
         COLON => true,
         _ => false,
@@ -201,6 +255,13 @@ fn is_leading_word_token(letter: &char) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use indoc::indoc;
+
+    // fn check_tokens(result: Vec<Token>, expected: Vec<Token>) {
+    //     for (index, result) in result.iter().enumerate() {
+    //         assert_eq!(result, expected[index]);
+    //     }
+    // }
 
     #[test]
     fn it_tokenizes_empty_file() {
@@ -213,10 +274,10 @@ mod tests {
         assert_eq!(
             tokenizer("\r\n \t"),
             [Token {
-                token_type: TokenType::Space,
+                kind: Kind::Space,
                 start: 0,
-                end: 3
-            }]
+                end: 3,
+            }],
         )
     }
 
@@ -225,7 +286,7 @@ mod tests {
         assert_eq!(
             tokenizer("ab"),
             [Token {
-                token_type: TokenType::Word,
+                kind: Kind::Word,
                 start: 0,
                 end: 1
             }]
@@ -238,12 +299,12 @@ mod tests {
             tokenizer("aa!bb"),
             [
                 Token {
-                    token_type: TokenType::Word,
+                    kind: Kind::Word,
                     start: 0,
                     end: 1
                 },
                 Token {
-                    token_type: TokenType::Word,
+                    kind: Kind::Word,
                     start: 2,
                     end: 4
                 }
@@ -257,17 +318,17 @@ mod tests {
             tokenizer("a \n b"),
             [
                 Token {
-                    token_type: TokenType::Word,
+                    kind: Kind::Word,
                     start: 0,
                     end: 0
                 },
                 Token {
-                    token_type: TokenType::Space,
+                    kind: Kind::Space,
                     start: 1,
                     end: 3
                 },
                 Token {
-                    token_type: TokenType::Word,
+                    kind: Kind::Word,
                     start: 4,
                     end: 4
                 }
@@ -281,22 +342,22 @@ mod tests {
             tokenizer("{:;}"),
             [
                 Token {
-                    token_type: TokenType::Symbol,
+                    kind: Kind::Symbol,
                     start: 0,
                     end: 0
                 },
                 Token {
-                    token_type: TokenType::Symbol,
+                    kind: Kind::Symbol,
                     start: 1,
                     end: 1
                 },
                 Token {
-                    token_type: TokenType::Symbol,
+                    kind: Kind::Symbol,
                     start: 2,
                     end: 2
                 },
                 Token {
-                    token_type: TokenType::Symbol,
+                    kind: Kind::Symbol,
                     start: 3,
                     end: 3
                 }
@@ -310,34 +371,254 @@ mod tests {
             tokenizer("\\(\\{\\\"\\@\\\\\"\""),
             [
                 Token {
-                    token_type: TokenType::Word,
+                    kind: Kind::Word,
                     start: 0,
                     end: 1
                 },
                 Token {
-                    token_type: TokenType::Word,
+                    kind: Kind::Word,
                     start: 2,
                     end: 3
                 },
                 Token {
-                    token_type: TokenType::Word,
+                    kind: Kind::Word,
                     start: 4,
                     end: 5
                 },
                 Token {
-                    token_type: TokenType::Word,
+                    kind: Kind::Word,
                     start: 6,
                     end: 7
                 },
                 Token {
-                    token_type: TokenType::Word,
+                    kind: Kind::Word,
                     start: 8,
                     end: 9
                 },
                 Token {
-                    token_type: TokenType::String,
+                    kind: Kind::String,
                     start: 10,
                     end: 11
+                }
+            ]
+        )
+    }
+
+    #[test]
+    fn it_escapes_backslash() {
+        assert_eq!(
+            tokenizer("\\\\\\\\{"),
+            [
+                Token {
+                    kind: Kind::Word,
+                    start: 0,
+                    end: 3
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 4,
+                    end: 4
+                }
+            ]
+        )
+    }
+
+    #[test]
+    fn it_tokenizes_simple_brackets() {
+        assert_eq!(
+            tokenizer("(ab)"),
+            [Token {
+                kind: Kind::Brackets,
+                start: 0,
+                end: 3,
+            }]
+        )
+    }
+
+    #[test]
+    fn it_tokenizes_square_brackets() {
+        assert_eq!(
+            tokenizer("a[bc]"),
+            [
+                Token {
+                    kind: Kind::Word,
+                    start: 0,
+                    end: 0
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 1,
+                    end: 1
+                },
+                Token {
+                    kind: Kind::Word,
+                    start: 2,
+                    end: 3
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 4,
+                    end: 4
+                }
+            ]
+        );
+    }
+
+    // #[test]
+    // fn it_tokenizes_complicated_brackets() {
+    //     assert_eq!(tokenizer("(())(\"\")(/**/)(\\\\)(\n)("), [
+    //         Token {
+    //             kind: Kind::Symbol,
+    //             start: 0,
+    //             end: 0
+    //         }
+    //         Token {
+    //             token_
+    //         }
+    //     ])
+    // }
+
+    #[test]
+    fn it_tokenizes_css() {
+        assert_eq!(
+            tokenizer(indoc! {"
+                a {
+                  content: \"a\";
+                  width: calc(1px;)
+                  }
+                /* small screen */
+                @media screen {}"
+            }),
+            [
+                Token {
+                    kind: Kind::Word,
+                    start: 0,
+                    end: 0
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 1,
+                    end: 1,
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 2,
+                    end: 2
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 3,
+                    end: 5
+                },
+                Token {
+                    kind: Kind::Word,
+                    start: 6,
+                    end: 12
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 13,
+                    end: 13
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 14,
+                    end: 14
+                },
+                Token {
+                    kind: Kind::String,
+                    start: 15,
+                    end: 17
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 18,
+                    end: 18
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 19,
+                    end: 21
+                },
+                Token {
+                    kind: Kind::Word,
+                    start: 22,
+                    end: 26
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 27,
+                    end: 27
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 28,
+                    end: 28
+                },
+                Token {
+                    kind: Kind::Word,
+                    start: 29,
+                    end: 32
+                },
+                Token {
+                    kind: Kind::Brackets,
+                    start: 33,
+                    end: 38
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 39,
+                    end: 41
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 42,
+                    end: 42
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 43,
+                    end: 43
+                },
+                Token {
+                    kind: Kind::Comment,
+                    start: 44,
+                    end: 61
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 62,
+                    end: 62
+                },
+                Token {
+                    kind: Kind::AtWord,
+                    start: 63,
+                    end: 68
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 69,
+                    end: 69
+                },
+                Token {
+                    kind: Kind::Word,
+                    start: 70,
+                    end: 75
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 76,
+                    end: 76
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 77,
+                    end: 77
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 78,
+                    end: 78
                 }
             ]
         )
