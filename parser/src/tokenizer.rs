@@ -9,10 +9,10 @@ const SPACE: &char = &' ';
 const EXCLAMATION_POINT: &char = &'!';
 const AT_CHAR: &char = &'@';
 
-// const SINGLE_QUOTE: &char = &'\'';
-// const DOUBLE_QUOTE: &char = &'"';
-// const BACKSLASH: &char = &'\\';
-// const SLASH: &char = &'/';
+const SINGLE_QUOTE: &char = &'\'';
+const DOUBLE_QUOTE: &char = &'"';
+const BACKWARD_SLASH: &char = &'\\';
+// const FORWARD_SLASH: &char = &'/';
 
 // const OPEN_SQUARE: &char = &'[';
 // const CLOSE_SQUARE: &char = &']';
@@ -49,8 +49,6 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
     let count = letters.iter().count();
 
     while let Some(char) = letters.iter().skip(last_end).next() {
-        println!("last_end, \"{}\"", last_end);
-
         let current_slice = &letters[last_end..];
 
         if loops > count {
@@ -74,9 +72,25 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
                 last_end = next_end;
             }
 
-            char if is_control_character(char) => {
+            char if is_control(char) => {
                 let advance = 0;
                 let (token, next_end) = create_token(last_end, advance, TokenType::Symbol);
+
+                tokens.push(token);
+                last_end = next_end;
+            }
+
+            BACKWARD_SLASH => {
+                let advance = 1;
+                let (token, next_end) = create_token(last_end, advance, TokenType::Word);
+
+                tokens.push(token);
+                last_end = next_end;
+            }
+
+            SINGLE_QUOTE | DOUBLE_QUOTE => {
+                let advance = tokenize_string(&current_slice[1..]);
+                let (token, next_end) = create_token(last_end, advance + 1, TokenType::String);
 
                 tokens.push(token);
                 last_end = next_end;
@@ -111,8 +125,6 @@ fn create_token(last_end: usize, advance: usize, token_type: TokenType) -> (Toke
 
 fn tokenize_word(letters: &[char]) -> usize {
     let result = letters.iter().position(|char| {
-        println!("char, \"{}\"", char);
-
         return match char as &char {
             char if is_whitespace(char) => true,
             EXCLAMATION_POINT | AT_CHAR => true,
@@ -120,14 +132,18 @@ fn tokenize_word(letters: &[char]) -> usize {
         };
     });
 
-    let position = match result {
-        Some(value) => value,
-        None => letters.iter().count(),
-    };
+    return unwrap_position(result, letters);
+}
 
-    println!("found position, \"{}\"", position);
+fn tokenize_string(letters: &[char]) -> usize {
+    let result = letters.iter().position(|char| {
+        return match char as &char {
+            SINGLE_QUOTE | DOUBLE_QUOTE => true,
+            _ => false,
+        };
+    });
 
-    return position - 1;
+    return unwrap_position(result, letters);
 }
 
 fn tokenize_space(letters: &[char]) -> usize {
@@ -136,10 +152,18 @@ fn tokenize_space(letters: &[char]) -> usize {
         _ => true,
     });
 
+    return unwrap_position(result, letters);
+}
+
+fn unwrap_position(result: Option<usize>, letters: &[char]) -> usize {
     let position = match result {
         Some(value) => value,
         None => letters.iter().count(),
     };
+
+    if position == 0 {
+        return position;
+    }
 
     return position - 1;
 }
@@ -156,7 +180,7 @@ fn is_whitespace(letter: &char) -> bool {
     };
 }
 
-fn is_control_character(letter: &char) -> bool {
+fn is_control(letter: &char) -> bool {
     return match letter {
         OPEN_CURLY => true,
         CLOSE_CURLY => true,
@@ -281,5 +305,41 @@ mod tests {
     }
 
     #[test]
-    fn it_escapes_control_symbols() {}
+    fn it_escapes_control_symbols() {
+        assert_eq!(
+            tokenizer("\\(\\{\\\"\\@\\\\\"\""),
+            [
+                Token {
+                    token_type: TokenType::Word,
+                    start: 0,
+                    end: 1
+                },
+                Token {
+                    token_type: TokenType::Word,
+                    start: 2,
+                    end: 3
+                },
+                Token {
+                    token_type: TokenType::Word,
+                    start: 4,
+                    end: 5
+                },
+                Token {
+                    token_type: TokenType::Word,
+                    start: 6,
+                    end: 7
+                },
+                Token {
+                    token_type: TokenType::Word,
+                    start: 8,
+                    end: 9
+                },
+                Token {
+                    token_type: TokenType::String,
+                    start: 10,
+                    end: 11
+                }
+            ]
+        )
+    }
 }
