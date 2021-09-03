@@ -1,4 +1,6 @@
-// Whitespace
+use std::fmt;
+
+/** CSS Whitespace Characters */
 const HORIZONTAL_TAB: &char = &'\u{0009}';
 const NEWLINE: &char = &'\u{000A}';
 const VERTICAL_TAB: &char = &'\u{000B}';
@@ -6,6 +8,7 @@ const FORM_FEED: &char = &'\u{000C}';
 const CARRIAGE_RETURN: &char = &'\u{000D}';
 const SPACE: &char = &' ';
 
+/** CSS Word Markers */
 const EXCLAMATION_POINT: &char = &'!';
 const AT_CHAR: &char = &'@';
 
@@ -24,6 +27,8 @@ const CLOSE_CURLY: &char = &'}';
 const SEMICOLON: &char = &';';
 const COLON: &char = &':';
 
+const NULL_CHARACTER: &char = &'\u{0000}';
+
 #[derive(Eq, PartialEq, Debug)]
 pub enum Kind {
     Space,
@@ -35,11 +40,35 @@ pub enum Kind {
     Comment,
 }
 
+impl fmt::Display for Kind {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Kind::Space => write!(formatter, "Space"),
+            Kind::Word => write!(formatter, "Word"),
+            Kind::Brackets => write!(formatter, "Brackets"),
+            Kind::String => write!(formatter, "String"),
+            Kind::AtWord => write!(formatter, "AtWord"),
+            Kind::Symbol => write!(formatter, "Symbol"),
+            Kind::Comment => write!(formatter, "Comment"),
+        }
+    }
+}
+
 #[derive(Eq, PartialEq, Debug)]
 pub struct Token {
     start: usize,
     end: usize,
     kind: Kind,
+}
+
+impl fmt::Display for Token {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            formatter,
+            "{{ kind: {}, start: {}, end: {} }}",
+            self.kind, self.start, self.end
+        )
+    }
 }
 
 pub fn tokenizer(css: &str) -> Vec<Token> {
@@ -49,15 +78,19 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
     let letters: Vec<char> = css.chars().collect();
     let count = letters.iter().count();
 
-    while let Some(char) = letters.iter().skip(last_end).next() {
+    while let Some(letter) = letters.iter().skip(last_end).next() {
         let current_slice = &letters[last_end..];
+        let next_letter = match letters.iter().skip(last_end + 1).next() {
+            Some(value) => value,
+            None => NULL_CHARACTER,
+        };
 
         if loops > count {
             break;
         }
 
-        match char {
-            char if is_whitespace(char) => {
+        match letter {
+            letter if is_whitespace(letter) => {
                 let advance = tokenize_space(current_slice);
                 let (token, next_end) = create_token(last_end, advance, Kind::Space);
 
@@ -65,20 +98,34 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
                 last_end = next_end;
             }
 
-            char if is_leading_word_token(char) => {
+            letter if is_leading_word_token(letter) => {
                 let advance = tokenize_word(&current_slice[1..]);
-                let (token, next_end) = create_token(last_end, advance + 1, Kind::Word);
+                let kind = match letter {
+                    AT_CHAR => Kind::AtWord,
+                    _ => Kind::Word,
+                };
+                let (token, next_end) = create_token(last_end, advance + 1, kind);
 
                 tokens.push(token);
                 last_end = next_end;
             }
 
-            char if is_control(char) => {
+            letter if is_control(letter) => {
                 let advance = 0;
                 let (token, next_end) = create_token(last_end, advance, Kind::Symbol);
 
                 tokens.push(token);
                 last_end = next_end;
+            }
+
+            FORWARD_SLASH => {
+                if is_opening_comment_token(letter, next_letter) {
+                    let advance = tokenize_comment(&current_slice[2..]);
+                    let (token, next_end) = create_token(last_end, advance + 3, Kind::Comment);
+
+                    tokens.push(token);
+                    last_end = next_end;
+                }
             }
 
             BACKWARD_SLASH => {
@@ -100,16 +147,6 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
             SINGLE_QUOTE | DOUBLE_QUOTE => {
                 let advance = tokenize_string(&current_slice[1..]);
                 let (token, next_end) = create_token(last_end, advance + 1, Kind::String);
-
-                println!("creating token {} {} {}", advance, last_end, next_end);
-
-                tokens.push(token);
-                last_end = next_end;
-            }
-
-            AT_CHAR => {
-                let advance = tokenize_word(current_slice);
-                let (token, next_end) = create_token(last_end, advance, Kind::AtWord);
 
                 tokens.push(token);
                 last_end = next_end;
@@ -135,14 +172,16 @@ fn create_token(last_end: usize, advance: usize, kind: Kind) -> (Token, usize) {
     let end = start + advance;
     let token = Token { start, end, kind };
 
+    println!("Creating a token, {}", token.to_string());
+
     return (token, end + 1);
 }
 
 fn tokenize_word(letters: &[char]) -> usize {
-    let result = letters.iter().position(|char| {
-        return match char as &char {
-            char if is_whitespace(char) => true,
-            char if is_control(char) => true,
+    let result = letters.iter().position(|letter| {
+        return match letter {
+            letter if is_whitespace(letter) => true,
+            letter if is_control(letter) => true,
             EXCLAMATION_POINT | AT_CHAR => true,
             OPEN_PARENTHESES => true,
             _ => false,
@@ -153,12 +192,35 @@ fn tokenize_word(letters: &[char]) -> usize {
     return back(position);
 }
 
+fn tokenize_comment(letters: &[char]) -> usize {
+    let result =
+        letters
+            .iter()
+            .zip(letters.iter().skip(1))
+            .position(|(first_letter, second_letter)| {
+                return is_closing_comment_token(first_letter, second_letter);
+            });
+
+    let position = unwrap_position(result, letters);
+    return position;
+}
+
+fn is_opening_comment_token(first_letter: &char, second_letter: &char) -> bool {
+    println!("is a comment, '{}{}'", first_letter, second_letter);
+
+    return first_letter == FORWARD_SLASH && second_letter == ASTERISK;
+}
+
+fn is_closing_comment_token(first_letter: &char, second_letter: &char) -> bool {
+    return first_letter == ASTERISK && second_letter == FORWARD_SLASH;
+}
+
 /**
  * Demarcating token
  */
 fn tokenize_string(letters: &[char]) -> usize {
-    let result = letters.iter().position(|char| {
-        return match char as &char {
+    let result = letters.iter().position(|letter| {
+        return match letter {
             SINGLE_QUOTE | DOUBLE_QUOTE => true,
             _ => false,
         };
@@ -168,8 +230,8 @@ fn tokenize_string(letters: &[char]) -> usize {
 }
 
 fn tokenize_backslash(letters: &[char]) -> usize {
-    let result = letters.iter().position(|char| {
-        return match char as &char {
+    let result = letters.iter().position(|letter| {
+        return match letter {
             BACKWARD_SLASH => false,
             _ => true,
         };
@@ -183,8 +245,8 @@ fn tokenize_backslash(letters: &[char]) -> usize {
  * Demarcating token
  */
 fn tokenize_brackets(letters: &[char]) -> usize {
-    let result = letters.iter().position(|char| {
-        return match char as &char {
+    let result = letters.iter().position(|letter| {
+        return match letter {
             CLOSE_PARENTHESES => true,
             _ => false,
         };
@@ -194,9 +256,11 @@ fn tokenize_brackets(letters: &[char]) -> usize {
 }
 
 fn tokenize_space(letters: &[char]) -> usize {
-    let result = letters.iter().position(|char| match char {
-        char if is_whitespace(char) => false,
-        _ => true,
+    let result = letters.iter().position(|letter| {
+        return match letter {
+            letter if is_whitespace(letter) => false,
+            _ => true,
+        };
     });
 
     let position = unwrap_position(result, letters);
@@ -256,12 +320,6 @@ fn is_leading_word_token(letter: &char) -> bool {
 mod tests {
     use super::*;
     use indoc::indoc;
-
-    // fn check_tokens(result: Vec<Token>, expected: Vec<Token>) {
-    //     for (index, result) in result.iter().enumerate() {
-    //         assert_eq!(result, expected[index]);
-    //     }
-    // }
 
     #[test]
     fn it_tokenizes_empty_file() {
