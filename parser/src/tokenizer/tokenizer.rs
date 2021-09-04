@@ -1,3 +1,4 @@
+use super::string;
 use std::fmt;
 
 /** CSS Whitespace Characters */
@@ -8,16 +9,15 @@ const FORM_FEED: &char = &'\u{000C}';
 const CARRIAGE_RETURN: &char = &'\u{000D}';
 const SPACE: &char = &' ';
 
-/** CSS Word Markers */
+/** CSS Leading Word Markers */
 const EXCLAMATION_POINT: &char = &'!';
 const AT_CHAR: &char = &'@';
 
-const SINGLE_QUOTE: &char = &'\'';
-const DOUBLE_QUOTE: &char = &'"';
 const BACKWARD_SLASH: &char = &'\\';
 const FORWARD_SLASH: &char = &'/';
 const ASTERISK: &char = &'*';
 
+/** CSS Control Characters */
 const OPEN_SQUARE_BRACKET: &char = &'[';
 const CLOSE_SQUARE_BRACKET: &char = &']';
 const OPEN_PARENTHESES: &char = &'(';
@@ -144,9 +144,17 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
                 last_end = next_end;
             }
 
-            SINGLE_QUOTE | DOUBLE_QUOTE => {
-                let advance = tokenize_string(&current_slice[1..]);
-                let (token, next_end) = create_token(last_end, advance + 1, Kind::String);
+            letter if string::is_single_string_token(letter) => {
+                let advance = string::tokenize_single_string(&current_slice);
+                let (token, next_end) = create_token(last_end, advance, Kind::String);
+
+                tokens.push(token);
+                last_end = next_end;
+            }
+
+            letter if string::is_double_string_token(letter) => {
+                let advance = string::tokenize_double_string(&current_slice);
+                let (token, next_end) = create_token(last_end, advance, Kind::String);
 
                 tokens.push(token);
                 last_end = next_end;
@@ -213,20 +221,6 @@ fn is_opening_comment_token(first_letter: &char, second_letter: &char) -> bool {
 
 fn is_closing_comment_token(first_letter: &char, second_letter: &char) -> bool {
     return first_letter == ASTERISK && second_letter == FORWARD_SLASH;
-}
-
-/**
- * Demarcating token
- */
-fn tokenize_string(letters: &[char]) -> usize {
-    let result = letters.iter().position(|letter| {
-        return match letter {
-            SINGLE_QUOTE | DOUBLE_QUOTE => true,
-            _ => false,
-        };
-    });
-
-    return unwrap_position(result, letters);
 }
 
 fn tokenize_backslash(letters: &[char]) -> usize {
@@ -535,6 +529,56 @@ mod tests {
     //         }
     //     ])
     // }
+
+    #[test]
+    fn it_tokenizes_string() {
+        assert_eq!(
+            tokenizer("'\"'\"\\\"\""),
+            [
+                Token {
+                    kind: Kind::String,
+                    start: 0,
+                    end: 2
+                },
+                Token {
+                    kind: Kind::String,
+                    start: 3,
+                    end: 6
+                }
+            ]
+        )
+    }
+
+    #[test]
+    fn it_tokenizes_escaped_string() {
+        assert_eq!(
+            tokenizer("\"\\\\\""),
+            [Token {
+                kind: Kind::String,
+                start: 0,
+                end: 3
+            }]
+        )
+    }
+
+    #[test]
+    fn it_changes_lines_in_strings() {
+        assert_eq!(
+            tokenizer("\"\n\n\"\"\n\n\""),
+            [
+                Token {
+                    kind: Kind::String,
+                    start: 0,
+                    end: 3
+                },
+                Token {
+                    kind: Kind::String,
+                    start: 4,
+                    end: 7
+                }
+            ]
+        )
+    }
 
     #[test]
     fn it_tokenizes_css() {
