@@ -216,7 +216,7 @@ mod tests {
     }
 
     #[test]
-    fn it_tokenizes_empty_space() {
+    fn it_tokenizes_space() {
         assert_eq!(
             tokenizer("\r\n \t"),
             [Token {
@@ -712,6 +712,64 @@ mod tests {
                     kind: Kind::Word,
                     start: 8,
                     end: 8
+                },
+            ]
+        )
+    }
+
+    #[test]
+    fn it_supports_form_feed() {
+        assert_eq!(
+            tokenizer("a\u{000C}b"),
+            [
+                Token {
+                    kind: Kind::Word,
+                    start: 0,
+                    end: 0
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 1,
+                    end: 1
+                },
+                Token {
+                    kind: Kind::Word,
+                    start: 2,
+                    end: 2
+                }
+            ]
+        )
+    }
+
+    #[test]
+    fn it_supports_carriage_return() {
+        assert_eq!(
+            tokenizer("a\rb\r\nc"),
+            [
+                Token {
+                    kind: Kind::Word,
+                    start: 0,
+                    end: 0
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 1,
+                    end: 1
+                },
+                Token {
+                    kind: Kind::Word,
+                    start: 2,
+                    end: 2
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 3,
+                    end: 4
+                },
+                Token {
+                    kind: Kind::Word,
+                    start: 5,
+                    end: 5
                 },
             ]
         )
