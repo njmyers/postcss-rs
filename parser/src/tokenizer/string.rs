@@ -12,10 +12,7 @@ pub const DOUBLE_QUOTE: &char = &'"';
 pub fn tokenize_single_string(letters: &[char]) -> usize {
   let lookbehind: usize = 1;
   let count = letters.iter().count();
-  let mut letters_lookbehind = letters
-    .iter()
-    .zip(letters.iter().skip(lookbehind))
-    .skip(lookbehind);
+  let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
   let result = letters_lookbehind.position(|(previous_letter, letter)| {
     return match letter {
@@ -24,7 +21,7 @@ pub fn tokenize_single_string(letters: &[char]) -> usize {
     };
   });
 
-  let string_length = utils::unwrap_position(result, letters) + 2;
+  let string_length = utils::unwrap_position(result, letters) + lookbehind;
   return cmp::min(string_length, count - lookbehind);
 }
 
@@ -34,19 +31,20 @@ pub fn tokenize_single_string(letters: &[char]) -> usize {
 pub fn tokenize_double_string(letters: &[char]) -> usize {
   let lookbehind: usize = 1;
   let count = letters.iter().count();
-  let mut letters_lookbehind = letters
-    .iter()
-    .zip(letters.iter().skip(lookbehind))
-    .skip(lookbehind);
+  let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
   let result = letters_lookbehind.position(|(previous_letter, letter)| {
+    println!("previous '{}', current '{}',", previous_letter, letter);
+
     return match letter {
       DOUBLE_QUOTE if !escape::is_escape_character(previous_letter) => true,
       _ => false,
     };
   });
 
-  let string_length = utils::unwrap_position(result, letters) + 2;
+  let string_length = utils::unwrap_position(result, letters) + lookbehind;
+  println!("string_length '{}'", string_length);
+
   return cmp::min(string_length, count - lookbehind);
 }
 
