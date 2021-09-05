@@ -627,6 +627,25 @@ mod tests {
     }
 
     #[test]
+    fn it_tokenizes_urls() {
+        assert_eq!(
+            tokenizer("url(/*\\))"),
+            [
+                Token {
+                    kind: Kind::Word,
+                    start: 0,
+                    end: 2
+                },
+                Token {
+                    kind: Kind::Brackets,
+                    start: 3,
+                    end: 8
+                }
+            ]
+        )
+    }
+
+    #[test]
     fn it_tokenizes_css() {
         assert_eq!(
             tokenizer(indoc! {"
