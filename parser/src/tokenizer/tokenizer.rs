@@ -1,3 +1,4 @@
+use super::comment;
 use super::string;
 use std::fmt;
 
@@ -14,8 +15,6 @@ const EXCLAMATION_POINT: &char = &'!';
 const AT_CHAR: &char = &'@';
 
 const BACKWARD_SLASH: &char = &'\\';
-const FORWARD_SLASH: &char = &'/';
-const ASTERISK: &char = &'*';
 
 /** CSS Control Characters */
 const OPEN_SQUARE_BRACKET: &char = &'[';
@@ -118,9 +117,9 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
                 last_end = next_end;
             }
 
-            FORWARD_SLASH => {
-                if is_opening_comment_token(letter, next_letter) {
-                    let advance = tokenize_comment(&current_slice[2..]);
+            letter if comment::is_forward_slash(letter) => {
+                if comment::is_opening_comment_token(letter, next_letter) {
+                    let advance = comment::tokenize_comment(&current_slice[2..]);
                     let (token, next_end) = create_token(last_end, advance + 3, Kind::Comment);
 
                     tokens.push(token);
@@ -190,6 +189,8 @@ fn tokenize_word(letters: &[char]) -> usize {
         return match letter {
             letter if is_whitespace(letter) => true,
             letter if is_control(letter) => true,
+            letter if string::is_single_string_token(letter) => true,
+            letter if string::is_double_string_token(letter) => true,
             EXCLAMATION_POINT | AT_CHAR => true,
             OPEN_PARENTHESES => true,
             _ => false,
@@ -198,29 +199,6 @@ fn tokenize_word(letters: &[char]) -> usize {
 
     let position = unwrap_position(result, letters);
     return back(position);
-}
-
-fn tokenize_comment(letters: &[char]) -> usize {
-    let result =
-        letters
-            .iter()
-            .zip(letters.iter().skip(1))
-            .position(|(first_letter, second_letter)| {
-                return is_closing_comment_token(first_letter, second_letter);
-            });
-
-    let position = unwrap_position(result, letters);
-    return position;
-}
-
-fn is_opening_comment_token(first_letter: &char, second_letter: &char) -> bool {
-    println!("is a comment, '{}{}'", first_letter, second_letter);
-
-    return first_letter == FORWARD_SLASH && second_letter == ASTERISK;
-}
-
-fn is_closing_comment_token(first_letter: &char, second_letter: &char) -> bool {
-    return first_letter == ASTERISK && second_letter == FORWARD_SLASH;
 }
 
 fn tokenize_backslash(letters: &[char]) -> usize {
@@ -523,9 +501,9 @@ mod tests {
     //             kind: Kind::Symbol,
     //             start: 0,
     //             end: 0
-    //         }
+    //         },
     //         Token {
-    //             token_
+    //             kind: Kind::Brackets
     //         }
     //     ])
     // }
@@ -575,6 +553,25 @@ mod tests {
                     kind: Kind::String,
                     start: 4,
                     end: 7
+                }
+            ]
+        )
+    }
+
+    #[test]
+    fn it_tokenizes_at_word() {
+        assert_eq!(
+            tokenizer("@word "),
+            [
+                Token {
+                    kind: Kind::AtWord,
+                    start: 0,
+                    end: 4
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 5,
+                    end: 5
                 }
             ]
         )
