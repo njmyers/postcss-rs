@@ -116,14 +116,12 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
                 last_end = next_end;
             }
 
-            letter if comment::is_forward_slash(letter) => {
-                if comment::is_opening_comment_token(letter, next_letter) {
-                    let advance = comment::tokenize_comment(&current_slice[2..]);
-                    let (token, next_end) = create_token(last_end, advance + 3, Kind::Comment);
+            letter if comment::is_opening_comment_token(letter, next_letter) => {
+                let advance = comment::tokenize_comment(&current_slice[2..]);
+                let (token, next_end) = create_token(last_end, advance + 3, Kind::Comment);
 
-                    tokens.push(token);
-                    last_end = next_end;
-                }
+                tokens.push(token);
+                last_end = next_end;
             }
 
             BACKWARD_SLASH => {
@@ -191,6 +189,7 @@ fn tokenize_word(letters: &[char]) -> usize {
             letter if string::is_single_string_token(letter) => true,
             letter if string::is_double_string_token(letter) => true,
             letter if brackets::is_opening_bracket_token(letter) => true,
+            letter if comment::is_forward_slash(letter) => true,
             EXCLAMATION_POINT | AT_CHAR => true,
             _ => false,
         };
@@ -734,6 +733,54 @@ mod tests {
                     start: 7,
                     end: 7
                 }
+            ]
+        )
+    }
+
+    #[test]
+    fn it_tokenizes_at_symbol() {
+        assert_eq!(
+            tokenizer("@"),
+            [Token {
+                kind: Kind::AtWord,
+                start: 0,
+                end: 0
+            }]
+        )
+    }
+
+    #[test]
+    fn it_tokenizes_comment() {
+        assert_eq!(
+            tokenizer("/* a\nb */"),
+            [Token {
+                kind: Kind::Comment,
+                start: 0,
+                end: 8
+            }]
+        )
+    }
+
+    #[test]
+    fn it_changes_lines_in_comments() {
+        assert_eq!(
+            tokenizer("a/* \n */b"),
+            [
+                Token {
+                    kind: Kind::Word,
+                    start: 0,
+                    end: 0
+                },
+                Token {
+                    kind: Kind::Comment,
+                    start: 1,
+                    end: 7
+                },
+                Token {
+                    kind: Kind::Word,
+                    start: 8,
+                    end: 8
+                },
             ]
         )
     }
