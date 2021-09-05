@@ -79,12 +79,12 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
             }
 
             letter if word::is_leading_word_token(letter) => {
-                let advance = word::tokenize_word(&current_slice[1..]);
+                let advance = word::tokenize_word(&current_slice);
                 let kind = match letter {
                     letter if word::is_at_word_token(letter) => Kind::AtWord,
                     _ => Kind::Word,
                 };
-                let (token, next_end) = create_token(last_end, advance + 1, kind);
+                let (token, next_end) = create_token(last_end, advance, kind);
 
                 tokens.push(token);
                 last_end = next_end;

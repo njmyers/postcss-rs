@@ -4,13 +4,18 @@ use super::control;
 use super::string;
 use super::utils;
 use super::whitespace;
+use std::cmp;
 
 /** CSS Leading Word Markers */
 const EXCLAMATION_POINT: &char = &'!';
 const AT_CHAR: &char = &'@';
 
 pub fn tokenize_word(letters: &[char]) -> usize {
-  let result = letters.iter().position(|letter| {
+  let lookbehind: usize = 1;
+  let count = letters.iter().count();
+  let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
+
+  let result = letters_lookbehind.position(|(_, letter)| {
     return match letter {
       letter if whitespace::is_whitespace(letter) => true,
       letter if control::is_control(letter) => true,
@@ -18,13 +23,13 @@ pub fn tokenize_word(letters: &[char]) -> usize {
       letter if string::is_double_string_token(letter) => true,
       letter if brackets::is_opening_bracket_token(letter) => true,
       letter if comment::is_forward_slash(letter) => true,
-      EXCLAMATION_POINT | AT_CHAR => true,
+      letter if is_leading_word_token(letter) => true,
       _ => false,
     };
   });
 
-  let position = utils::unwrap_position(result, letters);
-  return utils::back(position);
+  let string_length = utils::unwrap_position(result, letters);
+  return cmp::min(string_length, count - lookbehind);
 }
 
 pub fn is_at_word_token(letter: &char) -> bool {
