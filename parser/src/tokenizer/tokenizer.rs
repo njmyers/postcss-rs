@@ -73,6 +73,17 @@ impl<'a> Tokenizer<'a> {
             count,
         };
     }
+
+    fn create(&mut self, advance: usize, kind: Kind) -> Token {
+        let start = self.last_end;
+        let end = start + advance;
+        self.last_end = end + 1;
+
+        let token = Token { start, end, kind };
+        println!("Creating a token, {}", token.to_string());
+
+        return token;
+    }
 }
 
 impl<'a> Iterator for Tokenizer<'a> {
@@ -101,9 +112,7 @@ impl<'a> Iterator for Tokenizer<'a> {
         match letter {
             letter if whitespace::is_whitespace(letter) => {
                 let advance = whitespace::tokenize_whitespace(current_slice);
-                let (token, next_end) = create_token(self.last_end, advance, Kind::Space);
-
-                self.last_end = next_end;
+                let token = self.create(advance, Kind::Space);
                 return Some(token);
             }
 
@@ -113,79 +122,53 @@ impl<'a> Iterator for Tokenizer<'a> {
                     letter if word::is_at_word_token(letter) => Kind::AtWord,
                     _ => Kind::Word,
                 };
-                let (token, next_end) = create_token(self.last_end, advance, kind);
-
-                self.last_end = next_end;
+                let token = self.create(advance, kind);
                 return Some(token);
             }
 
             letter if control::is_control(letter) => {
                 let advance = 0;
-                let (token, next_end) = create_token(self.last_end, advance, Kind::Symbol);
-
-                self.last_end = next_end;
+                let token = self.create(advance, Kind::Symbol);
                 return Some(token);
             }
 
             letter if comment::is_opening_comment_token(letter, next_letter) => {
                 let advance = comment::tokenize_comment(&current_slice[2..]);
-                let (token, next_end) = create_token(self.last_end, advance + 3, Kind::Comment);
-
-                self.last_end = next_end;
+                let token = self.create(advance + 3, Kind::Comment);
                 return Some(token);
             }
 
             letter if escape::is_escape_character(letter) => {
                 let advance = escape::tokenize_escape(&current_slice);
-                let (token, next_end) = create_token(self.last_end, advance, Kind::Word);
-
-                self.last_end = next_end;
+                let token = self.create(advance, Kind::Word);
                 return Some(token);
             }
 
             letter if brackets::is_opening_bracket_token(letter) => {
                 let advance = brackets::tokenize_brackets(&current_slice);
-                let (token, next_end) = create_token(self.last_end, advance, Kind::Brackets);
-
-                self.last_end = next_end;
+                let token = self.create(advance, Kind::Brackets);
                 return Some(token);
             }
 
             letter if string::is_single_string_token(letter) => {
                 let advance = string::tokenize_single_string(&current_slice);
-                let (token, next_end) = create_token(self.last_end, advance, Kind::String);
-
-                self.last_end = next_end;
+                let token = self.create(advance, Kind::String);
                 return Some(token);
             }
 
             letter if string::is_double_string_token(letter) => {
                 let advance = string::tokenize_double_string(&current_slice);
-                let (token, next_end) = create_token(self.last_end, advance, Kind::String);
-
-                self.last_end = next_end;
+                let token = self.create(advance, Kind::String);
                 return Some(token);
             }
 
             _ => {
                 let advance = word::tokenize_word(current_slice);
-                let (token, next_end) = create_token(self.last_end, advance, Kind::Word);
-
-                self.last_end = next_end;
+                let token = self.create(advance, Kind::Word);
                 return Some(token);
             }
         }
     }
-}
-
-fn create_token(last_end: usize, advance: usize, kind: Kind) -> (Token, usize) {
-    let start = last_end;
-    let end = start + advance;
-    let token = Token { start, end, kind };
-
-    println!("Creating a token, {}", token.to_string());
-
-    return (token, end + 1);
 }
 
 #[cfg(test)]
