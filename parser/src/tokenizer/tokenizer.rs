@@ -479,19 +479,96 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn it_tokenizes_complicated_brackets() {
-    //     assert_eq!(tokenizer("(())(\"\")(/**/)(\\\\)(\n)("), [
-    //         Token {
-    //             kind: Kind::Symbol,
-    //             start: 0,
-    //             end: 0
-    //         },
-    //         Token {
-    //             kind: Kind::Brackets
-    //         }
-    //     ])
-    // }
+    #[test]
+    #[ignore]
+
+    fn it_tokenizes_complicated_brackets() {
+        assert_eq!(
+            tokenizer("(())(\"\")(/**/)(\\\\)(\n)("),
+            [
+                Token {
+                    kind: Kind::Symbol,
+                    start: 0,
+                    end: 0
+                },
+                Token {
+                    kind: Kind::Brackets,
+                    start: 1,
+                    end: 2
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 3,
+                    end: 3
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 4,
+                    end: 4
+                },
+                Token {
+                    kind: Kind::String,
+                    start: 5,
+                    end: 6
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 7,
+                    end: 7
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 8,
+                    end: 8
+                },
+                Token {
+                    kind: Kind::Comment,
+                    start: 9,
+                    end: 12
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 13,
+                    end: 13
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 14,
+                    end: 14
+                },
+                Token {
+                    kind: Kind::Word,
+                    start: 15,
+                    end: 16
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 17,
+                    end: 17
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 18,
+                    end: 18
+                },
+                Token {
+                    kind: Kind::Space,
+                    start: 19,
+                    end: 19
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 20,
+                    end: 20
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 21,
+                    end: 21
+                },
+            ]
+        )
+    }
 
     #[test]
     fn it_tokenizes_string() {
@@ -625,6 +702,37 @@ mod tests {
                     kind: Kind::Brackets,
                     start: 3,
                     end: 8
+                }
+            ]
+        )
+    }
+
+    #[test]
+    #[ignore]
+
+    fn it_tokenizes_quoted_urls() {
+        assert_eq!(
+            tokenizer("url(\")\")"),
+            [
+                Token {
+                    kind: Kind::Word,
+                    start: 0,
+                    end: 2
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 3,
+                    end: 3
+                },
+                Token {
+                    kind: Kind::String,
+                    start: 4,
+                    end: 6
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 7,
+                    end: 7
                 }
             ]
         )
