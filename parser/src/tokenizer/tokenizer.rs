@@ -1,30 +1,12 @@
 use super::brackets;
 use super::comment;
+use super::control;
 use super::string;
+use super::whitespace;
+use super::word;
 use std::fmt;
 
-/** CSS Whitespace Characters */
-const HORIZONTAL_TAB: &char = &'\u{0009}';
-const NEWLINE: &char = &'\u{000A}';
-const VERTICAL_TAB: &char = &'\u{000B}';
-const FORM_FEED: &char = &'\u{000C}';
-const CARRIAGE_RETURN: &char = &'\u{000D}';
-const SPACE: &char = &' ';
-
-/** CSS Leading Word Markers */
-const EXCLAMATION_POINT: &char = &'!';
-const AT_CHAR: &char = &'@';
-
 const BACKWARD_SLASH: &char = &'\\';
-
-/** CSS Control Characters */
-const OPEN_SQUARE_BRACKET: &char = &'[';
-const CLOSE_SQUARE_BRACKET: &char = &']';
-const OPEN_CURLY: &char = &'{';
-const CLOSE_CURLY: &char = &'}';
-const SEMICOLON: &char = &';';
-const COLON: &char = &':';
-
 const NULL_CHARACTER: &char = &'\u{0000}';
 
 #[derive(Eq, PartialEq, Debug)]
@@ -88,7 +70,7 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
         }
 
         match letter {
-            letter if is_whitespace(letter) => {
+            letter if whitespace::is_whitespace(letter) => {
                 let advance = tokenize_space(current_slice);
                 let (token, next_end) = create_token(last_end, advance, Kind::Space);
 
@@ -96,10 +78,10 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
                 last_end = next_end;
             }
 
-            letter if is_leading_word_token(letter) => {
-                let advance = tokenize_word(&current_slice[1..]);
+            letter if word::is_leading_word_token(letter) => {
+                let advance = word::tokenize_word(&current_slice[1..]);
                 let kind = match letter {
-                    AT_CHAR => Kind::AtWord,
+                    letter if word::is_at_word_token(letter) => Kind::AtWord,
                     _ => Kind::Word,
                 };
                 let (token, next_end) = create_token(last_end, advance + 1, kind);
@@ -108,7 +90,7 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
                 last_end = next_end;
             }
 
-            letter if is_control(letter) => {
+            letter if control::is_control(letter) => {
                 let advance = 0;
                 let (token, next_end) = create_token(last_end, advance, Kind::Symbol);
 
@@ -157,7 +139,7 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
             }
 
             _ => {
-                let advance = tokenize_word(current_slice);
+                let advance = word::tokenize_word(current_slice);
                 let (token, next_end) = create_token(last_end, advance, Kind::Word);
 
                 tokens.push(token);
@@ -181,24 +163,6 @@ fn create_token(last_end: usize, advance: usize, kind: Kind) -> (Token, usize) {
     return (token, end + 1);
 }
 
-fn tokenize_word(letters: &[char]) -> usize {
-    let result = letters.iter().position(|letter| {
-        return match letter {
-            letter if is_whitespace(letter) => true,
-            letter if is_control(letter) => true,
-            letter if string::is_single_string_token(letter) => true,
-            letter if string::is_double_string_token(letter) => true,
-            letter if brackets::is_opening_bracket_token(letter) => true,
-            letter if comment::is_forward_slash(letter) => true,
-            EXCLAMATION_POINT | AT_CHAR => true,
-            _ => false,
-        };
-    });
-
-    let position = unwrap_position(result, letters);
-    return back(position);
-}
-
 fn tokenize_backslash(letters: &[char]) -> usize {
     let result = letters.iter().position(|letter| {
         return match letter {
@@ -214,7 +178,7 @@ fn tokenize_backslash(letters: &[char]) -> usize {
 fn tokenize_space(letters: &[char]) -> usize {
     let result = letters.iter().position(|letter| {
         return match letter {
-            letter if is_whitespace(letter) => false,
+            letter if whitespace::is_whitespace(letter) => false,
             _ => true,
         };
     });
@@ -238,38 +202,6 @@ fn back(index: usize) -> usize {
     }
 
     return index - 1;
-}
-
-fn is_whitespace(letter: &char) -> bool {
-    return match letter {
-        HORIZONTAL_TAB => true,
-        NEWLINE => true,
-        VERTICAL_TAB => true,
-        FORM_FEED => true,
-        CARRIAGE_RETURN => true,
-        SPACE => true,
-        _ => false,
-    };
-}
-
-fn is_control(letter: &char) -> bool {
-    return match letter {
-        OPEN_CURLY => true,
-        CLOSE_CURLY => true,
-        OPEN_SQUARE_BRACKET => true,
-        CLOSE_SQUARE_BRACKET => true,
-        SEMICOLON => true,
-        COLON => true,
-        _ => false,
-    };
-}
-
-fn is_leading_word_token(letter: &char) -> bool {
-    return match letter {
-        EXCLAMATION_POINT => true,
-        AT_CHAR => true,
-        _ => false,
-    };
 }
 
 #[cfg(test)]

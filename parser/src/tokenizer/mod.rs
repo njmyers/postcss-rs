@@ -4,3 +4,6 @@ pub mod utils;
 pub mod escape;
 pub mod comment;
 pub mod brackets;
+pub mod word;
+pub mod whitespace;
+pub mod control;
