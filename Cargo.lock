@@ -3,15 +3,6 @@
 version = 3
 
 [[package]]
-name = "bindings"
-version = "0.1.0"
-dependencies = [
- "napi",
- "napi-build",
- "napi-derive",
-]
-
-[[package]]
 name = "indoc"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -52,6 +43,16 @@ name = "napi-sys"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43563506c466587478849d80f46383d859b91bbec586580dadeb3639588f2f7e"
+
+[[package]]
+name = "postcss-rs-node"
+version = "0.0.0"
+dependencies = [
+ "napi",
+ "napi-build",
+ "napi-derive",
+ "postcss-rs-parser",
+]
 
 [[package]]
 name = "postcss-rs-parser"
