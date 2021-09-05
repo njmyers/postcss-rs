@@ -578,6 +578,55 @@ mod tests {
     }
 
     #[test]
+    fn it_tokenizes_at_word_end() {
+        assert_eq!(
+            tokenizer("@one{@two()@three\"\"@four;"),
+            [
+                Token {
+                    kind: Kind::AtWord,
+                    start: 0,
+                    end: 3
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 4,
+                    end: 4
+                },
+                Token {
+                    kind: Kind::AtWord,
+                    start: 5,
+                    end: 8
+                },
+                Token {
+                    kind: Kind::Brackets,
+                    start: 9,
+                    end: 10
+                },
+                Token {
+                    kind: Kind::AtWord,
+                    start: 11,
+                    end: 16
+                },
+                Token {
+                    kind: Kind::String,
+                    start: 17,
+                    end: 18
+                },
+                Token {
+                    kind: Kind::AtWord,
+                    start: 19,
+                    end: 23
+                },
+                Token {
+                    kind: Kind::Symbol,
+                    start: 24,
+                    end: 24
+                }
+            ]
+        )
+    }
+
+    #[test]
     fn it_tokenizes_css() {
         assert_eq!(
             tokenizer(indoc! {"
