@@ -1,12 +1,12 @@
 use super::brackets;
 use super::comment;
 use super::control;
+use super::escape;
 use super::string;
 use super::whitespace;
 use super::word;
 use std::fmt;
 
-const BACKWARD_SLASH: &char = &'\\';
 const NULL_CHARACTER: &char = &'\u{0000}';
 
 #[derive(Eq, PartialEq, Debug)]
@@ -71,7 +71,7 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
 
         match letter {
             letter if whitespace::is_whitespace(letter) => {
-                let advance = tokenize_space(current_slice);
+                let advance = whitespace::tokenize_whitespace(current_slice);
                 let (token, next_end) = create_token(last_end, advance, Kind::Space);
 
                 tokens.push(token);
@@ -106,9 +106,9 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
                 last_end = next_end;
             }
 
-            BACKWARD_SLASH => {
-                let advance = tokenize_backslash(&current_slice[1..]);
-                let (token, next_end) = create_token(last_end, advance + 1, Kind::Word);
+            letter if escape::is_escape_character(letter) => {
+                let advance = escape::tokenize_escape(&current_slice);
+                let (token, next_end) = create_token(last_end, advance, Kind::Word);
 
                 tokens.push(token);
                 last_end = next_end;
@@ -161,47 +161,6 @@ fn create_token(last_end: usize, advance: usize, kind: Kind) -> (Token, usize) {
     println!("Creating a token, {}", token.to_string());
 
     return (token, end + 1);
-}
-
-fn tokenize_backslash(letters: &[char]) -> usize {
-    let result = letters.iter().position(|letter| {
-        return match letter {
-            BACKWARD_SLASH => false,
-            _ => true,
-        };
-    });
-
-    let position = unwrap_position(result, letters);
-    return back(position);
-}
-
-fn tokenize_space(letters: &[char]) -> usize {
-    let result = letters.iter().position(|letter| {
-        return match letter {
-            letter if whitespace::is_whitespace(letter) => false,
-            _ => true,
-        };
-    });
-
-    let position = unwrap_position(result, letters);
-    return back(position);
-}
-
-fn unwrap_position(result: Option<usize>, letters: &[char]) -> usize {
-    let position = match result {
-        Some(value) => value,
-        None => letters.iter().count(),
-    };
-
-    return position;
-}
-
-fn back(index: usize) -> usize {
-    if index == 0 {
-        return index;
-    }
-
-    return index - 1;
 }
 
 #[cfg(test)]

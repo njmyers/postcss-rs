@@ -1,3 +1,5 @@
+use super::utils;
+
 /** CSS Whitespace Characters */
 const HORIZONTAL_TAB: &char = &'\u{0009}';
 const NEWLINE: &char = &'\u{000A}';
@@ -16,4 +18,16 @@ pub fn is_whitespace(letter: &char) -> bool {
     SPACE => true,
     _ => false,
   };
+}
+
+pub fn tokenize_whitespace(letters: &[char]) -> usize {
+  let result = letters.iter().position(|letter| {
+    return match letter {
+      letter if is_whitespace(letter) => false,
+      _ => true,
+    };
+  });
+
+  let position = utils::unwrap_position(result, letters);
+  return utils::back(position);
 }
