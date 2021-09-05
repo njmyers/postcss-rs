@@ -1,3 +1,4 @@
+use super::brackets;
 use super::comment;
 use super::string;
 use std::fmt;
@@ -19,8 +20,6 @@ const BACKWARD_SLASH: &char = &'\\';
 /** CSS Control Characters */
 const OPEN_SQUARE_BRACKET: &char = &'[';
 const CLOSE_SQUARE_BRACKET: &char = &']';
-const OPEN_PARENTHESES: &char = &'(';
-const CLOSE_PARENTHESES: &char = &')';
 const OPEN_CURLY: &char = &'{';
 const CLOSE_CURLY: &char = &'}';
 const SEMICOLON: &char = &';';
@@ -135,9 +134,9 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
                 last_end = next_end;
             }
 
-            OPEN_PARENTHESES => {
-                let advance = tokenize_brackets(&current_slice[1..]);
-                let (token, next_end) = create_token(last_end, advance + 1, Kind::Brackets);
+            letter if brackets::is_opening_bracket_token(letter) => {
+                let advance = brackets::tokenize_brackets(&current_slice);
+                let (token, next_end) = create_token(last_end, advance, Kind::Brackets);
 
                 tokens.push(token);
                 last_end = next_end;
@@ -191,8 +190,8 @@ fn tokenize_word(letters: &[char]) -> usize {
             letter if is_control(letter) => true,
             letter if string::is_single_string_token(letter) => true,
             letter if string::is_double_string_token(letter) => true,
+            letter if brackets::is_opening_bracket_token(letter) => true,
             EXCLAMATION_POINT | AT_CHAR => true,
-            OPEN_PARENTHESES => true,
             _ => false,
         };
     });
@@ -211,20 +210,6 @@ fn tokenize_backslash(letters: &[char]) -> usize {
 
     let position = unwrap_position(result, letters);
     return back(position);
-}
-
-/**
- * Demarcating token
- */
-fn tokenize_brackets(letters: &[char]) -> usize {
-    let result = letters.iter().position(|letter| {
-        return match letter {
-            CLOSE_PARENTHESES => true,
-            _ => false,
-        };
-    });
-
-    return unwrap_position(result, letters);
 }
 
 fn tokenize_space(letters: &[char]) -> usize {
