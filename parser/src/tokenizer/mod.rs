@@ -1,9 +1,9 @@
+pub mod brackets;
+pub mod comment;
+pub mod control;
+pub mod escape;
 pub mod string;
 pub mod tokenizer;
 pub mod utils;
-pub mod escape;
-pub mod comment;
-pub mod brackets;
-pub mod word;
 pub mod whitespace;
-pub mod control;
+pub mod word;
