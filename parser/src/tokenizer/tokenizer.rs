@@ -51,31 +51,60 @@ impl fmt::Display for Token {
     }
 }
 
-pub fn tokenizer(css: &str) -> Vec<Token> {
-    let mut tokens: Vec<Token> = vec![];
-    let mut last_end: usize = 0;
-    let mut loops: usize = 0;
-    let letters: Vec<char> = css.chars().collect();
-    let count = letters.iter().count();
+#[derive(Eq, PartialEq, Debug)]
+pub struct Tokenizer<'a> {
+    last_end: usize,
+    loops: usize,
+    css: &'a str,
+    letters: Vec<char>,
+    count: usize,
+}
 
-    while let Some(letter) = letters.iter().skip(last_end).next() {
-        let current_slice = &letters[last_end..];
-        let next_letter = match letters.iter().skip(last_end + 1).next() {
+impl<'a> Tokenizer<'a> {
+    pub fn new(css: &str) -> Tokenizer {
+        let letters: Vec<char> = css.chars().collect();
+        let count = letters.iter().count();
+
+        return Tokenizer {
+            css,
+            last_end: 0,
+            loops: 0,
+            letters,
+            count,
+        };
+    }
+}
+
+impl<'a> Iterator for Tokenizer<'a> {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.loops > self.count {
+            panic!("Cannot create more tokens then length of css input")
+        }
+
+        self.loops = self.loops + 1;
+
+        let current_slice = &self.letters[self.last_end..];
+        let next_option = self.letters.iter().skip(self.last_end).next();
+
+        if next_option.is_none() {
+            return None;
+        }
+
+        let letter = next_option.unwrap();
+        let next_letter = match self.letters.iter().skip(self.last_end + 1).next() {
             Some(value) => value,
             None => NULL_CHARACTER,
         };
 
-        if loops > count {
-            break;
-        }
-
         match letter {
             letter if whitespace::is_whitespace(letter) => {
                 let advance = whitespace::tokenize_whitespace(current_slice);
-                let (token, next_end) = create_token(last_end, advance, Kind::Space);
+                let (token, next_end) = create_token(self.last_end, advance, Kind::Space);
 
-                tokens.push(token);
-                last_end = next_end;
+                self.last_end = next_end;
+                return Some(token);
             }
 
             letter if word::is_leading_word_token(letter) => {
@@ -84,73 +113,69 @@ pub fn tokenizer(css: &str) -> Vec<Token> {
                     letter if word::is_at_word_token(letter) => Kind::AtWord,
                     _ => Kind::Word,
                 };
-                let (token, next_end) = create_token(last_end, advance, kind);
+                let (token, next_end) = create_token(self.last_end, advance, kind);
 
-                tokens.push(token);
-                last_end = next_end;
+                self.last_end = next_end;
+                return Some(token);
             }
 
             letter if control::is_control(letter) => {
                 let advance = 0;
-                let (token, next_end) = create_token(last_end, advance, Kind::Symbol);
+                let (token, next_end) = create_token(self.last_end, advance, Kind::Symbol);
 
-                tokens.push(token);
-                last_end = next_end;
+                self.last_end = next_end;
+                return Some(token);
             }
 
             letter if comment::is_opening_comment_token(letter, next_letter) => {
                 let advance = comment::tokenize_comment(&current_slice[2..]);
-                let (token, next_end) = create_token(last_end, advance + 3, Kind::Comment);
+                let (token, next_end) = create_token(self.last_end, advance + 3, Kind::Comment);
 
-                tokens.push(token);
-                last_end = next_end;
+                self.last_end = next_end;
+                return Some(token);
             }
 
             letter if escape::is_escape_character(letter) => {
                 let advance = escape::tokenize_escape(&current_slice);
-                let (token, next_end) = create_token(last_end, advance, Kind::Word);
+                let (token, next_end) = create_token(self.last_end, advance, Kind::Word);
 
-                tokens.push(token);
-                last_end = next_end;
+                self.last_end = next_end;
+                return Some(token);
             }
 
             letter if brackets::is_opening_bracket_token(letter) => {
                 let advance = brackets::tokenize_brackets(&current_slice);
-                let (token, next_end) = create_token(last_end, advance, Kind::Brackets);
+                let (token, next_end) = create_token(self.last_end, advance, Kind::Brackets);
 
-                tokens.push(token);
-                last_end = next_end;
+                self.last_end = next_end;
+                return Some(token);
             }
 
             letter if string::is_single_string_token(letter) => {
                 let advance = string::tokenize_single_string(&current_slice);
-                let (token, next_end) = create_token(last_end, advance, Kind::String);
+                let (token, next_end) = create_token(self.last_end, advance, Kind::String);
 
-                tokens.push(token);
-                last_end = next_end;
+                self.last_end = next_end;
+                return Some(token);
             }
 
             letter if string::is_double_string_token(letter) => {
                 let advance = string::tokenize_double_string(&current_slice);
-                let (token, next_end) = create_token(last_end, advance, Kind::String);
+                let (token, next_end) = create_token(self.last_end, advance, Kind::String);
 
-                tokens.push(token);
-                last_end = next_end;
+                self.last_end = next_end;
+                return Some(token);
             }
 
             _ => {
                 let advance = word::tokenize_word(current_slice);
-                let (token, next_end) = create_token(last_end, advance, Kind::Word);
+                let (token, next_end) = create_token(self.last_end, advance, Kind::Word);
 
-                tokens.push(token);
-                last_end = next_end;
+                self.last_end = next_end;
+                return Some(token);
             }
         }
-
-        loops = loops + 1;
     }
-
-    return tokens;
 }
 
 fn create_token(last_end: usize, advance: usize, kind: Kind) -> (Token, usize) {
@@ -167,6 +192,17 @@ fn create_token(last_end: usize, advance: usize, kind: Kind) -> (Token, usize) {
 mod tests {
     use super::*;
     use indoc::indoc;
+
+    fn tokenizer(css: &str) -> Vec<Token> {
+        let mut iterator = Tokenizer::new(css);
+        let mut tokens: Vec<Token> = vec![];
+
+        while let Some(token) = iterator.next() {
+            tokens.push(token)
+        }
+
+        return tokens;
+    }
 
     #[test]
     fn it_tokenizes_empty_file() {
