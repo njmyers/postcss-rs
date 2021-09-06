@@ -35,13 +35,14 @@ impl fmt::Display for Kind {
 }
 
 #[derive(Eq, PartialEq, Debug)]
-pub struct Token {
-    start: usize,
-    end: usize,
-    kind: Kind,
+pub struct Token<'a> {
+    pub start: usize,
+    pub end: usize,
+    pub kind: Kind,
+    pub value: &'a str,
 }
 
-impl fmt::Display for Token {
+impl<'a> fmt::Display for Token<'a> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
             formatter,
@@ -74,12 +75,17 @@ impl<'a> Tokenizer<'a> {
         };
     }
 
-    fn create(&mut self, advance: usize, kind: Kind) -> Token {
+    fn create(&mut self, advance: usize, kind: Kind) -> Token<'a> {
         let start = self.last_end;
         let end = start + advance;
         self.last_end = end + 1;
 
-        let token = Token { start, end, kind };
+        let token = Token {
+            start,
+            end,
+            kind,
+            value: &self.css[start..end + 1],
+        };
         println!("Creating a token, {}", token.to_string());
 
         return token;
@@ -87,7 +93,7 @@ impl<'a> Tokenizer<'a> {
 }
 
 impl<'a> Iterator for Tokenizer<'a> {
-    type Item = Token;
+    type Item = Token<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.loops > self.count {
@@ -201,6 +207,7 @@ mod tests {
                 kind: Kind::Space,
                 start: 0,
                 end: 3,
+                value: "\r\n \t"
             }],
         )
     }
@@ -212,7 +219,8 @@ mod tests {
             [Token {
                 kind: Kind::Word,
                 start: 0,
-                end: 1
+                end: 1,
+                value: "ab"
             }]
         );
     }
@@ -225,12 +233,14 @@ mod tests {
                 Token {
                     kind: Kind::Word,
                     start: 0,
-                    end: 1
+                    end: 1,
+                    value: "aa"
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
-                    end: 4
+                    end: 4,
+                    value: "!bb"
                 }
             ]
         )
@@ -244,17 +254,20 @@ mod tests {
                 Token {
                     kind: Kind::Word,
                     start: 0,
-                    end: 0
+                    end: 0,
+                    value: "a"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 1,
-                    end: 3
+                    end: 3,
+                    value: " \n "
                 },
                 Token {
                     kind: Kind::Word,
                     start: 4,
-                    end: 4
+                    end: 4,
+                    value: "b"
                 }
             ]
         )
@@ -268,22 +281,26 @@ mod tests {
                 Token {
                     kind: Kind::Symbol,
                     start: 0,
-                    end: 0
+                    end: 0,
+                    value: "{"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 1,
-                    end: 1
+                    end: 1,
+                    value: ":"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 2,
-                    end: 2
+                    end: 2,
+                    value: ";"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 3,
-                    end: 3
+                    end: 3,
+                    value: "}"
                 }
             ]
         )
@@ -297,32 +314,38 @@ mod tests {
                 Token {
                     kind: Kind::Word,
                     start: 0,
-                    end: 1
+                    end: 1,
+                    value: "\\("
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
-                    end: 3
+                    end: 3,
+                    value: "\\{"
                 },
                 Token {
                     kind: Kind::Word,
                     start: 4,
-                    end: 5
+                    end: 5,
+                    value: "\\\""
                 },
                 Token {
                     kind: Kind::Word,
                     start: 6,
-                    end: 7
+                    end: 7,
+                    value: "\\@"
                 },
                 Token {
                     kind: Kind::Word,
                     start: 8,
-                    end: 9
+                    end: 9,
+                    value: "\\\\"
                 },
                 Token {
                     kind: Kind::String,
                     start: 10,
-                    end: 11
+                    end: 11,
+                    value: "\"\""
                 }
             ]
         )
@@ -336,12 +359,14 @@ mod tests {
                 Token {
                     kind: Kind::Word,
                     start: 0,
-                    end: 3
+                    end: 3,
+                    value: "\\\\\\\\"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 4,
-                    end: 4
+                    end: 4,
+                    value: "{"
                 }
             ]
         )
@@ -355,6 +380,7 @@ mod tests {
                 kind: Kind::Brackets,
                 start: 0,
                 end: 3,
+                value: "(ab)"
             }]
         )
     }
@@ -367,22 +393,26 @@ mod tests {
                 Token {
                     kind: Kind::Word,
                     start: 0,
-                    end: 0
+                    end: 0,
+                    value: "a"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 1,
-                    end: 1
+                    end: 1,
+                    value: "["
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
-                    end: 3
+                    end: 3,
+                    value: "bc"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 4,
-                    end: 4
+                    end: 4,
+                    value: "]"
                 }
             ]
         );
@@ -398,82 +428,98 @@ mod tests {
                 Token {
                     kind: Kind::Symbol,
                     start: 0,
-                    end: 0
+                    end: 0,
+                    value: "("
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 1,
-                    end: 2
+                    end: 2,
+                    value: "()"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 3,
-                    end: 3
+                    end: 3,
+                    value: ")"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 4,
-                    end: 4
+                    end: 4,
+                    value: "("
                 },
                 Token {
                     kind: Kind::String,
                     start: 5,
-                    end: 6
+                    end: 6,
+                    value: "\"\""
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 7,
-                    end: 7
+                    end: 7,
+                    value: ")"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 8,
-                    end: 8
+                    end: 8,
+                    value: "("
                 },
                 Token {
                     kind: Kind::Comment,
                     start: 9,
-                    end: 12
+                    end: 12,
+                    value: "/**/"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 13,
-                    end: 13
+                    end: 13,
+                    value: ")"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 14,
-                    end: 14
+                    end: 14,
+                    value: "("
                 },
                 Token {
                     kind: Kind::Word,
                     start: 15,
-                    end: 16
+                    end: 16,
+                    value: "\\\\"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 17,
-                    end: 17
+                    end: 17,
+                    value: ")"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 18,
-                    end: 18
+                    end: 18,
+                    value: "("
                 },
                 Token {
                     kind: Kind::Space,
                     start: 19,
-                    end: 19
+                    end: 19,
+                    value: "\n"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 20,
-                    end: 20
+                    end: 20,
+                    value: ")"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 21,
-                    end: 21
+                    end: 21,
+                    value: "("
                 },
             ]
         )
@@ -487,12 +533,14 @@ mod tests {
                 Token {
                     kind: Kind::String,
                     start: 0,
-                    end: 2
+                    end: 2,
+                    value: "'\"'"
                 },
                 Token {
                     kind: Kind::String,
                     start: 3,
-                    end: 6
+                    end: 6,
+                    value: "\"\\\"\""
                 }
             ]
         )
@@ -505,7 +553,8 @@ mod tests {
             [Token {
                 kind: Kind::String,
                 start: 0,
-                end: 3
+                end: 3,
+                value: "\"\\\\\""
             }]
         )
     }
@@ -518,12 +567,14 @@ mod tests {
                 Token {
                     kind: Kind::String,
                     start: 0,
-                    end: 3
+                    end: 3,
+                    value: "\"\n\n\""
                 },
                 Token {
                     kind: Kind::String,
                     start: 4,
-                    end: 7
+                    end: 7,
+                    value: "\"\n\n\""
                 }
             ]
         )
@@ -537,12 +588,14 @@ mod tests {
                 Token {
                     kind: Kind::AtWord,
                     start: 0,
-                    end: 4
+                    end: 4,
+                    value: "@word"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 5,
-                    end: 5
+                    end: 5,
+                    value: " "
                 }
             ]
         )
@@ -556,42 +609,50 @@ mod tests {
                 Token {
                     kind: Kind::AtWord,
                     start: 0,
-                    end: 3
+                    end: 3,
+                    value: "@one"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 4,
-                    end: 4
+                    end: 4,
+                    value: "{"
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 5,
-                    end: 8
+                    end: 8,
+                    value: "@two"
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 9,
-                    end: 10
+                    end: 10,
+                    value: "()",
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 11,
-                    end: 16
+                    end: 16,
+                    value: "@three",
                 },
                 Token {
                     kind: Kind::String,
                     start: 17,
-                    end: 18
+                    end: 18,
+                    value: "\"\""
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 19,
-                    end: 23
+                    end: 23,
+                    value: "@four"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 24,
-                    end: 24
+                    end: 24,
+                    value: ";"
                 }
             ]
         )
@@ -605,12 +666,14 @@ mod tests {
                 Token {
                     kind: Kind::Word,
                     start: 0,
-                    end: 2
+                    end: 2,
+                    value: "url"
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 3,
-                    end: 8
+                    end: 8,
+                    value: "(/*\\))"
                 }
             ]
         )
@@ -626,22 +689,26 @@ mod tests {
                 Token {
                     kind: Kind::Word,
                     start: 0,
-                    end: 2
+                    end: 2,
+                    value: "url"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 3,
-                    end: 3
+                    end: 3,
+                    value: "("
                 },
                 Token {
                     kind: Kind::String,
                     start: 4,
-                    end: 6
+                    end: 6,
+                    value: "\")\""
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 7,
-                    end: 7
+                    end: 7,
+                    value: ")"
                 }
             ]
         )
@@ -654,7 +721,8 @@ mod tests {
             [Token {
                 kind: Kind::AtWord,
                 start: 0,
-                end: 0
+                end: 0,
+                value: "@"
             }]
         )
     }
@@ -666,7 +734,8 @@ mod tests {
             [Token {
                 kind: Kind::Comment,
                 start: 0,
-                end: 8
+                end: 8,
+                value: "/* a\nb */"
             }]
         )
     }
@@ -679,17 +748,20 @@ mod tests {
                 Token {
                     kind: Kind::Word,
                     start: 0,
-                    end: 0
+                    end: 0,
+                    value: "a"
                 },
                 Token {
                     kind: Kind::Comment,
                     start: 1,
-                    end: 7
+                    end: 7,
+                    value: "/* \n */"
                 },
                 Token {
                     kind: Kind::Word,
                     start: 8,
-                    end: 8
+                    end: 8,
+                    value: "b"
                 },
             ]
         )
@@ -703,17 +775,20 @@ mod tests {
                 Token {
                     kind: Kind::Word,
                     start: 0,
-                    end: 0
+                    end: 0,
+                    value: "a"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 1,
-                    end: 1
+                    end: 1,
+                    value: "\u{000C}"
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
-                    end: 2
+                    end: 2,
+                    value: "b"
                 }
             ]
         )
@@ -727,27 +802,32 @@ mod tests {
                 Token {
                     kind: Kind::Word,
                     start: 0,
-                    end: 0
+                    end: 0,
+                    value: "a"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 1,
-                    end: 1
+                    end: 1,
+                    value: "\r",
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
-                    end: 2
+                    end: 2,
+                    value: "b"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 3,
-                    end: 4
+                    end: 4,
+                    value: "\r\n"
                 },
                 Token {
                     kind: Kind::Word,
                     start: 5,
-                    end: 5
+                    end: 5,
+                    value: "c"
                 },
             ]
         )
@@ -768,132 +848,158 @@ mod tests {
                 Token {
                     kind: Kind::Word,
                     start: 0,
-                    end: 0
+                    end: 0,
+                    value: "a",
                 },
                 Token {
                     kind: Kind::Space,
                     start: 1,
                     end: 1,
+                    value: " "
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 2,
-                    end: 2
+                    end: 2,
+                    value: "{"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 3,
-                    end: 5
+                    end: 5,
+                    value: "\n  "
                 },
                 Token {
                     kind: Kind::Word,
                     start: 6,
-                    end: 12
+                    end: 12,
+                    value: "content"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 13,
-                    end: 13
+                    end: 13,
+                    value: ":"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 14,
-                    end: 14
+                    end: 14,
+                    value: " "
                 },
                 Token {
                     kind: Kind::String,
                     start: 15,
-                    end: 17
+                    end: 17,
+                    value: "\"a\""
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 18,
-                    end: 18
+                    end: 18,
+                    value: ";"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 19,
-                    end: 21
+                    end: 21,
+                    value: "\n  "
                 },
                 Token {
                     kind: Kind::Word,
                     start: 22,
-                    end: 26
+                    end: 26,
+                    value: "width"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 27,
-                    end: 27
+                    end: 27,
+                    value: ":"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 28,
-                    end: 28
+                    end: 28,
+                    value: " "
                 },
                 Token {
                     kind: Kind::Word,
                     start: 29,
-                    end: 32
+                    end: 32,
+                    value: "calc"
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 33,
-                    end: 38
+                    end: 38,
+                    value: "(1px;)"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 39,
-                    end: 41
+                    end: 41,
+                    value: "\n  "
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 42,
-                    end: 42
+                    end: 42,
+                    value: "}"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 43,
-                    end: 43
+                    end: 43,
+                    value: "\n"
                 },
                 Token {
                     kind: Kind::Comment,
                     start: 44,
-                    end: 61
+                    end: 61,
+                    value: "/* small screen */"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 62,
-                    end: 62
+                    end: 62,
+                    value: "\n"
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 63,
-                    end: 68
+                    end: 68,
+                    value: "@media"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 69,
-                    end: 69
+                    end: 69,
+                    value: " "
                 },
                 Token {
                     kind: Kind::Word,
                     start: 70,
-                    end: 75
+                    end: 75,
+                    value: "screen"
                 },
                 Token {
                     kind: Kind::Space,
                     start: 76,
-                    end: 76
+                    end: 76,
+                    value: " "
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 77,
-                    end: 77
+                    end: 77,
+                    value: "{"
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 78,
-                    end: 78
+                    end: 78,
+                    value: "}"
                 }
             ]
         )
