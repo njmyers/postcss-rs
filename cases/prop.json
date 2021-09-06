@@ -1,0 +1,124 @@
+{
+  "raws": {
+    "semicolon": false,
+    "after": ""
+  },
+  "type": "root",
+  "nodes": [
+    {
+      "raws": {
+        "before": "",
+        "between": " ",
+        "semicolon": true,
+        "after": "\n"
+      },
+      "type": "rule",
+      "nodes": [
+        {
+          "raws": {
+            "before": "\n    *",
+            "between": " : "
+          },
+          "type": "decl",
+          "source": {
+            "start": {
+              "offset": 8,
+              "line": 2,
+              "column": 5
+            },
+            "end": {
+              "offset": 22,
+              "line": 2,
+              "column": 19
+            }
+          },
+          "prop": "color",
+          "value": "black"
+        },
+        {
+          "raws": {
+            "before": "\n    _",
+            "between": ": "
+          },
+          "type": "decl",
+          "source": {
+            "start": {
+              "offset": 28,
+              "line": 3,
+              "column": 5
+            },
+            "end": {
+              "offset": 46,
+              "line": 3,
+              "column": 23
+            }
+          },
+          "prop": "background",
+          "value": "white"
+        },
+        {
+          "raws": {
+            "before": "\n    ",
+            "between": "/**/: "
+          },
+          "type": "decl",
+          "source": {
+            "start": {
+              "offset": 52,
+              "line": 4,
+              "column": 5
+            },
+            "end": {
+              "offset": 70,
+              "line": 4,
+              "column": 23
+            }
+          },
+          "prop": "font-size",
+          "value": "big"
+        },
+        {
+          "raws": {
+            "before": "\n    ",
+            "between": ": "
+          },
+          "type": "decl",
+          "source": {
+            "start": {
+              "offset": 76,
+              "line": 5,
+              "column": 5
+            },
+            "end": {
+              "offset": 93,
+              "line": 5,
+              "column": 22
+            }
+          },
+          "prop": "$(var)-size",
+          "value": "100%"
+        }
+      ],
+      "source": {
+        "start": {
+          "offset": 0,
+          "line": 1,
+          "column": 1
+        },
+        "end": {
+          "offset": 95,
+          "line": 6,
+          "column": 1
+        }
+      },
+      "selector": "a"
+    }
+  ],
+  "source": {
+    "start": {
+      "offset": 0,
+      "line": 1,
+      "column": 1
+    }
+  }
+}
