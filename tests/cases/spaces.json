@@ -1,0 +1,14 @@
+{
+  "raws": {
+    "after": " \n"
+  },
+  "type": "root",
+  "nodes": [],
+  "source": {
+    "start": {
+      "offset": 0,
+      "line": 1,
+      "column": 1
+    }
+  }
+}

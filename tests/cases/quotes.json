@@ -1,0 +1,82 @@
+{
+  "raws": {
+    "semicolon": false,
+    "after": ""
+  },
+  "type": "root",
+  "nodes": [
+    {
+      "raws": {
+        "before": "",
+        "between": " ",
+        "semicolon": true,
+        "after": "\n"
+      },
+      "type": "rule",
+      "nodes": [
+        {
+          "raws": {
+            "before": "\n    ",
+            "between": ": "
+          },
+          "type": "decl",
+          "source": {
+            "start": {
+              "offset": 16,
+              "line": 2,
+              "column": 5
+            },
+            "end": {
+              "offset": 37,
+              "line": 2,
+              "column": 26
+            }
+          },
+          "prop": "content",
+          "value": "\";'@ /**/\\\"\""
+        },
+        {
+          "raws": {
+            "before": "\n    ",
+            "between": ": "
+          },
+          "type": "decl",
+          "source": {
+            "start": {
+              "offset": 43,
+              "line": 3,
+              "column": 5
+            },
+            "end": {
+              "offset": 59,
+              "line": 3,
+              "column": 21
+            }
+          },
+          "prop": "content",
+          "value": "'\\'\"\\\\'"
+        }
+      ],
+      "source": {
+        "start": {
+          "offset": 0,
+          "line": 1,
+          "column": 1
+        },
+        "end": {
+          "offset": 61,
+          "line": 4,
+          "column": 1
+        }
+      },
+      "selector": "a::before"
+    }
+  ],
+  "source": {
+    "start": {
+      "offset": 0,
+      "line": 1,
+      "column": 1
+    }
+  }
+}

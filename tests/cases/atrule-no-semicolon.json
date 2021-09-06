@@ -1,0 +1,81 @@
+{
+  "raws": {
+    "semicolon": false,
+    "after": ""
+  },
+  "type": "root",
+  "nodes": [
+    {
+      "raws": {
+        "before": "",
+        "between": " ",
+        "afterName": " ",
+        "semicolon": false,
+        "after": ""
+      },
+      "type": "atrule",
+      "name": "media",
+      "source": {
+        "start": {
+          "offset": 0,
+          "line": 1,
+          "column": 1
+        },
+        "end": {
+          "offset": 23,
+          "line": 1,
+          "column": 24
+        }
+      },
+      "params": "screen",
+      "nodes": [
+        {
+          "raws": {
+            "before": "",
+            "between": "",
+            "afterName": ""
+          },
+          "type": "atrule",
+          "name": "content",
+          "source": {
+            "start": {
+              "offset": 15,
+              "line": 1,
+              "column": 16
+            }
+          },
+          "params": ""
+        }
+      ]
+    },
+    {
+      "raws": {
+        "before": "\n\n",
+        "between": "",
+        "afterName": " "
+      },
+      "type": "atrule",
+      "name": "charset",
+      "source": {
+        "start": {
+          "offset": 26,
+          "line": 3,
+          "column": 1
+        },
+        "end": {
+          "offset": 41,
+          "line": 3,
+          "column": 16
+        }
+      },
+      "params": "\"UTF-8\""
+    }
+  ],
+  "source": {
+    "start": {
+      "offset": 0,
+      "line": 1,
+      "column": 1
+    }
+  }
+}

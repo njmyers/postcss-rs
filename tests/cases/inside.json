@@ -1,0 +1,62 @@
+{
+  "raws": {
+    "semicolon": false,
+    "after": ""
+  },
+  "type": "root",
+  "nodes": [
+    {
+      "raws": {
+        "before": "",
+        "between": " ",
+        "semicolon": false,
+        "after": ""
+      },
+      "type": "rule",
+      "nodes": [
+        {
+          "raws": {
+            "before": " ",
+            "between": " ",
+            "afterName": " "
+          },
+          "type": "atrule",
+          "name": "import",
+          "source": {
+            "start": {
+              "offset": 4,
+              "line": 1,
+              "column": 5
+            },
+            "end": {
+              "offset": 18,
+              "line": 1,
+              "column": 19
+            }
+          },
+          "params": "\"a.css\""
+        }
+      ],
+      "source": {
+        "start": {
+          "offset": 0,
+          "line": 1,
+          "column": 1
+        },
+        "end": {
+          "offset": 20,
+          "line": 1,
+          "column": 21
+        }
+      },
+      "selector": "a"
+    }
+  ],
+  "source": {
+    "start": {
+      "offset": 0,
+      "line": 1,
+      "column": 1
+    }
+  }
+}
