@@ -5,11 +5,12 @@ use super::escape;
 use super::string;
 use super::whitespace;
 use super::word;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 const NULL_CHARACTER: &char = &'\u{0000}';
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Copy, Clone)]
 pub enum Kind {
     Space,
     Word,
@@ -34,8 +35,8 @@ impl fmt::Display for Kind {
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
-pub struct Token<'a> {
+#[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Copy, Clone)]
+pub struct Token<'a,> {
     pub start: usize,
     pub end: usize,
     pub kind: Kind,
