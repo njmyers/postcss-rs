@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub enum Type {
     #[serde(rename = "document")]
     Document,
@@ -16,7 +16,7 @@ pub enum Type {
     Comment,
 }
 
-#[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Raws<'a> {
     pub before: Option<&'a str>,
     pub between: Option<&'a str>,
@@ -42,20 +42,20 @@ impl<'a> Raws<'a> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Source {
     pub offset: usize,
     pub line: usize,
     pub column: usize,
 }
 
-#[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Sources {
     pub start: Option<Source>,
     pub end: Option<Source>,
 }
 
-#[derive(Eq, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Node<'a> {
     #[serde(rename = "type")]
     pub r#type: Type,
@@ -75,8 +75,20 @@ impl<'a> Node<'a> {
         };
     }
 
-    pub fn append(&mut self, child: Node<'a>) {
+    pub fn append<'b, 'c: 'a + 'b>(&mut self, child: Node<'c>) -> Self {
         self.nodes.push(child);
+        return self.clone();
+    }
+
+    pub fn copy(&self) -> Self {
+        let nodes = self.nodes.iter().map(|node| return node.copy()).collect();
+
+        return Node {
+            r#type: self.r#type.clone(),
+            raws: self.raws.clone(),
+            sources: self.sources.clone(),
+            nodes,
+        };
     }
 }
 
