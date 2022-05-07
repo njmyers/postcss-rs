@@ -1,5 +1,4 @@
 :root {
-  --empty: ;
   --number: 1;
   --unit: 100vw;
   --color: #06c;
@@ -13,10 +12,11 @@
   --square-block: [1, 2, 3];
   --round-block: (1, 2, 3);
 
-  --empty: ;
+  --empty1: ;
   --empty2: /**/;
   --empty3: !important;
   --empty4:/**/ !important;
+  --empty5:/**/ ;
 
   --bracket-block: {1, 2, 3};
   --JSON: [1, "2", {"three": {"a":1}}, [4]];
@@ -24,3 +24,7 @@
 }
 
 :root{--a:1}
+
+.semicolon-less {--empty-end:/**/ }
+
+.empty{--a: }
