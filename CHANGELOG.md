@@ -2,6 +2,24 @@
 This project uses major version number for PostCSS,
 minor for adding/removing tests, and patch for fixes.
 
+## 8.5.1
+* Fixed empty Custom Properties position.
+
+## 8.5
+* Added safe example for comment removal.
+
+## 8.4
+* Added more CSS Custom Properties tests.
+* Added more dangerous comments tests.
+* Reduced dependencies.
+
+## 8.3.7
+* Replaced `nanocolors` with `picocolors`.
+* Removed `ci-job-number`.
+
+## 8.3.6
+* Replaced `coloretter` with `nanocolors`.
+
 ## 8.3.5
 * Removed `Nodeinputs` and `Node#source.inputId` (by Niklas Mischkulnig).
 
