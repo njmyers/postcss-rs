@@ -36,7 +36,7 @@ impl fmt::Display for Kind {
 }
 
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Copy, Clone)]
-pub struct Token<'a,> {
+pub struct Token<'a> {
     pub start: usize,
     pub end: usize,
     pub kind: Kind,
@@ -56,7 +56,6 @@ impl<'a> fmt::Display for Token<'a> {
 #[derive(Eq, PartialEq, Debug)]
 pub struct Tokenizer<'a> {
     last_end: usize,
-    loops: usize,
     css: &'a str,
     letters: Vec<char>,
     count: usize,
@@ -70,7 +69,6 @@ impl<'a> Tokenizer<'a> {
         return Tokenizer {
             css,
             last_end: 0,
-            loops: 0,
             letters,
             count,
         };
@@ -87,7 +85,6 @@ impl<'a> Tokenizer<'a> {
             kind,
             value: &self.css[start..end + 1],
         };
-        println!("Creating a token, {}", token.to_string());
 
         return token;
     }
@@ -97,12 +94,6 @@ impl<'a> Iterator for Tokenizer<'a> {
     type Item = Token<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.loops > self.count {
-            panic!("Cannot create more tokens then length of css input")
-        }
-
-        self.loops = self.loops + 1;
-
         let current_slice = &self.letters[self.last_end..];
         let next_option = self.letters.iter().skip(self.last_end).next();
 

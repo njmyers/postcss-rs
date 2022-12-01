@@ -1,4 +1,4 @@
-/** CSS Control Characters */
+/// CSS Control Characters
 const OPEN_SQUARE_BRACKET: &char = &'[';
 const CLOSE_SQUARE_BRACKET: &char = &']';
 const OPEN_CURLY: &char = &'{';

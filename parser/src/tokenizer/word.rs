@@ -6,7 +6,7 @@ use super::utils;
 use super::whitespace;
 use std::cmp;
 
-/** CSS Leading Word Markers */
+/// CSS Leading Word Markers
 const EXCLAMATION_POINT: &char = &'!';
 const AT_CHAR: &char = &'@';
 

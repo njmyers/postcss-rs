@@ -1,6 +1,8 @@
 use super::utils;
 
-/** CSS Whitespace Characters */
+pub struct Space;
+
+/// CSS Whitespace Characters
 const HORIZONTAL_TAB: &char = &'\u{0009}';
 const NEWLINE: &char = &'\u{000A}';
 const VERTICAL_TAB: &char = &'\u{000B}';

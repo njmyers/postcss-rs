@@ -1,19 +1,15 @@
 use super::utils;
 use std::cmp;
 
-/** CSS Escape Markers */
+/// CSS Escape Markers
 pub const BACKWARD_SLASH: &char = &'\\';
 
-/**
- * Return whether a character is a single escape token `\`
- */
+/// Return whether a character is a single escape token `\`
 pub fn is_escape_character(letter: &char) -> bool {
     return letter == BACKWARD_SLASH;
 }
 
-/**
- * Tokenize the "word" created by a series of escape tokens like `\(` or `\\\\`.
- */
+/// Tokenize the "word" created by a series of escape tokens like `\(` or `\\\\`.
 pub fn tokenize_escape(letters: &[char]) -> usize {
     let lookbehind: usize = 1;
     let count = letters.iter().count();

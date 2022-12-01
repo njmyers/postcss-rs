@@ -2,13 +2,11 @@ use super::escape;
 use super::utils;
 use std::cmp;
 
-/** CSS String Markers */
+/// CSS String Markers
 pub const SINGLE_QUOTE: &char = &'\'';
 pub const DOUBLE_QUOTE: &char = &'"';
 
-/**
- * Tokenize the string contained within single quotation marks like `'word'`.
- */
+/// Tokenize the string contained within single quotation marks like `'word'`.
 pub fn tokenize_single_string(letters: &[char]) -> usize {
     let lookbehind: usize = 1;
     let count = letters.iter().count();
@@ -25,17 +23,13 @@ pub fn tokenize_single_string(letters: &[char]) -> usize {
     return cmp::min(string_length, count - lookbehind);
 }
 
-/**
- * Tokenize the string contained within single quotation marks like `"word"`.
- */
+/// Tokenize the string contained within single quotation marks like `"word"`.
 pub fn tokenize_double_string(letters: &[char]) -> usize {
     let lookbehind: usize = 1;
     let count = letters.iter().count();
     let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
     let result = letters_lookbehind.position(|(previous_letter, letter)| {
-        println!("previous '{}', current '{}',", previous_letter, letter);
-
         return match letter {
             DOUBLE_QUOTE if !escape::is_escape_character(previous_letter) => true,
             _ => false,
@@ -43,14 +37,10 @@ pub fn tokenize_double_string(letters: &[char]) -> usize {
     });
 
     let string_length = utils::unwrap_position(result, letters) + lookbehind;
-    println!("string_length '{}'", string_length);
-
     return cmp::min(string_length, count - lookbehind);
 }
 
-/**
- * Return whether a character is a single string token `'`
- */
+/// Return whether a character is a single string token `'`
 pub fn is_single_string_token(letter: &char) -> bool {
     return match letter {
         SINGLE_QUOTE => true,
@@ -58,9 +48,7 @@ pub fn is_single_string_token(letter: &char) -> bool {
     };
 }
 
-/**
- * Return whether a character is a double string token `"`
- */
+/// Return whether a character is a double string token `"`
 pub fn is_double_string_token(letter: &char) -> bool {
     return match letter {
         DOUBLE_QUOTE => true,

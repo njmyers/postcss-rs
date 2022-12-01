@@ -30,3 +30,10 @@ pub fn tokenize_brackets(letters: &[char]) -> usize {
 pub fn is_opening_bracket_token(letter: &char) -> bool {
     return letter == OPEN_PARENTHESIS;
 }
+
+/**
+ * Return whether a character is a single closing parenthesis token `(`
+ */
+pub fn is_closing_bracket_token(letter: &char) -> bool {
+    return letter == CLOSE_PARENTHESIS;
+}
