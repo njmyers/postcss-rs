@@ -1,45 +1,119 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
+use crate::tokenizer::Kind;
+use crate::tokenizer::Token;
+use crate::tokenizer::Tokenizer;
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Declaration {
     pub prop: String,
     pub value: String,
 }
 
+impl Declaration {
+    pub fn new(prop: &str, value: &str) -> Self {
+        return Self {
+            prop: String::from(prop),
+            value: String::from(value),
+        };
+    }
+
+    pub fn create(prop: Token, tokenizer: &mut Tokenizer) -> Node {
+        let mut node = Node::default();
+
+        while let Some(token) = tokenizer.next() {
+            match token.kind {
+                Kind::Symbol if token.value == ";" => break,
+                Kind::Symbol => node.raws.between.push(token.value),
+                Kind::Space => node.raws.between.push(token.value),
+                Kind::Word => node.data = Data::Declaration(Self::new(prop.value, token.value)),
+                _ => break,
+            }
+        }
+
+        return node;
+    }
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Rule {
     pub selector: String,
 }
 
-#[derive(Eq, PartialEq, Debug, Serialize, Deserialize, Clone)]
-pub enum Type {
-    #[serde(rename = "document")]
-    Document,
-    #[serde(rename = "root")]
-    Root,
-    #[serde(rename = "rule")]
-    Rule,
-    #[serde(rename = "decl")]
-    Declaration,
-    #[serde(rename = "atrule")]
-    AtRule,
-    #[serde(rename = "comment")]
-    Comment,
+impl Rule {
+    pub fn new(selector: &str) -> Self {
+        return Self {
+            selector: String::from(selector),
+        };
+    }
+
+    pub fn create(token: Token, tokenizer: &mut Tokenizer) -> Node {
+        let mut node = Node::new(Data::Rule(Self::new(token.value)));
+
+        while let Some(token) = tokenizer.next() {
+            match token.kind {
+                Kind::Space => node.raws.between.push(token.value),
+                Kind::Symbol => break,
+                _ => break,
+            };
+        }
+
+        let mut spaces: Vec<Token> = Vec::new();
+
+        while let Some(token) = tokenizer.next() {
+            match token.kind {
+                Kind::Space => spaces.push(token),
+                Kind::Word => node.append(Declaration::create(token, tokenizer)),
+                Kind::Symbol => break,
+                _ => break,
+            };
+        }
+
+        return node;
+    }
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+pub struct Raw(Option<String>);
+
+impl Raw {
+    pub fn push(&mut self, raw: &str) {
+        match self.0 {
+            Some(ref mut prev) => prev.push_str(raw),
+            None => self.0 = Some(String::from(raw)),
+        };
+    }
+
+    pub fn skip(&self) -> bool {
+        return self.0.is_none();
+    }
+}
+
+impl Default for Raw {
+    fn default() -> Self {
+        return Self(None);
+    }
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Raws {
-    pub before: Option<String>,
-    pub between: Option<String>,
+    #[serde(skip_serializing_if = "Raw::skip")]
+    pub before: Raw,
+    #[serde(skip_serializing_if = "Raw::skip")]
+    pub between: Raw,
     pub semicolon: bool,
-    pub after: Option<String>,
+    #[serde(skip_serializing_if = "Raw::skip")]
+    pub after: Raw,
 }
 
 impl Default for Raws {
     fn default() -> Self {
         return Self {
-            before: None,
-            between: None,
+            before: Raw::default(),
+            between: Raw::default(),
             semicolon: false,
-            after: None,
+            after: Raw::default(),
         };
     }
 }
@@ -77,26 +151,50 @@ impl Default for Sources {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum Data {
+    Root,
+    Rule(Rule),
+    Document,
+    #[serde(rename = "decl")]
+    Declaration(Declaration),
+    AtRule,
+    Comment,
+}
+
+impl Default for Data {
+    fn default() -> Self {
+        return Self::Root;
+    }
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Node {
-    #[serde(rename = "type")]
-    pub kind: Type,
     pub nodes: Vec<Node>,
     pub raws: Raws,
     pub sources: Sources,
+    #[serde(flatten)]
+    pub data: Data,
 }
 
 impl Node {
-    pub fn new(kind: Type) -> Node {
+    pub fn new(data: Data) -> Node {
         return Node {
-            kind,
             raws: Raws::default(),
             nodes: Vec::new(),
             sources: Sources::default(),
+            data,
         };
     }
 
     pub fn append(&mut self, child: Node) {
         self.nodes.push(child);
+    }
+}
+
+impl Default for Node {
+    fn default() -> Self {
+        return Self::new(Data::default());
     }
 }
 
@@ -108,36 +206,22 @@ mod tests {
 
     #[test]
     fn it_serializes_node() {
-        let node = Node::new(Type::Root);
+        let node = Node::new(Data::Root);
 
         assert_ser_tokens(
             &node,
             &[
-                Token::Struct {
-                    name: "Node",
-                    len: 4,
-                },
-                Token::Str("type"),
-                Token::UnitVariant {
-                    name: "Type",
-                    variant: "root",
-                },
+                Token::Map { len: None },
                 Token::Str("nodes"),
                 Token::Seq { len: Some(0) },
                 Token::SeqEnd,
                 Token::Str("raws"),
                 Token::Struct {
                     name: "Raws",
-                    len: 4,
+                    len: 1,
                 },
-                Token::Str("before"),
-                Token::None,
-                Token::Str("between"),
-                Token::None,
                 Token::Str("semicolon"),
                 Token::Bool(false),
-                Token::Str("after"),
-                Token::None,
                 Token::StructEnd,
                 Token::Str("sources"),
                 Token::Struct {
@@ -147,7 +231,7 @@ mod tests {
                 Token::Str("start"),
                 Token::Struct {
                     name: "Source",
-                    len: 3
+                    len: 3,
                 },
                 Token::Str("offset"),
                 Token::U64(0),
@@ -159,7 +243,9 @@ mod tests {
                 Token::Str("end"),
                 Token::None,
                 Token::StructEnd,
-                Token::StructEnd,
+                Token::Str("type"),
+                Token::Str("root"),
+                Token::MapEnd,
             ],
         );
     }

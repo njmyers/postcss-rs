@@ -53,7 +53,7 @@ impl<'a> fmt::Display for Token<'a> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Tokenizer<'a> {
     last_end: usize,
     css: &'a str,
