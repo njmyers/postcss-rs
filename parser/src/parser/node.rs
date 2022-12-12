@@ -1,78 +1,12 @@
 use serde::Deserialize;
 use serde::Serialize;
+use serde_json;
 
-use crate::tokenizer::Kind;
+use super::Declaration;
+use super::Rule;
+
 use crate::tokenizer::Token;
 use crate::tokenizer::Tokenizer;
-
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
-pub struct Declaration {
-    pub prop: String,
-    pub value: String,
-}
-
-impl Declaration {
-    pub fn new(prop: &str, value: &str) -> Self {
-        return Self {
-            prop: String::from(prop),
-            value: String::from(value),
-        };
-    }
-
-    pub fn create(prop: Token, tokenizer: &mut Tokenizer) -> Node {
-        let mut node = Node::default();
-
-        while let Some(token) = tokenizer.next() {
-            match token.kind {
-                Kind::Symbol if token.value == ";" => break,
-                Kind::Symbol => node.raws.between.push(token.value),
-                Kind::Space => node.raws.between.push(token.value),
-                Kind::Word => node.data = Data::Declaration(Self::new(prop.value, token.value)),
-                _ => break,
-            }
-        }
-
-        return node;
-    }
-}
-
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
-pub struct Rule {
-    pub selector: String,
-}
-
-impl Rule {
-    pub fn new(selector: &str) -> Self {
-        return Self {
-            selector: String::from(selector),
-        };
-    }
-
-    pub fn create(token: Token, tokenizer: &mut Tokenizer) -> Node {
-        let mut node = Node::new(Data::Rule(Self::new(token.value)));
-
-        while let Some(token) = tokenizer.next() {
-            match token.kind {
-                Kind::Space => node.raws.between.push(token.value),
-                Kind::Symbol => break,
-                _ => break,
-            };
-        }
-
-        let mut spaces: Vec<Token> = Vec::new();
-
-        while let Some(token) = tokenizer.next() {
-            match token.kind {
-                Kind::Space => spaces.push(token),
-                Kind::Word => node.append(Declaration::create(token, tokenizer)),
-                Kind::Symbol => break,
-                _ => break,
-            };
-        }
-
-        return node;
-    }
-}
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Raw(Option<String>);
@@ -135,10 +69,35 @@ impl Default for Source {
     }
 }
 
+impl Source {
+    pub fn create_start(token: &Token, tokenizer: &Tokenizer) -> Self {
+        return Self {
+            offset: token.start,
+            line: tokenizer.lines.value(),
+            column: 0,
+        };
+    }
+
+    pub fn create_end(tokenizer: &Tokenizer) -> Self {
+        return Self {
+            offset: tokenizer.end(),
+            line: tokenizer.lines.value(),
+            column: 0,
+        };
+    }
+}
+
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Sources {
     pub start: Source,
+    #[serde(skip_serializing_if = "Sources::skip")]
     pub end: Option<Source>,
+}
+
+impl Sources {
+    pub fn skip(source: &Option<Source>) -> bool {
+        return source.is_none();
+    }
 }
 
 impl Default for Sources {
@@ -170,11 +129,11 @@ impl Default for Data {
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Node {
-    pub nodes: Vec<Node>,
     pub raws: Raws,
-    pub sources: Sources,
     #[serde(flatten)]
     pub data: Data,
+    pub nodes: Vec<Node>,
+    pub sources: Sources,
 }
 
 impl Node {
@@ -189,6 +148,10 @@ impl Node {
 
     pub fn append(&mut self, child: Node) {
         self.nodes.push(child);
+    }
+
+    pub fn to_json(&self) -> serde_json::Result<String> {
+        return serde_json::to_string(&self);
     }
 }
 
@@ -212,6 +175,8 @@ mod tests {
             &node,
             &[
                 Token::Map { len: None },
+                Token::Str("type"),
+                Token::Str("root"),
                 Token::Str("nodes"),
                 Token::Seq { len: Some(0) },
                 Token::SeqEnd,
@@ -243,8 +208,6 @@ mod tests {
                 Token::Str("end"),
                 Token::None,
                 Token::StructEnd,
-                Token::Str("type"),
-                Token::Str("root"),
                 Token::MapEnd,
             ],
         );

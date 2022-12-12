@@ -22,6 +22,14 @@ pub fn is_whitespace(letter: &char) -> bool {
     };
 }
 
+pub fn is_line_ending(letter: &char) -> bool {
+    return match letter {
+        NEWLINE => true,
+        CARRIAGE_RETURN => true,
+        _ => false,
+    };
+}
+
 pub fn tokenize_whitespace(letters: &[char]) -> usize {
     let result = letters.iter().position(|letter| {
         return match letter {

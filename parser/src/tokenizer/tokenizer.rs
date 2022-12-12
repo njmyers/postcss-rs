@@ -5,7 +5,9 @@ use super::escape;
 use super::string;
 use super::whitespace;
 use super::word;
+
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 use std::fmt;
 
 const NULL_CHARACTER: &char = &'\u{0000}';
@@ -54,23 +56,43 @@ impl<'a> fmt::Display for Token<'a> {
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
+pub struct Lines(RefCell<usize>);
+
+impl Lines {
+    fn new() -> Self {
+        return Self(RefCell::new(1));
+    }
+
+    fn increment(&self) {
+        let mut lines = self.0.borrow_mut();
+        *lines += 1;
+    }
+
+    pub fn value(&self) -> usize {
+        return self.0.borrow().to_owned();
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Tokenizer<'a> {
     last_end: usize,
     css: &'a str,
     letters: Vec<char>,
     count: usize,
+    pub lines: Lines,
 }
 
 impl<'a> Tokenizer<'a> {
-    pub fn new(css: &str) -> Tokenizer {
+    pub fn new(css: &'a str) -> Self {
         let letters: Vec<char> = css.chars().collect();
         let count = letters.iter().count();
 
-        return Tokenizer {
+        return Self {
             css,
             last_end: 0,
             letters,
             count,
+            lines: Lines::new(),
         };
     }
 
@@ -87,6 +109,10 @@ impl<'a> Tokenizer<'a> {
         };
 
         return token;
+    }
+
+    pub fn end(&self) -> usize {
+        return self.last_end.to_owned() - 1;
     }
 }
 
@@ -109,8 +135,13 @@ impl<'a> Iterator for Tokenizer<'a> {
 
         match letter {
             letter if whitespace::is_whitespace(letter) => {
+                if whitespace::is_line_ending(letter) {
+                    self.lines.increment();
+                }
+
                 let advance = whitespace::tokenize_whitespace(current_slice);
                 let token = self.create(advance, Kind::Space);
+
                 return Some(token);
             }
 

@@ -35,7 +35,6 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
     use std::fs;
     use std::path;
 
@@ -46,7 +45,7 @@ mod tests {
         let tree = read_test_file("apply.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -57,7 +56,7 @@ mod tests {
         let tree = read_test_file("at-rule-brackets.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -68,7 +67,7 @@ mod tests {
         let tree = read_test_file("atrule-decls.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -79,7 +78,7 @@ mod tests {
         let tree = read_test_file("atrule-empty.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -90,7 +89,7 @@ mod tests {
         let tree = read_test_file("atrule-no-params.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -101,7 +100,7 @@ mod tests {
         let tree = read_test_file("atrule-no-semicolon.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -112,7 +111,7 @@ mod tests {
         let tree = read_test_file("atrule-no-space.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -123,7 +122,7 @@ mod tests {
         let tree = read_test_file("atrule-params.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -134,7 +133,7 @@ mod tests {
         let tree = read_test_file("atrule-rules.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -145,7 +144,7 @@ mod tests {
         let tree = read_test_file("between.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -156,7 +155,7 @@ mod tests {
         let tree = read_test_file("bom.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -167,7 +166,7 @@ mod tests {
         let tree = read_test_file("colon-selector.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -178,7 +177,7 @@ mod tests {
         let tree = read_test_file("comments.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -189,7 +188,7 @@ mod tests {
         let tree = read_test_file("custom-properties.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -200,7 +199,7 @@ mod tests {
         let tree = read_test_file("decls.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -211,7 +210,7 @@ mod tests {
         let tree = read_test_file("empty.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -222,7 +221,7 @@ mod tests {
         let tree = read_test_file("escape.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -233,7 +232,7 @@ mod tests {
         let tree = read_test_file("extends.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -244,7 +243,7 @@ mod tests {
         let tree = read_test_file("function.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -255,7 +254,7 @@ mod tests {
         let tree = read_test_file("ie-progid.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -266,7 +265,7 @@ mod tests {
         let tree = read_test_file("important.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -277,7 +276,7 @@ mod tests {
         let tree = read_test_file("inside.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -288,7 +287,7 @@ mod tests {
         let tree = read_test_file("no-selector.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -299,7 +298,7 @@ mod tests {
         let tree = read_test_file("prop.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -310,7 +309,7 @@ mod tests {
         let tree = read_test_file("quotes.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -321,7 +320,7 @@ mod tests {
         let tree = read_test_file("raw-decl.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -332,7 +331,7 @@ mod tests {
         let tree = read_test_file("rule-at.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -343,7 +342,7 @@ mod tests {
         let tree = read_test_file("rule-no-semicolon.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -354,7 +353,7 @@ mod tests {
         let tree = read_test_file("selector.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -365,7 +364,7 @@ mod tests {
         let tree = read_test_file("semicolons.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -376,7 +375,7 @@ mod tests {
         let tree = read_test_file("spaces.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
@@ -387,7 +386,7 @@ mod tests {
         let tree = read_test_file("tabs.json");
         let mut parser = Parser::new(&css);
         let ast = parser.parse();
-        let json = json!(ast).to_string();
+        let json = ast.to_json().unwrap();
         assert_eq!(json, tree);
     }
 
