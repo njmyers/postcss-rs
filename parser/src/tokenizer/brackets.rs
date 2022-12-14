@@ -1,39 +1,36 @@
-use super::escape;
-use super::utils;
+use super::*;
 use std::cmp;
 
 const OPEN_PARENTHESIS: &char = &'(';
 const CLOSE_PARENTHESIS: &char = &')';
 
-/**
- * Tokenize the bracketed statement contained within brackets like `(word)`.
- */
-pub fn tokenize_brackets(letters: &[char]) -> usize {
-    let lookbehind: usize = 1;
-    let count = letters.iter().count();
-    let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
+pub struct Bracket;
 
-    let result = letters_lookbehind.position(|(previous_letter, letter)| {
-        return match letter {
-            CLOSE_PARENTHESIS if !escape::is_escape_character(previous_letter) => true,
-            _ => false,
-        };
-    });
+impl Bracket {
+    /// Return whether a character is a single opening parenthesis token `(`
+    pub fn test(current: &char) -> bool {
+        return current == OPEN_PARENTHESIS;
+    }
 
-    let string_length = utils::unwrap_position(result, letters) + lookbehind;
-    return cmp::min(string_length, count - lookbehind);
-}
+    /// Return whether a character is a single closing parenthesis token `(`
+    pub fn is_closing_token(current: &char) -> bool {
+        return current == CLOSE_PARENTHESIS;
+    }
 
-/**
- * Return whether a character is a single opening parenthesis token `(`
- */
-pub fn is_opening_bracket_token(letter: &char) -> bool {
-    return letter == OPEN_PARENTHESIS;
-}
+    /// Tokenize the bracketed statement contained within brackets like `(word)`.
+    pub fn tokenize(letters: &[char]) -> usize {
+        let lookbehind: usize = 1;
+        let count = letters.iter().count();
+        let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
-/**
- * Return whether a character is a single closing parenthesis token `(`
- */
-pub fn is_closing_bracket_token(letter: &char) -> bool {
-    return letter == CLOSE_PARENTHESIS;
+        let result = letters_lookbehind.position(|(previous_letter, letter)| {
+            return match letter {
+                CLOSE_PARENTHESIS if !Escape::test(previous_letter) => true,
+                _ => false,
+            };
+        });
+
+        let string_length = utils::unwrap_position(result, letters) + lookbehind;
+        return cmp::min(string_length, count - lookbehind);
+    }
 }

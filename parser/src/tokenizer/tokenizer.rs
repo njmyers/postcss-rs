@@ -1,10 +1,4 @@
-use super::brackets;
-use super::comment;
-use super::control;
-use super::escape;
-use super::string;
-use super::whitespace;
-use super::word;
+use super::*;
 
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -75,7 +69,7 @@ impl Lines {
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Tokenizer<'a> {
-    last_end: usize,
+    index: usize,
     css: &'a str,
     letters: Vec<char>,
     count: usize,
@@ -89,7 +83,7 @@ impl<'a> Tokenizer<'a> {
 
         return Self {
             css,
-            last_end: 0,
+            index: 0,
             letters,
             count,
             lines: Lines::new(),
@@ -97,9 +91,9 @@ impl<'a> Tokenizer<'a> {
     }
 
     fn create(&mut self, advance: usize, kind: Kind) -> Token<'a> {
-        let start = self.last_end;
+        let start = self.index;
         let end = start + advance;
-        self.last_end = end + 1;
+        self.index = end + 1;
 
         let token = Token {
             start,
@@ -111,8 +105,12 @@ impl<'a> Tokenizer<'a> {
         return token;
     }
 
+    pub fn peek(&self) -> Option<Token> {
+        return self.clone().next();
+    }
+
     pub fn end(&self) -> usize {
-        return self.last_end.to_owned() - 1;
+        return self.index.to_owned() - 1;
     }
 }
 
@@ -120,79 +118,82 @@ impl<'a> Iterator for Tokenizer<'a> {
     type Item = Token<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let current_slice = &self.letters[self.last_end..];
-        let next_option = self.letters.iter().skip(self.last_end).next();
+        let letters = &self.letters[self.index..];
+        let next = self.letters.iter().skip(self.index).next();
 
-        if next_option.is_none() {
+        if next.is_none() {
             return None;
         }
 
-        let letter = next_option.unwrap();
-        let next_letter = match self.letters.iter().skip(self.last_end + 1).next() {
+        let letter = next.unwrap();
+        let next = match self.letters.iter().skip(self.index + 1).next() {
             Some(value) => value,
             None => NULL_CHARACTER,
         };
 
         match letter {
-            letter if whitespace::is_whitespace(letter) => {
-                if whitespace::is_line_ending(letter) {
+            letter if Whitespace::test(letter) => {
+                if Newline::test(letter) {
                     self.lines.increment();
                 }
 
-                let advance = whitespace::tokenize_whitespace(current_slice);
+                let advance = Whitespace::tokenize(&letters);
                 let token = self.create(advance, Kind::Space);
 
                 return Some(token);
             }
 
-            letter if word::is_leading_word_token(letter) => {
-                let advance = word::tokenize_word(&current_slice);
-                let kind = match letter {
-                    letter if word::is_at_word_token(letter) => Kind::AtWord,
-                    _ => Kind::Word,
-                };
-                let token = self.create(advance, kind);
+            letter if AtWord::test(letter, next) => {
+                let advance = AtWord::tokenize(&letters);
+
+                let token = self.create(advance, Kind::AtWord);
                 return Some(token);
             }
 
-            letter if control::is_control(letter) => {
+            letter if Word::leading(letter) && Word::test(next) => {
+                let advance = Word::tokenize(&letters);
+                let token = self.create(advance, Kind::Word);
+                return Some(token);
+            }
+
+            letter if Symbol::test(letter) => {
                 let advance = 0;
                 let token = self.create(advance, Kind::Symbol);
                 return Some(token);
             }
 
-            letter if comment::is_opening_comment_token(letter, next_letter) => {
-                let advance = comment::tokenize_comment(&current_slice[2..]);
+            letter if Comment::test(letter, next) => {
+                let advance = Comment::tokenize(&letters[2..]);
                 let token = self.create(advance + 3, Kind::Comment);
                 return Some(token);
             }
 
-            letter if escape::is_escape_character(letter) => {
-                let advance = escape::tokenize_escape(&current_slice);
+            letter if Escape::test(letter) => {
+                let advance = Escape::tokenize(&letters);
                 let token = self.create(advance, Kind::Word);
                 return Some(token);
             }
 
-            letter if brackets::is_opening_bracket_token(letter) => {
-                let advance = brackets::tokenize_brackets(&current_slice);
+            letter if Bracket::test(letter) => {
+                let advance = Bracket::tokenize(&letters);
                 let token = self.create(advance, Kind::Brackets);
                 return Some(token);
             }
 
-            letter if string::is_single_string_token(letter) => {
-                let advance = string::tokenize_single_string(&current_slice);
+            letter if SingleString::test(letter) => {
+                let advance = SingleString::tokenize(&letters);
                 let token = self.create(advance, Kind::String);
                 return Some(token);
             }
 
-            letter if string::is_double_string_token(letter) => {
-                let advance = string::tokenize_double_string(&current_slice);
+            letter if DoubleString::test(letter) => {
+                let advance = DoubleString::tokenize(&letters);
                 let token = self.create(advance, Kind::String);
                 return Some(token);
             }
 
             _ => {
-                let advance = word::tokenize_word(current_slice);
+                let advance = Word::tokenize(&letters);
                 let token = self.create(advance, Kind::Word);
                 return Some(token);
             }

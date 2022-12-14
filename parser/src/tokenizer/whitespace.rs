@@ -1,7 +1,5 @@
 use super::utils;
 
-pub struct Space;
-
 /// CSS Whitespace Characters
 const HORIZONTAL_TAB: &char = &'\u{0009}';
 const NEWLINE: &char = &'\u{000A}';
@@ -10,34 +8,42 @@ const FORM_FEED: &char = &'\u{000C}';
 const CARRIAGE_RETURN: &char = &'\u{000D}';
 const SPACE: &char = &' ';
 
-pub fn is_whitespace(letter: &char) -> bool {
-    return match letter {
-        HORIZONTAL_TAB => true,
-        NEWLINE => true,
-        VERTICAL_TAB => true,
-        FORM_FEED => true,
-        CARRIAGE_RETURN => true,
-        SPACE => true,
-        _ => false,
-    };
-}
+pub struct Whitespace;
 
-pub fn is_line_ending(letter: &char) -> bool {
-    return match letter {
-        NEWLINE => true,
-        CARRIAGE_RETURN => true,
-        _ => false,
-    };
-}
-
-pub fn tokenize_whitespace(letters: &[char]) -> usize {
-    let result = letters.iter().position(|letter| {
+impl Whitespace {
+    pub fn test(letter: &char) -> bool {
         return match letter {
-            letter if is_whitespace(letter) => false,
-            _ => true,
+            HORIZONTAL_TAB => true,
+            NEWLINE => true,
+            VERTICAL_TAB => true,
+            FORM_FEED => true,
+            CARRIAGE_RETURN => true,
+            SPACE => true,
+            _ => false,
         };
-    });
+    }
 
-    let position = utils::unwrap_position(result, letters);
-    return utils::back(position);
+    pub fn tokenize(letters: &[char]) -> usize {
+        let result = letters.iter().position(|letter| {
+            return match letter {
+                letter if Self::test(letter) => false,
+                _ => true,
+            };
+        });
+
+        let position = utils::unwrap_position(result, letters);
+        return utils::back(position);
+    }
+}
+
+pub struct Newline;
+
+impl Newline {
+    pub fn test(letter: &char) -> bool {
+        return match letter {
+            NEWLINE => true,
+            CARRIAGE_RETURN => true,
+            _ => false,
+        };
+    }
 }
