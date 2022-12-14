@@ -20,7 +20,7 @@ impl Task for AsyncTask {
     Ok(self.0 * 2)
   }
 
-  fn resolve(self, env: Env, output: Self::Output) -> Result<Self::JsValue> {
+  fn resolve(&mut self, env: Env, output: Self::Output) -> Result<Self::JsValue> {
     env.create_uint32(output)
   }
 }
