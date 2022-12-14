@@ -1,4 +1,6 @@
-use super::*;
+use super::escape::Escape;
+use super::utils;
+
 use std::cmp;
 
 /// CSS String Markers
@@ -9,15 +11,16 @@ const DOUBLE_QUOTE: &char = &'"';
 pub struct SingleString;
 
 /// Implementation of single string test and tokenize methods.
-///
-/// # Example
-///
-/// ```
-/// assert_eq!(SingleString::test("'"), true);
-/// ```
-///
 impl SingleString {
     /// Return whether a character is a single string token `'`
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use postcss_rs_tokenizer::string::SingleString;
+    ///
+    /// assert_eq!(SingleString::test(&'\''), true);
+    /// ```
     pub fn test(letter: &char) -> bool {
         return match letter {
             SINGLE_QUOTE => true,

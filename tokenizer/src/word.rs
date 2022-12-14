@@ -1,4 +1,10 @@
-use super::*;
+use super::brackets::*;
+use super::comment::*;
+use super::string::*;
+use super::symbol::*;
+use super::utils;
+use super::whitespace::*;
+
 use std::cmp;
 
 /// CSS Leading Word Markers
@@ -11,8 +17,12 @@ const NULL_CHARACTER: &char = &'\u{0000}';
 pub struct Word;
 
 impl Word {
-    pub fn test(current: &char) -> bool {
-        return current.is_alphanumeric() || current == NULL_CHARACTER || current == DASH;
+    pub fn test(current: &char, next: &char) -> bool {
+        if Self::leading(current) {
+            return next.is_alphanumeric() || next == DASH || next == NULL_CHARACTER;
+        }
+
+        return current.is_alphanumeric() || current == DASH || current == NULL_CHARACTER;
     }
 
     pub fn tokenize(letters: &[char]) -> usize {
@@ -37,12 +47,8 @@ impl Word {
         return cmp::min(string_length, count - lookbehind);
     }
 
-    pub fn leading(letter: &char) -> bool {
-        return match letter {
-            EXCLAMATION_POINT => true,
-            COLON => true,
-            _ => false,
-        };
+    fn leading(letter: &char) -> bool {
+        return letter == EXCLAMATION_POINT || letter == COLON;
     }
 }
 
@@ -50,7 +56,7 @@ pub struct AtWord;
 
 impl AtWord {
     pub fn test(current: &char, next: &char) -> bool {
-        return current == AT_CHAR && Word::test(next);
+        return current == AT_CHAR && Word::test(next, NULL_CHARACTER);
     }
 
     pub fn tokenize(letters: &[char]) -> usize {

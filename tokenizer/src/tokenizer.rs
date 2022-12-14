@@ -1,4 +1,10 @@
-use super::*;
+use super::brackets::*;
+use super::comment::*;
+use super::escape::*;
+use super::string::*;
+use super::symbol::*;
+use super::whitespace::*;
+use super::word::*;
 
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
@@ -150,7 +156,7 @@ impl<'a> Iterator for Tokenizer<'a> {
                 return Some(token);
             }
 
-            letter if Word::leading(letter) && Word::test(next) => {
+            letter if Word::test(letter, next) => {
                 let advance = Word::tokenize(&letters);
                 let token = self.create(advance, Kind::Word);
                 return Some(token);

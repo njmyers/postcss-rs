@@ -1,4 +1,6 @@
-use super::*;
+use super::escape::Escape;
+use super::utils;
+
 use std::cmp;
 
 const OPEN_PARENTHESIS: &char = &'(';
