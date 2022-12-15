@@ -277,13 +277,13 @@ mod tests {
     }
 
     fn read(file: &str) -> String {
-        let test_path = path::Path::new("../tests/cases").join(path::Path::new(file));
+        let test_path = path::Path::new("../../tests/cases").join(path::Path::new(file));
         let content = fs::read_to_string(test_path);
         return content.ok().unwrap();
     }
 
     fn write(file: &str, contents: &str) {
-        let output_path = path::Path::new("../output").join(path::Path::new(file));
+        let output_path = path::Path::new("../../output").join(path::Path::new(file));
         fs::write(output_path, contents).unwrap();
     }
 }
