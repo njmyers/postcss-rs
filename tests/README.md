@@ -1,4 +1,4 @@
-# PostCSS Parser Tests [![Build Status][ci-img]][ci]
+# PostCSS Parser Tests
 
 <img align="right" width="95" height="95"
      title="Philosopher’s stone, logo of PostCSS"
@@ -10,6 +10,9 @@ This project contains base tests for every [PostCSS] CSS parser, including:
 * Integration tests by popular website styles to test CSS from the wild.
 
 These tests are useful for any CSS parser, not just parsers within the PostCSS ecosystem.
+
+[PostCSS]: https://github.com/postcss/postcss
+
 
 ## Cases
 
@@ -32,6 +35,7 @@ This returns the case name, CSS string, and PostCSS AST JSON.
 If you create a non-PostCSS parser, just compare if the input CSS is equal to the output CSS after parsing.
 
 You can also get the path to some specific test cases using the `cases.path(name)` method.
+
 
 ## Integration
 
@@ -57,7 +61,3 @@ cases.real(css => {
   'http://browserhacks.com/'
 ])
 ```
-
-[PostCSS]: https://github.com/postcss/postcss
-[ci-img]:  https://img.shields.io/travis/postcss/postcss-parser-tests.svg
-[ci]:      https://travis-ci.org/postcss/postcss-parser-tests
