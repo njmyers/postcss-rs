@@ -1,6 +1,5 @@
 use super::Data;
 use super::Node;
-use super::Source;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -25,7 +24,7 @@ impl Declaration {
 
     pub fn create(prop: Token, tokenizer: &mut Tokenizer) -> Node {
         let mut node = Node::default();
-        node.source.start = Source::create_start(&prop, tokenizer);
+        node.set_start(&prop, tokenizer);
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
@@ -39,7 +38,7 @@ impl Declaration {
             }
         }
 
-        node.source.end = Some(Source::create_end(tokenizer));
+        node.set_end(tokenizer);
 
         return node;
     }

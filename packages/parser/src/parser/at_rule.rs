@@ -4,7 +4,6 @@ use serde::Serialize;
 use super::Data;
 use super::Declaration;
 use super::Node;
-use super::Source;
 
 use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Token;
@@ -27,7 +26,7 @@ impl AtRule {
     pub fn create(token: Token, tokenizer: &mut Tokenizer) -> Node {
         let mut node = Node::new(Data::Root);
         let mut data = Self::new(&token.value[1..]);
-        node.source.start = Source::create_start(&token, tokenizer);
+        node.set_start(&token, tokenizer);
 
         let mut params: Vec<Token> = Vec::new();
 
@@ -54,7 +53,7 @@ impl AtRule {
             };
         }
 
-        node.source.end = Some(Source::create_end(tokenizer));
+        node.set_end(tokenizer);
         node.data = Data::AtRule(data);
 
         return node;

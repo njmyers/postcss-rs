@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json;
+use std::cmp;
 
 use super::AtRule;
 use super::Declaration;
@@ -75,18 +76,15 @@ impl Source {
         return Self {
             offset: token.start,
             line: tokenizer.lines.value(),
-            column: token.column,
+            column: cmp::max(1, token.column),
         };
     }
 
     pub fn create_end(tokenizer: &Tokenizer) -> Self {
-        let next = tokenizer.peek();
-        let column = next.map_or_else(|| 0, |token| token.column);
-
         return Self {
-            offset: tokenizer.end(),
+            offset: tokenizer.index - 1,
             line: tokenizer.lines.value(),
-            column,
+            column: tokenizer.lines.offset(tokenizer.index - 1),
         };
     }
 }
@@ -155,6 +153,14 @@ impl Node {
 
     pub fn append(&mut self, child: Node) {
         self.nodes.push(child);
+    }
+
+    pub fn set_start(&mut self, token: &Token, tokenizer: &mut Tokenizer) {
+        self.source.start = Source::create_start(&token, tokenizer);
+    }
+
+    pub fn set_end(&mut self, tokenizer: &mut Tokenizer) {
+        self.source.end = Some(Source::create_end(tokenizer));
     }
 
     pub fn to_json(&self) -> serde_json::Result<String> {
