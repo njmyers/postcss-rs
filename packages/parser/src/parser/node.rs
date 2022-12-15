@@ -111,15 +111,17 @@ impl Default for Sources {
 }
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(tag = "type")]
 pub enum Data {
+    #[serde(rename = "root")]
     Root,
+    #[serde(rename = "rule")]
     Rule(Rule),
-    Document,
     #[serde(rename = "decl")]
     Declaration(Declaration),
     #[serde(rename = "atrule")]
     AtRule(AtRule),
+    #[serde(rename = "comment")]
     Comment,
 }
 
