@@ -6,9 +6,9 @@ use super::Declaration;
 use super::Node;
 use super::Source;
 
-use crate::tokenizer::Kind;
-use crate::tokenizer::Token;
-use crate::tokenizer::Tokenizer;
+use postcss_rs_tokenizer::Kind;
+use postcss_rs_tokenizer::Token;
+use postcss_rs_tokenizer::Tokenizer;
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Rule {
@@ -24,7 +24,7 @@ impl Rule {
 
     pub fn create(token: Token, tokenizer: &mut Tokenizer) -> Node {
         let mut node = Node::new(Data::Rule(Self::new(token.value)));
-        node.sources.start = Source::create_start(&token, tokenizer);
+        node.source.start = Source::create_start(&token, tokenizer);
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
@@ -45,7 +45,7 @@ impl Rule {
             };
         }
 
-        node.sources.end = Some(Source::create_end(tokenizer));
+        node.source.end = Some(Source::create_end(tokenizer));
 
         return node;
     }

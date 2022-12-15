@@ -2,11 +2,12 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json;
 
+use super::AtRule;
 use super::Declaration;
 use super::Rule;
 
-use crate::tokenizer::Token;
-use crate::tokenizer::Tokenizer;
+use postcss_rs_tokenizer::Token;
+use postcss_rs_tokenizer::Tokenizer;
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Raw(Option<String>);
@@ -117,7 +118,8 @@ pub enum Data {
     Document,
     #[serde(rename = "decl")]
     Declaration(Declaration),
-    AtRule,
+    #[serde(rename = "atrule")]
+    AtRule(AtRule),
     Comment,
 }
 
@@ -133,7 +135,7 @@ pub struct Node {
     #[serde(flatten)]
     pub data: Data,
     pub nodes: Vec<Node>,
-    pub sources: Sources,
+    pub source: Sources,
 }
 
 impl Node {
@@ -141,7 +143,7 @@ impl Node {
         return Node {
             raws: Raws::default(),
             nodes: Vec::new(),
-            sources: Sources::default(),
+            source: Sources::default(),
             data,
         };
     }
@@ -175,11 +177,6 @@ mod tests {
             &node,
             &[
                 Token::Map { len: None },
-                Token::Str("type"),
-                Token::Str("root"),
-                Token::Str("nodes"),
-                Token::Seq { len: Some(0) },
-                Token::SeqEnd,
                 Token::Str("raws"),
                 Token::Struct {
                     name: "Raws",
@@ -188,10 +185,15 @@ mod tests {
                 Token::Str("semicolon"),
                 Token::Bool(false),
                 Token::StructEnd,
-                Token::Str("sources"),
+                Token::Str("type"),
+                Token::Str("root"),
+                Token::Str("nodes"),
+                Token::Seq { len: Some(0) },
+                Token::SeqEnd,
+                Token::Str("source"),
                 Token::Struct {
                     name: "Sources",
-                    len: 2,
+                    len: 1,
                 },
                 Token::Str("start"),
                 Token::Struct {
@@ -205,8 +207,6 @@ mod tests {
                 Token::Str("column"),
                 Token::U64(1),
                 Token::StructEnd,
-                Token::Str("end"),
-                Token::None,
                 Token::StructEnd,
                 Token::MapEnd,
             ],

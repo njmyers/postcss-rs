@@ -5,9 +5,9 @@ use super::Source;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::tokenizer::Kind;
-use crate::tokenizer::Token;
-use crate::tokenizer::Tokenizer;
+use postcss_rs_tokenizer::Kind;
+use postcss_rs_tokenizer::Token;
+use postcss_rs_tokenizer::Tokenizer;
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Declaration {
@@ -25,19 +25,21 @@ impl Declaration {
 
     pub fn create(prop: Token, tokenizer: &mut Tokenizer) -> Node {
         let mut node = Node::default();
-        node.sources.start = Source::create_start(&prop, tokenizer);
+        node.source.start = Source::create_start(&prop, tokenizer);
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
                 Kind::Symbol if token.value == ";" => break,
+                Kind::Space if token.value == "\n" => break,
                 Kind::Symbol => node.raws.between.push(token.value),
                 Kind::Space => node.raws.between.push(token.value),
+                Kind::String => node.data = Data::Declaration(Self::new(prop.value, token.value)),
                 Kind::Word => node.data = Data::Declaration(Self::new(prop.value, token.value)),
                 _ => break,
             }
         }
 
-        node.sources.end = Some(Source::create_end(tokenizer));
+        node.source.end = Some(Source::create_end(tokenizer));
 
         return node;
     }

@@ -13,3 +13,7 @@ postcss-rs-tokenizer = { path = "../packages/tokenizer" }
 
 [dev-dependencies]
 serde_test = "1.0.130"
+
+[features]
+output = []
+default = ["output"]
