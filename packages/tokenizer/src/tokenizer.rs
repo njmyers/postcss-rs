@@ -57,80 +57,100 @@ impl<'a> fmt::Display for Token<'a> {
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
-pub struct Lines(RefCell<usize>);
+pub struct Line {
+    index: usize,
+}
+
+impl Line {
+    pub fn new(index: usize) -> Self {
+        return Self { index };
+    }
+}
+
+impl Default for Line {
+    fn default() -> Self {
+        return Self::new(0);
+    }
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct Lines {
+    lines: RefCell<Vec<Line>>,
+}
 
 impl Lines {
     fn new() -> Self {
-        return Self(RefCell::new(1));
+        return Self {
+            lines: RefCell::new(vec![Line::default()]),
+        };
     }
 
-    fn increment(&self) {
-        let mut lines = self.0.borrow_mut();
-        *lines += 1;
+    fn increment(&self, index: usize) {
+        let mut lines = self.lines.borrow_mut();
+        lines.push(Line::new(index));
     }
 
     pub fn value(&self) -> usize {
-        return self.0.borrow().to_owned();
+        return self.lines.borrow().iter().count();
+    }
+
+    pub fn offset(&self, index: usize) -> usize {
+        if let Some(line) = self.lines.borrow().last() {
+            return index - line.index;
+        }
+
+        return 1;
     }
 }
 
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct Tokenizer<'a> {
-    index: usize,
     css: &'a str,
     letters: Vec<char>,
-    count: usize,
+    pub index: usize,
     pub lines: Lines,
 }
 
 impl<'a> Tokenizer<'a> {
     pub fn new(css: &'a str) -> Self {
         let letters: Vec<char> = css.chars().collect();
-        let count = letters.iter().count();
 
         return Self {
             css,
             index: 0,
             letters,
-            count,
             lines: Lines::new(),
         };
-    }
-
-    fn column(css: &str) -> usize {
-        let chars = css.chars();
-
-        if let Some(column) = chars.clone().rev().position(|letter| Newline::test(&letter)) {
-            return column;
-        }
-
-        return chars.count();
-    }
-
-    fn create(&mut self, advance: usize, kind: Kind) -> Token<'a> {
-        let start = self.index;
-        let end = start + advance;
-        self.index = end + 1;
-
-        let css = &self.css[0..end + 1];
-
-        let token = Token {
-            start,
-            end,
-            kind,
-            value: &self.css[start..end + 1],
-            column: Self::column(css),
-        };
-
-        return token;
     }
 
     pub fn peek(&self) -> Option<Token> {
         return self.clone().next();
     }
 
-    pub fn end(&self) -> usize {
-        return self.index.to_owned() - 1;
+    fn create(&mut self, length: usize, kind: Kind) -> Token<'a> {
+        let column = self.lines.offset(self.index);
+        let start = self.index;
+        let end = start + length;
+        let index = end + 1;
+        let value = &self.css[start..index];
+
+        for (length, letter) in value.chars().enumerate() {
+            if Newline::test(&letter) {
+                self.lines.increment(start + length)
+            }
+        }
+
+        self.index = index;
+
+        let token = Token {
+            start,
+            end,
+            kind,
+            value,
+            column,
+        };
+
+        return token;
     }
 }
 
@@ -153,75 +173,71 @@ impl<'a> Iterator for Tokenizer<'a> {
 
         match letter {
             letter if Whitespace::test(letter) => {
-                if Newline::test(letter) {
-                    self.lines.increment();
-                }
-
-                let advance = Whitespace::tokenize(&letters);
-                let token = self.create(advance, Kind::Space);
+                let length = Whitespace::tokenize(&letters);
+                let token = self.create(length, Kind::Space);
 
                 return Some(token);
             }
 
             letter if AtWord::test(letter, next) => {
-                let advance = AtWord::tokenize(&letters);
-                let token = self.create(advance, Kind::AtWord);
+                let length = AtWord::tokenize(&letters);
+                let token = self.create(length, Kind::AtWord);
 
                 return Some(token);
             }
 
             letter if Word::test(letter, next) => {
-                let advance = Word::tokenize(&letters);
-                let token = self.create(advance, Kind::Word);
+                let length = Word::tokenize(&letters);
+                let token = self.create(length, Kind::Word);
 
                 return Some(token);
             }
 
             letter if Symbol::test(letter) => {
-                let advance = 0;
-                let token = self.create(advance, Kind::Symbol);
+                let length = 0;
+                let token = self.create(length, Kind::Symbol);
 
                 return Some(token);
             }
 
             letter if Comment::test(letter, next) => {
-                let advance = Comment::tokenize(&letters[2..]);
-                let token = self.create(advance + 3, Kind::Comment);
+                let length = Comment::tokenize(&letters[2..]);
+                let token = self.create(length + 3, Kind::Comment);
 
                 return Some(token);
             }
 
             letter if Escape::test(letter) => {
-                let advance = Escape::tokenize(&letters);
-                let token = self.create(advance, Kind::Word);
+                let length = Escape::tokenize(&letters);
+                let token = self.create(length, Kind::Word);
 
                 return Some(token);
             }
 
             letter if Bracket::test(letter) => {
-                let advance = Bracket::tokenize(&letters);
-                let token = self.create(advance, Kind::Brackets);
+                let length = Bracket::tokenize(&letters);
+                let token = self.create(length, Kind::Brackets);
 
                 return Some(token);
             }
 
             letter if SingleString::test(letter) => {
-                let advance = SingleString::tokenize(&letters);
-                let token = self.create(advance, Kind::String);
+                let length = SingleString::tokenize(&letters);
+                let token = self.create(length, Kind::String);
 
                 return Some(token);
             }
 
             letter if DoubleString::test(letter) => {
-                let advance = DoubleString::tokenize(&letters);
-                let token = self.create(advance, Kind::String);
+                let length = DoubleString::tokenize(&letters);
+                let token = self.create(length, Kind::String);
 
                 return Some(token);
             }
 
             _ => {
-                let advance = Word::tokenize(&letters);
-                let token = self.create(advance, Kind::Word);
+                let length = Word::tokenize(&letters);
+                let token = self.create(length, Kind::Word);
 
                 return Some(token);
             }
@@ -296,7 +312,7 @@ mod tests {
                     start: 2,
                     end: 4,
                     value: "!bb",
-                    column: 0,
+                    column: 2,
                 }
             ]
         )
@@ -319,14 +335,14 @@ mod tests {
                     start: 1,
                     end: 3,
                     value: " \n ",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 4,
                     end: 4,
                     value: "b",
-                    column: 0,
+                    column: 2,
                 }
             ]
         )
@@ -349,21 +365,21 @@ mod tests {
                     start: 1,
                     end: 1,
                     value: ":",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 2,
                     end: 2,
                     value: ";",
-                    column: 0,
+                    column: 2,
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 3,
                     end: 3,
                     value: "}",
-                    column: 0,
+                    column: 3,
                 }
             ]
         )
@@ -386,35 +402,35 @@ mod tests {
                     start: 2,
                     end: 3,
                     value: "\\{",
-                    column: 0,
+                    column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 4,
                     end: 5,
                     value: "\\\"",
-                    column: 0,
+                    column: 4,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 6,
                     end: 7,
                     value: "\\@",
-                    column: 0,
+                    column: 6,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 8,
                     end: 9,
                     value: "\\\\",
-                    column: 0,
+                    column: 8,
                 },
                 Token {
                     kind: Kind::String,
                     start: 10,
                     end: 11,
                     value: "\"\"",
-                    column: 0,
+                    column: 10,
                 }
             ]
         )
@@ -437,7 +453,7 @@ mod tests {
                     start: 4,
                     end: 4,
                     value: "{",
-                    column: 0,
+                    column: 4,
                 }
             ]
         )
@@ -474,21 +490,21 @@ mod tests {
                     start: 1,
                     end: 1,
                     value: "[",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 3,
                     value: "bc",
-                    column: 0,
+                    column: 2,
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 4,
                     end: 4,
                     value: "]",
-                    column: 0,
+                    column: 4,
                 }
             ]
         );
@@ -506,63 +522,63 @@ mod tests {
                     start: 0,
                     end: 0,
                     value: "(",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 1,
                     end: 2,
                     value: "()",
-                    column: 0,
+                    column: 2,
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 3,
                     end: 3,
                     value: ")",
-                    column: 0,
+                    column: 4,
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 4,
                     end: 4,
                     value: "(",
-                    column: 0,
+                    column: 5,
                 },
                 Token {
                     kind: Kind::String,
                     start: 5,
                     end: 6,
                     value: "\"\"",
-                    column: 0,
+                    column: 6,
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 7,
                     end: 7,
                     value: ")",
-                    column: 0,
+                    column: 8,
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 8,
                     end: 8,
                     value: "(",
-                    column: 0,
+                    column: 9,
                 },
                 Token {
                     kind: Kind::Comment,
                     start: 9,
                     end: 12,
                     value: "/**/",
-                    column: 0,
+                    column: 10,
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 13,
                     end: 13,
                     value: ")",
-                    column: 0,
+                    column: 14,
                 },
                 Token {
                     kind: Kind::Symbol,
@@ -634,7 +650,7 @@ mod tests {
                     start: 3,
                     end: 6,
                     value: "\"\\\"\"",
-                    column: 0,
+                    column: 3,
                 }
             ]
         )
@@ -671,7 +687,7 @@ mod tests {
                     start: 4,
                     end: 7,
                     value: "\"\n\n\"",
-                    column: 0,
+                    column: 2,
                 }
             ]
         )
@@ -694,7 +710,7 @@ mod tests {
                     start: 5,
                     end: 5,
                     value: " ",
-                    column: 0,
+                    column: 5,
                 }
             ]
         )
@@ -717,49 +733,49 @@ mod tests {
                     start: 4,
                     end: 4,
                     value: "{",
-                    column: 0,
+                    column: 4,
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 5,
                     end: 8,
                     value: "@two",
-                    column: 0,
+                    column: 5,
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 9,
                     end: 10,
                     value: "()",
-                    column: 0,
+                    column: 9,
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 11,
                     end: 16,
                     value: "@three",
-                    column: 0,
+                    column: 11,
                 },
                 Token {
                     kind: Kind::String,
                     start: 17,
                     end: 18,
                     value: "\"\"",
-                    column: 0,
+                    column: 17,
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 19,
                     end: 23,
                     value: "@four",
-                    column: 0,
+                    column: 19,
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 24,
                     end: 24,
                     value: ";",
-                    column: 0,
+                    column: 24,
                 }
             ]
         )
@@ -782,7 +798,7 @@ mod tests {
                     start: 3,
                     end: 8,
                     value: "(/*\\))",
-                    column: 0,
+                    column: 3,
                 }
             ]
         )
@@ -872,14 +888,14 @@ mod tests {
                     start: 1,
                     end: 7,
                     value: "/* \n */",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 8,
                     end: 8,
                     value: "b",
-                    column: 0,
+                    column: 4,
                 },
             ]
         )
@@ -902,14 +918,14 @@ mod tests {
                     start: 1,
                     end: 1,
                     value: "\u{000C}",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 2,
                     value: "b",
-                    column: 0,
+                    column: 2,
                 }
             ]
         )
@@ -932,28 +948,28 @@ mod tests {
                     start: 1,
                     end: 1,
                     value: "\r",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 2,
                     value: "b",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 3,
                     end: 4,
                     value: "\r\n",
-                    column: 0,
+                    column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 5,
                     end: 5,
                     value: "c",
-                    column: 0,
+                    column: 1,
                 },
             ]
         )
@@ -972,186 +988,186 @@ mod tests {
             }),
             [
                 Token {
-                    kind: Kind::Word,
                     start: 0,
                     end: 0,
+                    kind: Kind::Word,
                     value: "a",
-                    column: 0,
+                    column: 0
                 },
                 Token {
-                    kind: Kind::Space,
                     start: 1,
                     end: 1,
+                    kind: Kind::Space,
                     value: " ",
-                    column: 0,
+                    column: 1
                 },
                 Token {
-                    kind: Kind::Symbol,
                     start: 2,
                     end: 2,
+                    kind: Kind::Symbol,
                     value: "{",
-                    column: 0,
+                    column: 2
                 },
                 Token {
-                    kind: Kind::Space,
                     start: 3,
                     end: 5,
+                    kind: Kind::Space,
                     value: "\n  ",
-                    column: 0,
+                    column: 3
                 },
                 Token {
-                    kind: Kind::Word,
                     start: 6,
                     end: 12,
+                    kind: Kind::Word,
                     value: "content",
-                    column: 0,
+                    column: 3
                 },
                 Token {
-                    kind: Kind::Symbol,
                     start: 13,
                     end: 13,
+                    kind: Kind::Symbol,
                     value: ":",
-                    column: 0,
+                    column: 10
                 },
                 Token {
-                    kind: Kind::Space,
                     start: 14,
                     end: 14,
+                    kind: Kind::Space,
                     value: " ",
-                    column: 0,
+                    column: 11
                 },
                 Token {
-                    kind: Kind::String,
                     start: 15,
                     end: 17,
+                    kind: Kind::String,
                     value: "\"a\"",
-                    column: 0,
+                    column: 12
                 },
                 Token {
-                    kind: Kind::Symbol,
                     start: 18,
                     end: 18,
+                    kind: Kind::Symbol,
                     value: ";",
-                    column: 0,
+                    column: 15
                 },
                 Token {
-                    kind: Kind::Space,
                     start: 19,
                     end: 21,
+                    kind: Kind::Space,
                     value: "\n  ",
-                    column: 0,
+                    column: 16
                 },
                 Token {
-                    kind: Kind::Word,
                     start: 22,
                     end: 26,
+                    kind: Kind::Word,
                     value: "width",
-                    column: 0,
+                    column: 3
                 },
                 Token {
-                    kind: Kind::Symbol,
                     start: 27,
                     end: 27,
+                    kind: Kind::Symbol,
                     value: ":",
-                    column: 0,
+                    column: 8
                 },
                 Token {
-                    kind: Kind::Space,
                     start: 28,
                     end: 28,
+                    kind: Kind::Space,
                     value: " ",
-                    column: 0,
+                    column: 9
                 },
                 Token {
-                    kind: Kind::Word,
                     start: 29,
                     end: 32,
+                    kind: Kind::Word,
                     value: "calc",
-                    column: 0,
+                    column: 10
                 },
                 Token {
-                    kind: Kind::Brackets,
                     start: 33,
                     end: 38,
+                    kind: Kind::Brackets,
                     value: "(1px;)",
-                    column: 0,
+                    column: 14
                 },
                 Token {
-                    kind: Kind::Space,
                     start: 39,
                     end: 41,
+                    kind: Kind::Space,
                     value: "\n  ",
-                    column: 0,
+                    column: 20
                 },
                 Token {
-                    kind: Kind::Symbol,
                     start: 42,
                     end: 42,
+                    kind: Kind::Symbol,
                     value: "}",
-                    column: 0,
+                    column: 3
                 },
                 Token {
-                    kind: Kind::Space,
                     start: 43,
                     end: 43,
+                    kind: Kind::Space,
                     value: "\n",
-                    column: 0,
+                    column: 4
                 },
                 Token {
-                    kind: Kind::Comment,
                     start: 44,
                     end: 61,
+                    kind: Kind::Comment,
                     value: "/* small screen */",
-                    column: 0,
+                    column: 1
                 },
                 Token {
-                    kind: Kind::Space,
                     start: 62,
                     end: 62,
+                    kind: Kind::Space,
                     value: "\n",
-                    column: 0,
+                    column: 19
                 },
                 Token {
-                    kind: Kind::AtWord,
                     start: 63,
                     end: 68,
+                    kind: Kind::AtWord,
                     value: "@media",
-                    column: 0,
+                    column: 1
                 },
                 Token {
-                    kind: Kind::Space,
                     start: 69,
                     end: 69,
+                    kind: Kind::Space,
                     value: " ",
-                    column: 0,
+                    column: 7
                 },
                 Token {
-                    kind: Kind::Word,
                     start: 70,
                     end: 75,
+                    kind: Kind::Word,
                     value: "screen",
-                    column: 0,
+                    column: 8
                 },
                 Token {
-                    kind: Kind::Space,
                     start: 76,
                     end: 76,
+                    kind: Kind::Space,
                     value: " ",
-                    column: 0,
+                    column: 14
                 },
                 Token {
-                    kind: Kind::Symbol,
                     start: 77,
                     end: 77,
+                    kind: Kind::Symbol,
                     value: "{",
-                    column: 0,
+                    column: 15
                 },
                 Token {
-                    kind: Kind::Symbol,
                     start: 78,
                     end: 78,
+                    kind: Kind::Symbol,
                     value: "}",
-                    column: 0,
+                    column: 16
                 }
             ]
         )

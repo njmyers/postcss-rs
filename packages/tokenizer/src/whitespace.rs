@@ -47,3 +47,14 @@ impl Newline {
         };
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_tests_newline_character() {
+        assert_eq!(Newline::test(&'\n'), true);
+    }
+
+}
