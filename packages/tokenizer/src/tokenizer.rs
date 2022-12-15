@@ -97,17 +97,29 @@ impl<'a> Tokenizer<'a> {
         };
     }
 
+    fn column(css: &str) -> usize {
+        let chars = css.chars();
+
+        if let Some(column) = chars.clone().rev().position(|letter| Newline::test(&letter)) {
+            return column;
+        }
+
+        return chars.count();
+    }
+
     fn create(&mut self, advance: usize, kind: Kind) -> Token<'a> {
         let start = self.index;
         let end = start + advance;
         self.index = end + 1;
+
+        let css = &self.css[0..end + 1];
 
         let token = Token {
             start,
             end,
             kind,
             value: &self.css[start..end + 1],
-            column: 0,
+            column: Self::column(css),
         };
 
         return token;

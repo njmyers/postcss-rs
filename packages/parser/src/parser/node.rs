@@ -75,15 +75,18 @@ impl Source {
         return Self {
             offset: token.start,
             line: tokenizer.lines.value(),
-            column: 0,
+            column: token.column,
         };
     }
 
     pub fn create_end(tokenizer: &Tokenizer) -> Self {
+        let next = tokenizer.peek();
+        let column = next.map_or_else(|| 0, |token| token.column);
+
         return Self {
             offset: tokenizer.end(),
             line: tokenizer.lines.value(),
-            column: 0,
+            column,
         };
     }
 }
