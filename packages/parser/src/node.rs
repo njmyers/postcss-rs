@@ -6,53 +6,10 @@ use std::cmp;
 use super::AtRule;
 use super::Declaration;
 use super::Rule;
+use crate::Raws;
 
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
-
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
-pub struct Raw(Option<String>);
-
-impl Raw {
-    pub fn push(&mut self, raw: &str) {
-        match self.0 {
-            Some(ref mut prev) => prev.push_str(raw),
-            None => self.0 = Some(String::from(raw)),
-        };
-    }
-
-    pub fn skip(&self) -> bool {
-        return self.0.is_none();
-    }
-}
-
-impl Default for Raw {
-    fn default() -> Self {
-        return Self(None);
-    }
-}
-
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
-pub struct Raws {
-    #[serde(skip_serializing_if = "Raw::skip")]
-    pub before: Raw,
-    #[serde(skip_serializing_if = "Raw::skip")]
-    pub between: Raw,
-    pub semicolon: bool,
-    #[serde(skip_serializing_if = "Raw::skip")]
-    pub after: Raw,
-}
-
-impl Default for Raws {
-    fn default() -> Self {
-        return Self {
-            before: Raw::default(),
-            between: Raw::default(),
-            semicolon: false,
-            after: Raw::default(),
-        };
-    }
-}
 
 #[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
 pub struct Source {
@@ -137,6 +94,7 @@ pub struct Node {
     pub raws: Raws,
     #[serde(flatten)]
     pub data: Data,
+    #[serde(default)]
     pub nodes: Vec<Node>,
     pub source: Sources,
 }
@@ -193,8 +151,10 @@ mod tests {
                     name: "Raws",
                     len: 1,
                 },
-                Token::Str("semicolon"),
-                Token::Bool(false),
+                Token::Str("after"),
+                Token::NewtypeStruct { name: "Raw" },
+                Token::Some,
+                Token::Str(""),
                 Token::StructEnd,
                 Token::Str("type"),
                 Token::Str("root"),
