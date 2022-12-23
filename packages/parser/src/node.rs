@@ -1,6 +1,5 @@
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json;
 use std::cmp;
 
 use super::AtRule;
@@ -11,7 +10,7 @@ use crate::Raws;
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Source {
     pub offset: usize,
     pub line: usize,
@@ -46,7 +45,7 @@ impl Source {
     }
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Sources {
     pub start: Source,
     #[serde(skip_serializing_if = "Sources::skip")]
@@ -68,7 +67,7 @@ impl Default for Sources {
     }
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 pub enum Data {
     #[serde(rename = "root")]
@@ -89,7 +88,7 @@ impl Default for Data {
     }
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Node {
     pub raws: Raws,
     #[serde(flatten)]
@@ -114,7 +113,7 @@ impl Node {
     }
 
     pub fn set_start(&mut self, token: &Token, tokenizer: &mut Tokenizer) {
-        self.source.start = Source::create_start(&token, tokenizer);
+        self.source.start = Source::create_start(token, tokenizer);
     }
 
     pub fn set_end(&mut self, tokenizer: &mut Tokenizer) {

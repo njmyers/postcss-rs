@@ -5,23 +5,15 @@ pub struct Whitespace;
 
 impl Whitespace {
     pub fn test(letter: &char) -> bool {
-        return match letter {
-            HORIZONTAL_TAB => true,
-            NEWLINE => true,
-            VERTICAL_TAB => true,
-            FORM_FEED => true,
-            CARRIAGE_RETURN => true,
-            SPACE => true,
-            _ => false,
-        };
+        return matches!(
+            letter,
+            HORIZONTAL_TAB | NEWLINE | VERTICAL_TAB | FORM_FEED | CARRIAGE_RETURN | SPACE
+        );
     }
 
     pub fn tokenize(letters: &[char]) -> usize {
         let result = letters.iter().position(|letter| {
-            return match letter {
-                letter if Self::test(letter) => false,
-                _ => true,
-            };
+            return !matches!(letter, letter if Self::test(letter));
         });
 
         let position = utils::unwrap_position(result, letters);
@@ -33,11 +25,7 @@ pub struct Newline;
 
 impl Newline {
     pub fn test(letter: &char) -> bool {
-        return match letter {
-            NEWLINE => true,
-            CARRIAGE_RETURN => true,
-            _ => false,
-        };
+        return matches!(letter, NEWLINE | CARRIAGE_RETURN);
     }
 }
 
@@ -47,7 +35,6 @@ mod tests {
 
     #[test]
     fn it_tests_newline_character() {
-        assert_eq!(Newline::test(&'\n'), true);
+        assert!(Newline::test(&'\n'));
     }
-
 }

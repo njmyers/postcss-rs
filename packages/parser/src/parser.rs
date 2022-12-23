@@ -17,7 +17,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(&mut self) -> Node {
-        let mut tokenizer = Tokenizer::new(&self.css);
+        let mut tokenizer = Tokenizer::new(self.css);
         let mut root = Node::new(Data::Root);
         let mut spaces: Vec<Token> = Vec::new();
 

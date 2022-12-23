@@ -6,7 +6,7 @@ use std::ops::Deref;
 /// A struct representing the raws value from the post css grammar
 ///
 /// For specification please see postcss api documentation <https://postcss.org/api/#node-raws>
-#[derive(PartialEq, Debug, Deserialize, Serialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
 pub struct Raws {
     #[serde(default, skip_serializing_if = "Raw::skip")]
     pub before: Raw,
@@ -29,7 +29,7 @@ impl Default for Raws {
     }
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Raw(Option<String>);
 
 impl Raw {
@@ -102,7 +102,7 @@ impl PartialEq<str> for Raw {
 /// A semicolon can either be `true`, `false`, or non-existent. Since this is an artifact of the
 /// original JavaScript representation this struct allows for better serialization and
 /// deserialization to match those artifacts.
-#[derive(PartialEq, Debug, Deserialize, Serialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
 pub struct Semicolon(Option<bool>);
 
 impl Semicolon {

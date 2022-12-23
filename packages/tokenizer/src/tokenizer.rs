@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::fmt;
 
-#[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Copy, Clone)]
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Copy, Clone)]
 pub enum Kind {
     Space,
     Word,
@@ -36,7 +36,7 @@ impl fmt::Display for Kind {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Copy, Clone)]
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Copy, Clone)]
 pub struct Token<'a> {
     pub start: usize,
     pub end: usize,
@@ -55,7 +55,7 @@ impl<'a> fmt::Display for Token<'a> {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Line {
     index: usize,
 }
@@ -72,7 +72,7 @@ impl Default for Line {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Lines {
     lines: RefCell<Vec<Line>>,
 }
@@ -102,7 +102,7 @@ impl Lines {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Debug)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Tokenizer<'a> {
     css: &'a str,
     letters: Vec<char>,
@@ -132,7 +132,7 @@ impl<'a> Tokenizer<'a> {
         let mut stack = self.stack.borrow_mut();
 
         if let Some(token) = stack.pop() {
-            stack.push(token.clone());
+            stack.push(token);
             return Some(token);
         }
 
@@ -163,7 +163,7 @@ impl<'a> Tokenizer<'a> {
         };
 
         let mut stack = self.stack.borrow_mut();
-        stack.push(token.clone());
+        stack.push(token);
 
         return token;
     }
@@ -174,49 +174,44 @@ impl<'a> Iterator for Tokenizer<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let letters = &self.letters[self.index..];
-        let next = self.letters.iter().skip(self.index).next();
+        let letter = self.letters.get(self.index)?;
 
-        if next.is_none() {
-            return None;
-        }
-
-        let letter = next.unwrap();
-        let next = match self.letters.iter().skip(self.index + 1).next() {
+        let next = match self.letters.get(self.index + 1) {
             Some(value) => value,
             None => NULL_CHARACTER,
         };
 
         match letter {
             letter if Whitespace::test(letter) => {
-                let length = Whitespace::tokenize(&letters);
+                let length = Whitespace::tokenize(letters);
                 let token = self.create(length, Kind::Space);
 
                 return Some(token);
             }
 
             letter if AtWord::test(letter, next) => {
-                let length = AtWord::tokenize(&letters);
+                let length = AtWord::tokenize(letters);
                 let token = self.create(length, Kind::AtWord);
 
                 return Some(token);
             }
 
             letter if Word::test(letter, next) => {
-                let length = Word::tokenize(&letters);
+                let length = Word::tokenize(letters);
                 let token = self.create(length, Kind::Word);
 
                 return Some(token);
             }
 
             letter if Bracket::test(letter, next, self.prev()) => {
-                let length = Bracket::tokenize(&letters);
+                let length = Bracket::tokenize(letters);
                 let token = self.create(length, Kind::Brackets);
 
                 return Some(token);
             }
 
             letter if Symbol::test(letter) => {
-                let length = Symbol::tokenize(&letters);
+                let length = Symbol::tokenize(letters);
                 let token = self.create(length, Kind::Symbol);
 
                 return Some(token);
@@ -230,28 +225,28 @@ impl<'a> Iterator for Tokenizer<'a> {
             }
 
             letter if Escape::test(letter) => {
-                let length = Escape::tokenize(&letters);
+                let length = Escape::tokenize(letters);
                 let token = self.create(length, Kind::Word);
 
                 return Some(token);
             }
 
             letter if SingleString::test(letter) => {
-                let length = SingleString::tokenize(&letters);
+                let length = SingleString::tokenize(letters);
                 let token = self.create(length, Kind::String);
 
                 return Some(token);
             }
 
             letter if DoubleString::test(letter) => {
-                let length = DoubleString::tokenize(&letters);
+                let length = DoubleString::tokenize(letters);
                 let token = self.create(length, Kind::String);
 
                 return Some(token);
             }
 
             _ => {
-                let length = Word::tokenize(&letters);
+                let length = Word::tokenize(letters);
                 let token = self.create(length, Kind::Word);
 
                 return Some(token);

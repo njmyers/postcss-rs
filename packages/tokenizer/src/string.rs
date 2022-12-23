@@ -19,23 +19,17 @@ impl SingleString {
     /// assert_eq!(SingleString::test(&'\''), true);
     /// ```
     pub fn test(letter: &char) -> bool {
-        return match letter {
-            SINGLE_QUOTE => true,
-            _ => false,
-        };
+        return matches!(letter, SINGLE_QUOTE);
     }
 
     /// Tokenize the string contained within single quotation marks like `'word'`.
     pub fn tokenize(letters: &[char]) -> usize {
         let lookbehind: usize = 1;
-        let count = letters.iter().count();
+        let count = letters.len();
         let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
         let result = letters_lookbehind.position(|(previous_letter, letter)| {
-            return match letter {
-                SINGLE_QUOTE if !Escape::test(previous_letter) => true,
-                _ => false,
-            };
+            return matches!(letter, SINGLE_QUOTE if !Escape::test(previous_letter));
         });
 
         let string_length = utils::unwrap_position(result, letters) + lookbehind;
@@ -48,23 +42,17 @@ pub struct DoubleString;
 impl DoubleString {
     /// Return whether a character is a double string token `"`
     pub fn test(letter: &char) -> bool {
-        return match letter {
-            DOUBLE_QUOTE => true,
-            _ => false,
-        };
+        return matches!(letter, DOUBLE_QUOTE);
     }
 
     /// Tokenize the string contained within single quotation marks like `"word"`.
     pub fn tokenize(letters: &[char]) -> usize {
         let lookbehind: usize = 1;
-        let count = letters.iter().count();
+        let count = letters.len();
         let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
         let result = letters_lookbehind.position(|(previous_letter, letter)| {
-            return match letter {
-                DOUBLE_QUOTE if !Escape::test(previous_letter) => true,
-                _ => false,
-            };
+            return matches!(letter, DOUBLE_QUOTE if !Escape::test(previous_letter));
         });
 
         let string_length = utils::unwrap_position(result, letters) + lookbehind;
@@ -78,7 +66,7 @@ mod tests {
 
     #[test]
     fn it_identifies_a_single_quote() {
-        assert_eq!(SingleString::test(&'\''), true)
+        assert!(SingleString::test(&'\''));
     }
 
     #[test]
@@ -88,7 +76,7 @@ mod tests {
 
     #[test]
     fn it_identifies_a_double_quote() {
-        assert_eq!(DoubleString::test(&'"'), true)
+        assert!(DoubleString::test(&'"'));
     }
 
     #[test]

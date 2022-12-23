@@ -9,7 +9,7 @@ use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
 
-#[derive(PartialEq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct AtRule {
     pub name: String,
     pub params: Option<String>,

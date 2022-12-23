@@ -15,34 +15,34 @@ impl Bracket {
         }
 
         if Self::is_prev_url_token(prev) {
-            return match next {
-                SINGLE_QUOTE => false,
-                DOUBLE_QUOTE => false,
-                SPACE => false,
-                NEWLINE => false,
-                HORIZONTAL_TAB => false,
-                VERTICAL_TAB => false,
-                FORM_FEED => false,
-                CARRIAGE_RETURN => false,
-                _ => true,
-            };
+            return !matches!(
+                next,
+                SINGLE_QUOTE
+                    | DOUBLE_QUOTE
+                    | SPACE
+                    | NEWLINE
+                    | HORIZONTAL_TAB
+                    | VERTICAL_TAB
+                    | FORM_FEED
+                    | CARRIAGE_RETURN
+            );
         }
 
-        return match next {
-            OPEN_CURVY => false,
-            SINGLE_QUOTE => false,
-            DOUBLE_QUOTE => false,
-            SPACE => false,
-            NEWLINE => false,
-            HORIZONTAL_TAB => false,
-            FORWARD_SLASH => false,
-            BACKWARD_SLASH => false,
-            VERTICAL_TAB => false,
-            FORM_FEED => false,
-            CARRIAGE_RETURN => false,
-            NULL_CHARACTER => false,
-            _ => true,
-        };
+        return !matches!(
+            next,
+            OPEN_CURVY
+                | SINGLE_QUOTE
+                | DOUBLE_QUOTE
+                | SPACE
+                | NEWLINE
+                | HORIZONTAL_TAB
+                | FORWARD_SLASH
+                | BACKWARD_SLASH
+                | VERTICAL_TAB
+                | FORM_FEED
+                | CARRIAGE_RETURN
+                | NULL_CHARACTER
+        );
     }
 
     /// Return whether a character is a single opening parenthesis token `(`
@@ -58,14 +58,11 @@ impl Bracket {
     /// Tokenize the bracketed statement contained within brackets like `(word)`.
     pub fn tokenize(letters: &[char]) -> usize {
         let lookbehind: usize = 1;
-        let count = letters.iter().count();
+        let count = letters.len();
         let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
         let result = letters_lookbehind.position(|(previous_letter, letter)| {
-            return match letter {
-                CLOSE_CURVY if !Escape::test(previous_letter) => true,
-                _ => false,
-            };
+            return matches!(letter, CLOSE_CURVY if !Escape::test(previous_letter));
         });
 
         let string_length = utils::unwrap_position(result, letters) + lookbehind;

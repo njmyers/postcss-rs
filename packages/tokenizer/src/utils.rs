@@ -9,7 +9,7 @@ pub fn back(index: usize) -> usize {
 pub fn unwrap_position(result: Option<usize>, letters: &[char]) -> usize {
     let position = match result {
         Some(value) => value,
-        None => letters.iter().count(),
+        None => letters.len(),
     };
 
     return position;

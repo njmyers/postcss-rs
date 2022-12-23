@@ -14,7 +14,7 @@ impl Escape {
     /// Tokenize the "word" created by a series of escape tokens like `\(` or `\\\\`.
     pub fn tokenize(letters: &[char]) -> usize {
         let lookbehind: usize = 1;
-        let count = letters.iter().count();
+        let count = letters.len();
         let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
         let result = letters_lookbehind.position(|(previous_letter, letter)| {

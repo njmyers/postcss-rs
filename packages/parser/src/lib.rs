@@ -1,3 +1,6 @@
+#![allow(clippy::needless_return)]
+#![allow(clippy::while_let_on_iterator)]
+
 mod at_rule;
 mod declaration;
 mod node;

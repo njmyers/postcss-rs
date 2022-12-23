@@ -21,7 +21,7 @@ impl Word {
 
     pub fn tokenize(letters: &[char]) -> usize {
         let lookbehind: usize = 1;
-        let count = letters.iter().count();
+        let count = letters.len();
         let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
         let result = letters_lookbehind.position(|(_, letter)| {

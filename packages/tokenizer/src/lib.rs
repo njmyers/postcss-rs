@@ -1,3 +1,6 @@
+#![allow(clippy::needless_return)]
+#![allow(clippy::while_let_on_iterator)]
+
 pub mod brackets;
 pub mod characters;
 pub mod comment;
