@@ -71,7 +71,7 @@ mod tests {
 
     #[test]
     fn it_does_not_identify_a_double_quote() {
-        assert_eq!(SingleString::test(&'"'), false)
+        assert!(!SingleString::test(&'"'));
     }
 
     #[test]
@@ -81,7 +81,7 @@ mod tests {
 
     #[test]
     fn it_does_not_identify_a_single_quote() {
-        assert_eq!(DoubleString::test(&'\''), false)
+        assert!(!DoubleString::test(&'\''));
     }
 
     #[test]
