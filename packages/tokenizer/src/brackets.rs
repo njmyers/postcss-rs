@@ -29,7 +29,18 @@ impl Bracket {
         }
 
         return match next {
-            OPEN_CURLY => false,
+            OPEN_CURVY => false,
+            SINGLE_QUOTE => false,
+            DOUBLE_QUOTE => false,
+            SPACE => false,
+            NEWLINE => false,
+            HORIZONTAL_TAB => false,
+            FORWARD_SLASH => false,
+            BACKWARD_SLASH => false,
+            VERTICAL_TAB => false,
+            FORM_FEED => false,
+            CARRIAGE_RETURN => false,
+            NULL_CHARACTER => false,
             _ => true,
         };
     }
@@ -64,7 +75,7 @@ impl Bracket {
     fn is_prev_url_token(prev: Option<Token>) -> bool {
         return match prev {
             Some(token) => token.value == "url",
-            None => true,
+            None => false,
         };
     }
 }
