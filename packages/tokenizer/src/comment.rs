@@ -1,7 +1,5 @@
-use super::utils;
-
-const FORWARD_SLASH: &char = &'/';
-const ASTERISK: &char = &'*';
+use crate::characters::*;
+use crate::utils;
 
 pub struct Comment;
 

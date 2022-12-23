@@ -1,16 +1,15 @@
-use super::brackets::*;
-use super::comment::*;
-use super::escape::*;
-use super::string::*;
-use super::symbol::*;
-use super::whitespace::*;
-use super::word::*;
+use crate::brackets::*;
+use crate::characters::*;
+use crate::comment::*;
+use crate::escape::*;
+use crate::string::*;
+use crate::symbol::*;
+use crate::whitespace::*;
+use crate::word::*;
 
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::fmt;
-
-const NULL_CHARACTER: &char = &'\u{0000}';
 
 #[derive(Eq, PartialEq, Debug, Deserialize, Serialize, Copy, Clone)]
 pub enum Kind {
@@ -107,6 +106,7 @@ impl Lines {
 pub struct Tokenizer<'a> {
     css: &'a str,
     letters: Vec<char>,
+    stack: RefCell<Vec<Token<'a>>>,
     pub index: usize,
     pub lines: Lines,
 }
@@ -119,12 +119,24 @@ impl<'a> Tokenizer<'a> {
             css,
             index: 0,
             letters,
+            stack: RefCell::new(Vec::new()),
             lines: Lines::new(),
         };
     }
 
     pub fn peek(&self) -> Option<Token> {
         return self.clone().next();
+    }
+
+    pub fn prev(&self) -> Option<Token> {
+        let mut stack = self.stack.borrow_mut();
+
+        if let Some(token) = stack.pop() {
+            stack.push(token.clone());
+            return Some(token);
+        }
+
+        return None;
     }
 
     fn create(&mut self, length: usize, kind: Kind) -> Token<'a> {
@@ -149,6 +161,9 @@ impl<'a> Tokenizer<'a> {
             value,
             column,
         };
+
+        let mut stack = self.stack.borrow_mut();
+        stack.push(token.clone());
 
         return token;
     }
@@ -193,8 +208,15 @@ impl<'a> Iterator for Tokenizer<'a> {
                 return Some(token);
             }
 
+            letter if Bracket::test(letter, next, self.prev()) => {
+                let length = Bracket::tokenize(&letters);
+                let token = self.create(length, Kind::Brackets);
+
+                return Some(token);
+            }
+
             letter if Symbol::test(letter) => {
-                let length = 0;
+                let length = Symbol::tokenize(&letters);
                 let token = self.create(length, Kind::Symbol);
 
                 return Some(token);
@@ -210,13 +232,6 @@ impl<'a> Iterator for Tokenizer<'a> {
             letter if Escape::test(letter) => {
                 let length = Escape::tokenize(&letters);
                 let token = self.create(length, Kind::Word);
-
-                return Some(token);
-            }
-
-            letter if Bracket::test(letter) => {
-                let length = Bracket::tokenize(&letters);
-                let token = self.create(length, Kind::Brackets);
 
                 return Some(token);
             }
@@ -805,7 +820,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
 
     fn it_tokenizes_quoted_urls() {
         assert_eq!(
@@ -823,21 +837,21 @@ mod tests {
                     start: 3,
                     end: 3,
                     value: "(",
-                    column: 0,
+                    column: 3,
                 },
                 Token {
                     kind: Kind::String,
                     start: 4,
                     end: 6,
                     value: "\")\"",
-                    column: 0,
+                    column: 4,
                 },
                 Token {
                     kind: Kind::Symbol,
                     start: 7,
                     end: 7,
                     value: ")",
-                    column: 0,
+                    column: 7,
                 }
             ]
         )

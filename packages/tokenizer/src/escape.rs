@@ -1,8 +1,7 @@
-use super::utils;
-use std::cmp;
+use crate::characters::*;
+use crate::utils;
 
-/// CSS Escape Markers
-const BACKWARD_SLASH: &char = &'\\';
+use std::cmp;
 
 pub struct Escape;
 

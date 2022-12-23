@@ -1,10 +1,4 @@
-/// CSS Control Characters
-const OPEN_SQUARE_BRACKET: &char = &'[';
-const CLOSE_SQUARE_BRACKET: &char = &']';
-const OPEN_CURLY: &char = &'{';
-const CLOSE_CURLY: &char = &'}';
-const SEMICOLON: &char = &';';
-const COLON: &char = &':';
+pub use crate::characters::*;
 
 pub struct Symbol;
 
@@ -13,11 +7,17 @@ impl Symbol {
         return match current {
             OPEN_CURLY => true,
             CLOSE_CURLY => true,
-            OPEN_SQUARE_BRACKET => true,
-            CLOSE_SQUARE_BRACKET => true,
+            OPEN_SQUARE => true,
+            CLOSE_SQUARE => true,
+            OPEN_CURVY => true,
+            CLOSE_CURVY => true,
             SEMICOLON => true,
             COLON => true,
             _ => false,
         };
+    }
+
+    pub fn tokenize(_: &[char]) -> usize {
+        return 0;
     }
 }

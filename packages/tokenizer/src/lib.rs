@@ -1,4 +1,5 @@
 pub mod brackets;
+pub mod characters;
 pub mod comment;
 pub mod escape;
 pub mod string;

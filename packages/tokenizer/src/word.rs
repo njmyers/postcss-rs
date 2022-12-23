@@ -1,18 +1,12 @@
-use super::brackets::*;
-use super::comment::*;
-use super::string::*;
-use super::symbol::*;
-use super::utils;
-use super::whitespace::*;
+use crate::brackets::*;
+use crate::characters::*;
+use crate::comment::*;
+use crate::string::*;
+use crate::symbol::*;
+use crate::utils;
+use crate::whitespace::*;
 
 use std::cmp;
-
-/// CSS Leading Word Markers
-const EXCLAMATION_POINT: &char = &'!';
-const AT_CHAR: &char = &'@';
-const COLON: &char = &':';
-const DASH: &char = &'-';
-const NULL_CHARACTER: &char = &'\u{0000}';
 
 pub struct Word;
 
@@ -36,7 +30,7 @@ impl Word {
                 letter if Symbol::test(letter) => true,
                 letter if SingleString::test(letter) => true,
                 letter if DoubleString::test(letter) => true,
-                letter if Bracket::test(letter) => true,
+                letter if Bracket::is_opening_token(letter) => true,
                 letter if Comment::is_forward_slash(letter) => true,
                 letter if Self::leading(letter) => true,
                 _ => false,

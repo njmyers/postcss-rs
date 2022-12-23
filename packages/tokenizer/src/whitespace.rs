@@ -1,12 +1,5 @@
-use super::utils;
-
-/// CSS Whitespace Characters
-const HORIZONTAL_TAB: &char = &'\u{0009}';
-const NEWLINE: &char = &'\u{000A}';
-const VERTICAL_TAB: &char = &'\u{000B}';
-const FORM_FEED: &char = &'\u{000C}';
-const CARRIAGE_RETURN: &char = &'\u{000D}';
-const SPACE: &char = &' ';
+use crate::characters::*;
+use crate::utils;
 
 pub struct Whitespace;
 

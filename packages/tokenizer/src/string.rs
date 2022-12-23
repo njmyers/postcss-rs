@@ -1,11 +1,8 @@
-use super::escape::Escape;
-use super::utils;
+use crate::characters::*;
+use crate::escape::Escape;
+use crate::utils;
 
 use std::cmp;
-
-/// CSS String Markers
-const SINGLE_QUOTE: &char = &'\'';
-const DOUBLE_QUOTE: &char = &'"';
 
 // Representation of a single string
 pub struct SingleString;
