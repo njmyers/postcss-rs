@@ -1,6 +1,6 @@
 use crate::characters::*;
-use crate::Data;
 use crate::Node;
+use crate::NodeBuilder;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -16,19 +16,9 @@ pub struct Declaration {
 }
 
 impl Declaration {
-    pub fn new(prop: &str, value: &str) -> Self {
-        return Self {
-            prop: String::from(prop),
-            value: String::from(value),
-        };
-    }
-
     pub fn create(prop: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> (Node, bool) {
-        let mut node = Node::default();
+        let mut builder = NodeBuilder::new(&prop, tokenizer, spaces);
         let mut semicolon = false;
-
-        node.set_start(&prop, tokenizer);
-        node.raws.before.push_tokens(&spaces);
 
         while let Some(token) = tokenizer.next() {
             if token.value == SEMICOLON {
@@ -38,16 +28,21 @@ impl Declaration {
             match token.kind {
                 Kind::Symbol if token.value == SEMICOLON => break,
                 Kind::Space if token.value == NEWLINE => break,
-                Kind::Symbol => node.raws.between.push(&token),
-                Kind::Space => node.raws.between.push(&token),
-                Kind::String => node.data = Data::Declaration(Self::new(prop.value, token.value)),
-                Kind::Word => node.data = Data::Declaration(Self::new(prop.value, token.value)),
+                Kind::Symbol => builder.between(&token),
+                Kind::Space => builder.between(&token),
+                Kind::String => builder.declaration(Self::new(prop.value, token.value)),
+                Kind::Word => builder.declaration(Self::new(prop.value, token.value)),
                 _ => break,
             }
         }
 
-        node.set_end(tokenizer);
+        return (builder.build(tokenizer, &[]), semicolon);
+    }
 
-        return (node, semicolon);
+    fn new(prop: &str, value: &str) -> Self {
+        return Self {
+            prop: String::from(prop),
+            value: String::from(value),
+        };
     }
 }

@@ -1,9 +1,9 @@
 use serde::Deserialize;
 use serde::Serialize;
 
-use super::Data;
-use super::Declaration;
-use super::Node;
+use crate::Declaration;
+use crate::Node;
+use crate::NodeBuilder;
 
 use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Token;
@@ -16,26 +16,16 @@ pub struct AtRule {
 }
 
 impl AtRule {
-    pub fn new(name: &str) -> Self {
-        return Self {
-            name: String::from(name),
-            params: None,
-        };
-    }
-
     pub fn create(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
-        // let mut semicolon = false;
-        let mut node = Node::new(Data::Root);
-        let mut data = Self::new(&token.value[1..]);
-        node.set_start(&token, tokenizer);
-        node.raws.before.push_str("");
-        node.raws.before.push_tokens(spaces);
+        let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
+        builder.ensure_empty_before();
 
+        let mut data = Self::new(&token.value[1..]);
         let mut params: Vec<Token> = Vec::new();
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
-                Kind::Space => node.raws.between.push(&token),
+                Kind::Space => builder.between(&token),
                 Kind::Word => params.push(token),
                 Kind::Brackets => params.push(token),
                 Kind::Symbol if token.value == "{" => break,
@@ -54,10 +44,10 @@ impl AtRule {
                     let (child, semicolon) = Declaration::create(token, tokenizer, &spaces);
 
                     if semicolon {
-                        node.raws.semicolon.set_true();
+                        builder.semicolon();
                     }
 
-                    node.append(child);
+                    builder.append(child);
                     spaces.clear();
                 }
                 Kind::Space => spaces.push(token),
@@ -66,11 +56,16 @@ impl AtRule {
             };
         }
 
-        node.raws.after.push_tokens(&spaces);
-        node.set_end(tokenizer);
-        node.data = Data::AtRule(data);
+        builder.at_rule(data);
 
-        return node;
+        return builder.build(tokenizer, &spaces);
+    }
+
+    fn new(name: &str) -> Self {
+        return Self {
+            name: String::from(name),
+            params: None,
+        };
     }
 
     fn combine(params: Vec<Token>) -> String {

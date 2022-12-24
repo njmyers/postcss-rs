@@ -1,11 +1,12 @@
+use crate::AtRule;
+use crate::Declaration;
+use crate::Raws;
+use crate::Rule;
+
 use serde::Deserialize;
 use serde::Serialize;
-use std::cmp;
 
-use super::AtRule;
-use super::Declaration;
-use super::Rule;
-use crate::Raws;
+use std::cmp;
 
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
@@ -112,14 +113,6 @@ impl Node {
         self.nodes.push(child);
     }
 
-    pub fn set_start(&mut self, token: &Token, tokenizer: &mut Tokenizer) {
-        self.source.start = Source::create_start(token, tokenizer);
-    }
-
-    pub fn set_end(&mut self, tokenizer: &mut Tokenizer) {
-        self.source.end = Some(Source::create_end(tokenizer));
-    }
-
     pub fn to_json(&self) -> serde_json::Result<String> {
         return serde_json::to_string(&self);
     }
@@ -128,6 +121,67 @@ impl Node {
 impl Default for Node {
     fn default() -> Self {
         return Self::new(Data::default());
+    }
+}
+
+pub struct NodeBuilder {
+    node: Node,
+}
+
+impl NodeBuilder {
+    pub fn new(token: &Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Self {
+        let mut node = Node::default();
+        node.source.start = Source::create_start(token, tokenizer);
+        node.raws.before.push_tokens(spaces);
+
+        return Self { node };
+    }
+
+    pub fn append(&mut self, child: Node) {
+        self.node.append(child);
+    }
+
+    pub fn at_rule(&mut self, at_rule: AtRule) {
+        self.node.data = Data::AtRule(at_rule);
+    }
+
+    pub fn rule(&mut self, rule: Rule) {
+        self.node.data = Data::Rule(rule);
+    }
+
+    pub fn declaration(&mut self, data: Declaration) {
+        self.node.data = Data::Declaration(data);
+    }
+
+    pub fn ensure_empty_before(&mut self) {
+        self.node.raws.before.push_str("");
+    }
+
+    pub fn before(&mut self, token: &Token) {
+        self.node.raws.before.push(token);
+    }
+
+    pub fn between(&mut self, token: &Token) {
+        self.node.raws.between.push(token);
+    }
+
+    pub fn ensure_empty_after(&mut self) {
+        self.node.raws.before.push_str("");
+    }
+
+    pub fn after(&mut self, token: &Token) {
+        self.node.raws.after.push(token);
+    }
+
+    pub fn semicolon(&mut self) {
+        self.node.raws.semicolon.set_true();
+    }
+
+    pub fn build(mut self, tokenizer: &mut Tokenizer, after: &[Token]) -> Node {
+        self.node.raws.after.push_tokens(after);
+        self.node.source.end = Some(Source::create_end(tokenizer));
+
+        return self.node;
     }
 }
 

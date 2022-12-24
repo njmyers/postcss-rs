@@ -1,7 +1,7 @@
-use super::AtRule;
-use super::Data;
-use super::Node;
-use super::Rule;
+use crate::AtRule;
+use crate::Data;
+use crate::Node;
+use crate::Rule;
 
 use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Token;
@@ -38,7 +38,7 @@ impl<'a> Parser<'a> {
             };
         }
 
-        if root.nodes.len() > 0 {
+        if !root.nodes.is_empty() {
             root.raws.semicolon.set_false();
         }
 

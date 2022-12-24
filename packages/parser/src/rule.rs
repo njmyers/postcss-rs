@@ -1,9 +1,9 @@
-use serde::Deserialize;
-use serde::Serialize;
-
-use crate::Data;
 use crate::Declaration;
 use crate::Node;
+use crate::NodeBuilder;
+
+use serde::Deserialize;
+use serde::Serialize;
 
 use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Token;
@@ -15,21 +15,15 @@ pub struct Rule {
 }
 
 impl Rule {
-    pub fn new(selector: &str) -> Self {
-        return Self {
-            selector: String::from(selector),
-        };
-    }
-
     pub fn create(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
-        let mut node = Node::new(Data::Rule(Self::new(token.value)));
-        node.set_start(&token, tokenizer);
-        node.raws.before.push_str("");
-        node.raws.before.push_tokens(spaces);
+        let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
+
+        builder.ensure_empty_before();
+        builder.rule(Self::new(token.value));
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
-                Kind::Space => node.raws.between.push(&token),
+                Kind::Space => builder.between(&token),
                 Kind::Symbol => break,
                 _ => break,
             };
@@ -43,10 +37,10 @@ impl Rule {
                     let (child, semicolon) = Declaration::create(token, tokenizer, &spaces);
 
                     if semicolon {
-                        node.raws.semicolon.set_true();
+                        builder.semicolon();
                     }
 
-                    node.append(child);
+                    builder.append(child);
                     spaces.clear();
                 }
                 Kind::Space => spaces.push(token),
@@ -55,9 +49,12 @@ impl Rule {
             };
         }
 
-        node.set_end(tokenizer);
-        node.raws.after.push_tokens(&spaces);
+        return builder.build(tokenizer, &spaces);
+    }
 
-        return node;
+    fn new(selector: &str) -> Self {
+        return Self {
+            selector: String::from(selector),
+        };
     }
 }
