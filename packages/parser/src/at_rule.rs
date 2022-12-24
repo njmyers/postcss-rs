@@ -23,16 +23,19 @@ impl AtRule {
         };
     }
 
-    pub fn create(token: Token, tokenizer: &mut Tokenizer) -> Node {
+    pub fn create(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
+        // let mut semicolon = false;
         let mut node = Node::new(Data::Root);
         let mut data = Self::new(&token.value[1..]);
         node.set_start(&token, tokenizer);
+        node.raws.before.push_str("");
+        node.raws.before.push_tokens(spaces);
 
         let mut params: Vec<Token> = Vec::new();
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
-                Kind::Space => node.raws.between.push(token.value),
+                Kind::Space => node.raws.between.push(&token),
                 Kind::Word => params.push(token),
                 Kind::Brackets => params.push(token),
                 Kind::Symbol if token.value == "{" => break,
@@ -42,17 +45,28 @@ impl AtRule {
         }
 
         data.params = Some(Self::combine(params));
+
         let mut spaces: Vec<Token> = Vec::new();
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
+                Kind::Word => {
+                    let (child, semicolon) = Declaration::create(token, tokenizer, &spaces);
+
+                    if semicolon {
+                        node.raws.semicolon.set_true();
+                    }
+
+                    node.append(child);
+                    spaces.clear();
+                }
                 Kind::Space => spaces.push(token),
-                Kind::Word => node.append(Declaration::create(token, tokenizer)),
                 Kind::Symbol => break,
                 _ => break,
             };
         }
 
+        node.raws.after.push_tokens(&spaces);
         node.set_end(tokenizer);
         node.data = Data::AtRule(data);
 
@@ -60,9 +74,12 @@ impl AtRule {
     }
 
     fn combine(params: Vec<Token>) -> String {
-        return params
-            .iter()
-            .flat_map(|token| token.value.chars())
-            .collect();
+        let mut value = String::new();
+
+        for token in params {
+            value.push_str(token.value)
+        }
+
+        return value;
     }
 }

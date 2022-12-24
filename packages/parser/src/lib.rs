@@ -8,6 +8,8 @@ mod parser;
 mod raws;
 mod rule;
 
+pub mod characters;
+
 pub use at_rule::*;
 pub use declaration::*;
 pub use node::*;

@@ -148,12 +148,8 @@ mod tests {
                 Token::Str("raws"),
                 Token::Struct {
                     name: "Raws",
-                    len: 1,
+                    len: 0,
                 },
-                Token::Str("after"),
-                Token::NewtypeStruct { name: "Raw" },
-                Token::Some,
-                Token::Str(""),
                 Token::StructEnd,
                 Token::Str("type"),
                 Token::Str("root"),

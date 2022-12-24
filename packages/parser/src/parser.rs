@@ -21,14 +21,28 @@ impl<'a> Parser<'a> {
         let mut root = Node::new(Data::Root);
         let mut spaces: Vec<Token> = Vec::new();
 
+        root.raws.after.push_str("");
+
         while let Some(token) = tokenizer.next() {
             match token.kind {
-                Kind::AtWord => root.append(AtRule::create(token, &mut tokenizer)),
-                Kind::Word => root.append(Rule::create(token, &mut tokenizer)),
+                Kind::AtWord => {
+                    root.append(AtRule::create(token, &mut tokenizer, &spaces));
+                    spaces.clear();
+                }
+                Kind::Word => {
+                    root.append(Rule::create(token, &mut tokenizer, &spaces));
+                    spaces.clear();
+                }
                 Kind::Space => spaces.push(token),
                 _ => (),
             };
         }
+
+        if root.nodes.len() > 0 {
+            root.raws.semicolon.set_false();
+        }
+
+        root.raws.after.push_tokens(&spaces);
 
         return root;
     }
@@ -139,7 +153,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_decls() {
         let (ast, expected) = parse_and_read("decls.css", "decls.json");
         assert_eq!(ast, expected);

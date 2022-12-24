@@ -1,3 +1,5 @@
+use postcss_rs_tokenizer::Token;
+
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -24,7 +26,7 @@ impl Default for Raws {
             before: Raw::default(),
             between: Raw::default(),
             semicolon: Semicolon::default(),
-            after: Raw::new(""),
+            after: Raw::default(),
         };
     }
 }
@@ -38,6 +40,30 @@ impl Raw {
         return Self(Some(String::from(raw)));
     }
 
+    /// Push a new token value to a raw value
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use postcss_rs_parser::Raw;
+    /// use postcss_rs_tokenizer::Token;
+    /// use postcss_rs_tokenizer::Kind;
+    ///
+    /// let mut raw = Raw::default();
+    /// raw.push(&Token {
+    ///     kind: Kind::Space,
+    ///     start: 0,
+    ///     end: 1,
+    ///     value: "\n",
+    ///     column: 0,
+    /// });
+    ///
+    /// assert_eq!(&raw, "\n");
+    /// ```
+    pub fn push(&mut self, token: &Token) {
+        self.push_str(token.value);
+    }
+
     /// Push a new string slice to a raw value
     ///
     /// # Example
@@ -46,15 +72,21 @@ impl Raw {
     /// use postcss_rs_parser::Raw;
     ///
     /// let mut raw = Raw::default();
-    /// raw.push("\n");
+    /// raw.push_str("\n");
     ///
     /// assert_eq!(&raw, "\n");
     /// ```
-    pub fn push(&mut self, raw: &str) {
+    pub fn push_str(&mut self, raws: &str) {
         match self.0 {
-            Some(ref mut prev) => prev.push_str(raw),
-            None => self.0 = Some(String::from(raw)),
+            Some(ref mut value) => value.push_str(raws),
+            None => self.0 = Some(String::from(raws)),
         };
+    }
+
+    pub fn push_tokens(&mut self, tokens: &[Token]) {
+        for token in tokens {
+            self.push(token);
+        }
     }
 
     /// Determine whether to skip serialization for a raw value
@@ -123,6 +155,38 @@ impl Semicolon {
     /// ```
     pub fn skip(&self) -> bool {
         return self.0.is_none();
+    }
+
+    /// Set the semicolon value to true
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use postcss_rs_parser::Semicolon;
+    ///
+    /// let mut semi = Semicolon::default();
+    /// semi.set_true();
+    ///
+    /// assert!(semi.unwrap());
+    /// ```
+    pub fn set_true(&mut self) {
+        self.0 = Some(true);
+    }
+
+    /// Set the semicolon value to false
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use postcss_rs_parser::Semicolon;
+    ///
+    /// let mut semi = Semicolon::default();
+    /// semi.set_false();
+    ///
+    /// assert!(!semi.unwrap());
+    /// ```
+    pub fn set_false(&mut self) {
+        self.0 = Some(false);
     }
 }
 
