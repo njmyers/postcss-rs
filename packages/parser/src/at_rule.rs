@@ -28,8 +28,9 @@ impl AtRule {
                 Kind::Space => builder.between(&token),
                 Kind::Word => params.push(token),
                 Kind::Brackets => params.push(token),
-                Kind::Symbol if token.value == "{" => break,
-                Kind::Symbol => params.push(token),
+                Kind::OpenCurly => break,
+                Kind::Colon => params.push(token),
+                Kind::Semicolon => params.push(token),
                 _ => break,
             };
         }
@@ -51,7 +52,7 @@ impl AtRule {
                     spaces.clear();
                 }
                 Kind::Space => spaces.push(token),
-                Kind::Symbol => break,
+                Kind::CloseCurly => break,
                 _ => break,
             };
         }

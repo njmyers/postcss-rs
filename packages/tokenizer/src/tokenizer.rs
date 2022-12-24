@@ -18,7 +18,14 @@ pub enum Kind {
     Brackets,
     String,
     AtWord,
-    Symbol,
+    OpenCurly,
+    CloseCurly,
+    OpenSquare,
+    CloseSquare,
+    OpenCurvy,
+    CloseCurvy,
+    Semicolon,
+    Colon,
     Comment,
 }
 
@@ -30,7 +37,14 @@ impl fmt::Display for Kind {
             Kind::Brackets => write!(formatter, "Brackets"),
             Kind::String => write!(formatter, "String"),
             Kind::AtWord => write!(formatter, "AtWord"),
-            Kind::Symbol => write!(formatter, "Symbol"),
+            Kind::OpenCurly => write!(formatter, "OpenCurly"),
+            Kind::CloseCurly => write!(formatter, "CloseCurly"),
+            Kind::OpenSquare => write!(formatter, "OpenSquare"),
+            Kind::CloseSquare => write!(formatter, "CloseSquare"),
+            Kind::OpenCurvy => write!(formatter, "OpenCurvy"),
+            Kind::CloseCurvy => write!(formatter, "CloseCurvy"),
+            Kind::Semicolon => write!(formatter, "Semicolon"),
+            Kind::Colon => write!(formatter, "Colon"),
             Kind::Comment => write!(formatter, "Comment"),
         }
     }
@@ -210,9 +224,58 @@ impl<'a> Iterator for Tokenizer<'a> {
                 return Some(token);
             }
 
-            letter if Symbol::test(letter) => {
-                let length = Symbol::tokenize(letters);
-                let token = self.create(length, Kind::Symbol);
+            letter if OpenCurly::test(letter) => {
+                let length = OpenCurly::tokenize(letters);
+                let token = self.create(length, Kind::OpenCurly);
+
+                return Some(token);
+            }
+
+            letter if CloseCurly::test(letter) => {
+                let length = CloseCurly::tokenize(letters);
+                let token = self.create(length, Kind::CloseCurly);
+
+                return Some(token);
+            }
+
+            letter if OpenSquare::test(letter) => {
+                let length = OpenSquare::tokenize(letters);
+                let token = self.create(length, Kind::OpenSquare);
+
+                return Some(token);
+            }
+
+            letter if CloseSquare::test(letter) => {
+                let length = CloseSquare::tokenize(letters);
+                let token = self.create(length, Kind::CloseSquare);
+
+                return Some(token);
+            }
+
+            letter if OpenCurvy::test(letter) => {
+                let length = OpenCurvy::tokenize(letters);
+                let token = self.create(length, Kind::OpenCurvy);
+
+                return Some(token);
+            }
+
+            letter if CloseCurvy::test(letter) => {
+                let length = CloseCurvy::tokenize(letters);
+                let token = self.create(length, Kind::CloseCurvy);
+
+                return Some(token);
+            }
+
+            letter if Semicolon::test(letter) => {
+                let length = Semicolon::tokenize(letters);
+                let token = self.create(length, Kind::Semicolon);
+
+                return Some(token);
+            }
+
+            letter if Colon::test(letter) => {
+                let length = Colon::tokenize(letters);
+                let token = self.create(length, Kind::Colon);
 
                 return Some(token);
             }
@@ -364,28 +427,28 @@ mod tests {
             tokenizer("{:;}"),
             [
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::OpenCurly,
                     start: 0,
                     end: 0,
                     value: "{",
                     column: 0,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::Colon,
                     start: 1,
                     end: 1,
                     value: ":",
                     column: 1,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::Semicolon,
                     start: 2,
                     end: 2,
                     value: ";",
                     column: 2,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::CloseCurly,
                     start: 3,
                     end: 3,
                     value: "}",
@@ -459,7 +522,7 @@ mod tests {
                     column: 0,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::OpenCurly,
                     start: 4,
                     end: 4,
                     value: "{",
@@ -496,7 +559,7 @@ mod tests {
                     column: 0,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::OpenSquare,
                     start: 1,
                     end: 1,
                     value: "[",
@@ -510,7 +573,7 @@ mod tests {
                     column: 2,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::CloseSquare,
                     start: 4,
                     end: 4,
                     value: "]",
@@ -527,7 +590,7 @@ mod tests {
             tokenizer("(())(\"\")(/**/)(\\\\)(\n)("),
             [
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::OpenCurvy,
                     start: 0,
                     end: 0,
                     value: "(",
@@ -541,14 +604,14 @@ mod tests {
                     column: 1,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::CloseCurvy,
                     start: 3,
                     end: 3,
                     value: ")",
                     column: 3,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::OpenCurvy,
                     start: 4,
                     end: 4,
                     value: "(",
@@ -562,14 +625,14 @@ mod tests {
                     column: 5,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::CloseCurvy,
                     start: 7,
                     end: 7,
                     value: ")",
                     column: 7,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::OpenCurvy,
                     start: 8,
                     end: 8,
                     value: "(",
@@ -583,14 +646,14 @@ mod tests {
                     column: 9,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::CloseCurvy,
                     start: 13,
                     end: 13,
                     value: ")",
                     column: 13,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::OpenCurvy,
                     start: 14,
                     end: 14,
                     value: "(",
@@ -604,14 +667,14 @@ mod tests {
                     column: 15,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::CloseCurvy,
                     start: 17,
                     end: 17,
                     value: ")",
                     column: 17,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::OpenCurvy,
                     start: 18,
                     end: 18,
                     value: "(",
@@ -625,14 +688,14 @@ mod tests {
                     column: 19,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::CloseCurvy,
                     start: 20,
                     end: 20,
                     value: ")",
                     column: 1,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::OpenCurvy,
                     start: 21,
                     end: 21,
                     value: "(",
@@ -738,7 +801,7 @@ mod tests {
                     column: 0,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::OpenCurly,
                     start: 4,
                     end: 4,
                     value: "{",
@@ -780,7 +843,7 @@ mod tests {
                     column: 19,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::Semicolon,
                     start: 24,
                     end: 24,
                     value: ";",
@@ -827,7 +890,7 @@ mod tests {
                     column: 0,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::OpenCurvy,
                     start: 3,
                     end: 3,
                     value: "(",
@@ -841,7 +904,7 @@ mod tests {
                     column: 4,
                 },
                 Token {
-                    kind: Kind::Symbol,
+                    kind: Kind::CloseCurvy,
                     start: 7,
                     end: 7,
                     value: ")",
@@ -1012,7 +1075,7 @@ mod tests {
                 Token {
                     start: 2,
                     end: 2,
-                    kind: Kind::Symbol,
+                    kind: Kind::OpenCurly,
                     value: "{",
                     column: 2
                 },
@@ -1033,7 +1096,7 @@ mod tests {
                 Token {
                     start: 13,
                     end: 13,
-                    kind: Kind::Symbol,
+                    kind: Kind::Colon,
                     value: ":",
                     column: 10
                 },
@@ -1054,7 +1117,7 @@ mod tests {
                 Token {
                     start: 18,
                     end: 18,
-                    kind: Kind::Symbol,
+                    kind: Kind::Semicolon,
                     value: ";",
                     column: 15
                 },
@@ -1075,7 +1138,7 @@ mod tests {
                 Token {
                     start: 27,
                     end: 27,
-                    kind: Kind::Symbol,
+                    kind: Kind::Colon,
                     value: ":",
                     column: 8
                 },
@@ -1110,7 +1173,7 @@ mod tests {
                 Token {
                     start: 42,
                     end: 42,
-                    kind: Kind::Symbol,
+                    kind: Kind::CloseCurly,
                     value: "}",
                     column: 3
                 },
@@ -1166,14 +1229,14 @@ mod tests {
                 Token {
                     start: 77,
                     end: 77,
-                    kind: Kind::Symbol,
+                    kind: Kind::OpenCurly,
                     value: "{",
                     column: 15
                 },
                 Token {
                     start: 78,
                     end: 78,
-                    kind: Kind::Symbol,
+                    kind: Kind::CloseCurly,
                     value: "}",
                     column: 16
                 }

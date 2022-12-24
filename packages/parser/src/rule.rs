@@ -24,7 +24,7 @@ impl Rule {
         while let Some(token) = tokenizer.next() {
             match token.kind {
                 Kind::Space => builder.between(&token),
-                Kind::Symbol => break,
+                Kind::OpenCurly => break,
                 _ => break,
             };
         }
@@ -44,7 +44,7 @@ impl Rule {
                     spaces.clear();
                 }
                 Kind::Space => spaces.push(token),
-                Kind::Symbol => break,
+                Kind::CloseCurly => break,
                 _ => break,
             };
         }

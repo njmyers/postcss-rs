@@ -23,22 +23,22 @@ impl Declaration {
         let mut values: Vec<Token> = Vec::new();
 
         while let Some(token) = tokenizer.next() {
-            semicolon = semicolon || token.value == SEMICOLON;
+            semicolon = semicolon || token.kind == Kind::Semicolon;
 
             match token.kind {
-                Kind::Symbol if token.value == OPEN_CURLY => {
+                Kind::OpenCurly => {
                     values.push(token);
                     open = true;
                 }
 
-                Kind::Symbol if token.value == CLOSE_CURLY => {
+                Kind::CloseCurly => {
                     values.push(token);
                     open = false;
                 }
 
-                Kind::Symbol if !open && token.value == SEMICOLON => break,
+                Kind::Semicolon if !open => break,
                 Kind::Space if !open && !semicolon && token.value == NEWLINE => break,
-                Kind::Symbol if !open => builder.between(&token),
+                Kind::Colon if !open => builder.between(&token),
                 Kind::Space if !open => builder.between(&token),
                 _ => values.push(token),
             }
