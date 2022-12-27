@@ -1,5 +1,6 @@
 use crate::characters::*;
 use crate::escape::Escape;
+use crate::string::DoubleString;
 use crate::utils;
 use crate::Token;
 
@@ -61,12 +62,14 @@ impl Bracket {
         let count = letters.len();
         let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
-        let result = letters_lookbehind.position(|(previous_letter, letter)| {
-            return matches!(letter, CLOSE_CURVY if !Escape::test(previous_letter));
+        let result = letters_lookbehind.position(|(previous, letter)| {
+            return letter == CLOSE_CURVY
+                && !Escape::test(previous)
+                && !DoubleString::test(previous);
         });
 
-        let string_length = utils::unwrap_position(result, letters) + lookbehind;
-        return cmp::min(string_length, count - lookbehind);
+        let length = utils::unwrap_position(result, letters) + lookbehind;
+        return cmp::min(length, count - lookbehind);
     }
 
     fn is_prev_url_token(prev: Option<Token>) -> bool {
