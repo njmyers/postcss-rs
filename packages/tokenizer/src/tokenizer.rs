@@ -2,6 +2,7 @@ use crate::brackets::*;
 use crate::characters::*;
 use crate::comment::*;
 use crate::escape::*;
+use crate::line::*;
 use crate::string::*;
 use crate::symbol::*;
 use crate::whitespace::*;
@@ -70,53 +71,6 @@ impl<'a> fmt::Display for Token<'a> {
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
-pub struct Line {
-    index: usize,
-}
-
-impl Line {
-    pub fn new(index: usize) -> Self {
-        return Self { index };
-    }
-}
-
-impl Default for Line {
-    fn default() -> Self {
-        return Self::new(0);
-    }
-}
-
-#[derive(PartialEq, Eq, Clone, Debug)]
-pub struct Lines {
-    lines: RefCell<Vec<Line>>,
-}
-
-impl Lines {
-    fn new() -> Self {
-        return Self {
-            lines: RefCell::new(Vec::new()),
-        };
-    }
-
-    fn increment(&self, index: usize) {
-        let mut lines = self.lines.borrow_mut();
-        lines.push(Line::new(index));
-    }
-
-    pub fn value(&self) -> usize {
-        return self.lines.borrow().iter().count() + 1;
-    }
-
-    pub fn offset(&self, index: usize) -> usize {
-        if let Some(line) = self.lines.borrow().last() {
-            return index - line.index;
-        }
-
-        return index + 1;
-    }
-}
-
-#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Tokenizer<'a> {
     css: &'a str,
     letters: Vec<char>,
@@ -143,14 +97,8 @@ impl<'a> Tokenizer<'a> {
     }
 
     pub fn prev(&self) -> Option<Token> {
-        let mut stack = self.stack.borrow_mut();
-
-        if let Some(token) = stack.pop() {
-            stack.push(token);
-            return Some(token);
-        }
-
-        return None;
+        let stack = self.stack.borrow();
+        return stack.last().copied();
     }
 
     fn create(&mut self, length: usize, kind: Kind) -> Token<'a> {

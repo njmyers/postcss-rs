@@ -11,5 +11,6 @@ pub mod tokenizer;
 pub mod utils;
 pub mod whitespace;
 pub mod word;
+pub mod line;
 
 pub use tokenizer::*;
