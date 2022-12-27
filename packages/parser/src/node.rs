@@ -161,12 +161,16 @@ impl NodeBuilder {
         self.node.raws.before.push(token);
     }
 
+    pub fn ensure_empty_between(&mut self) {
+        self.node.raws.between.push_str("");
+    }
+
     pub fn between(&mut self, token: &Token) {
         self.node.raws.between.push(token);
     }
 
     pub fn ensure_empty_after(&mut self) {
-        self.node.raws.before.push_str("");
+        self.node.raws.after.push_str("");
     }
 
     pub fn after(&mut self, token: &Token) {
