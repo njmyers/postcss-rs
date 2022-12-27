@@ -1,3 +1,5 @@
+use std::vec;
+
 use crate::Declaration;
 use crate::Node;
 use crate::NodeBuilder;
@@ -17,17 +19,10 @@ pub struct Rule {
 impl Rule {
     pub fn create(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
+        let rule = Self::parse_selector(token, tokenizer, &mut builder);
 
         builder.ensure_empty_before();
-        builder.rule(Self::new(token.value));
-
-        while let Some(token) = tokenizer.next() {
-            match token.kind {
-                Kind::Space => builder.between(&token),
-                Kind::OpenCurly => break,
-                _ => break,
-            };
-        }
+        builder.rule(Self::new(&rule));
 
         let mut spaces: Vec<Token> = Vec::new();
 
@@ -56,5 +51,43 @@ impl Rule {
         return Self {
             selector: String::from(selector),
         };
+    }
+
+    fn parse_selector(
+        token: Token,
+        tokenizer: &mut Tokenizer,
+        builder: &mut NodeBuilder,
+    ) -> String {
+        if token.kind == Kind::OpenCurly {
+            builder.ensure_empty_after();
+            builder.ensure_empty_between();
+
+            return String::from("");
+        }
+
+        let mut rules = vec![token];
+
+        while let Some(token) = tokenizer.next() {
+            println!("Kind {}", token.kind);
+
+            match token.kind {
+                Kind::Brackets => rules.push(token),
+                Kind::Space => builder.between(&token),
+                Kind::OpenCurly => break,
+                _ => break,
+            };
+        }
+
+        return Self::combine(&rules);
+    }
+
+    fn combine(params: &[Token]) -> String {
+        let mut value = String::new();
+
+        for token in params {
+            value.push_str(token.value)
+        }
+
+        return value;
     }
 }

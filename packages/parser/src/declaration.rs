@@ -1,4 +1,3 @@
-use crate::characters::*;
 use crate::Node;
 use crate::NodeBuilder;
 
@@ -31,15 +30,18 @@ impl Declaration {
                     open = true;
                 }
 
-                Kind::CloseCurly => {
+                Kind::CloseCurly if open => {
                     values.push(token);
                     open = false;
                 }
 
+                Kind::CloseCurly if !open => break,
                 Kind::Semicolon if !open => break,
-                Kind::Space if !open && !semicolon && token.value == NEWLINE => break,
                 Kind::Colon if !open => builder.between(&token),
+
+                Kind::Space if !values.is_empty() => values.push(token),
                 Kind::Space if !open => builder.between(&token),
+
                 _ => values.push(token),
             }
         }

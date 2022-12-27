@@ -29,10 +29,12 @@ impl<'a> Parser<'a> {
                     root.append(AtRule::create(token, &mut tokenizer, &spaces));
                     spaces.clear();
                 }
-                Kind::Word => {
+
+                Kind::Word | Kind::OpenCurly => {
                     root.append(Rule::create(token, &mut tokenizer, &spaces));
                     spaces.clear();
                 }
+
                 Kind::Space => spaces.push(token),
                 _ => (),
             };
@@ -55,7 +57,6 @@ mod tests {
     use std::path;
 
     #[test]
-    #[ignore]
     fn it_parses_apply() {
         let (ast, expected) = parse_and_read("apply.css", "apply.json");
         assert_eq!(ast, expected);
@@ -207,7 +208,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_no_selector() {
         let (ast, expected) = parse_and_read("no-selector.css", "no-selector.json");
         assert_eq!(ast, expected);
@@ -272,7 +272,7 @@ mod tests {
     #[test]
     #[ignore]
     fn it_parses_tabs() {
-        let (ast, expected) = parse_and_read("tabs.css", "tabs.json");
+        let (ast, expected) = parse_and_read("tab.css", "tab.json");
         assert_eq!(ast, expected);
     }
 
