@@ -68,8 +68,6 @@ impl Rule {
         let mut rules = vec![token];
 
         while let Some(token) = tokenizer.next() {
-            println!("Kind {}", token.kind);
-
             match token.kind {
                 Kind::Brackets => rules.push(token),
                 Kind::Space => builder.between(&token),
