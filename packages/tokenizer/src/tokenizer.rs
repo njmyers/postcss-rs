@@ -63,8 +63,8 @@ impl<'a> fmt::Display for Token<'a> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
             formatter,
-            "{{ kind: {}, start: {}, end: {} }}",
-            self.kind, self.start, self.end
+            "{{ kind: {}, start: {}, end: {}, value: {}, column: {} }}",
+            self.kind, self.start, self.end, self.value, self.column
         )
     }
 }
@@ -94,7 +94,7 @@ pub struct Lines {
 impl Lines {
     fn new() -> Self {
         return Self {
-            lines: RefCell::new(vec![Line::default()]),
+            lines: RefCell::new(Vec::new()),
         };
     }
 
@@ -104,7 +104,7 @@ impl Lines {
     }
 
     pub fn value(&self) -> usize {
-        return self.lines.borrow().iter().count();
+        return self.lines.borrow().iter().count() + 1;
     }
 
     pub fn offset(&self, index: usize) -> usize {
@@ -112,7 +112,7 @@ impl Lines {
             return index - line.index;
         }
 
-        return 1;
+        return index + 1;
     }
 }
 
@@ -349,7 +349,7 @@ mod tests {
                 start: 0,
                 end: 3,
                 value: "\r\n \t",
-                column: 0,
+                column: 1,
             }],
         )
     }
@@ -363,7 +363,7 @@ mod tests {
                 start: 0,
                 end: 1,
                 value: "ab",
-                column: 0,
+                column: 1,
             }]
         );
     }
@@ -378,14 +378,14 @@ mod tests {
                     start: 0,
                     end: 1,
                     value: "aa",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 4,
                     value: "!bb",
-                    column: 2,
+                    column: 3,
                 }
             ]
         )
@@ -401,14 +401,14 @@ mod tests {
                     start: 0,
                     end: 0,
                     value: "a",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 1,
                     end: 3,
                     value: " \n ",
-                    column: 1,
+                    column: 2,
                 },
                 Token {
                     kind: Kind::Word,
@@ -431,28 +431,28 @@ mod tests {
                     start: 0,
                     end: 0,
                     value: "{",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Colon,
                     start: 1,
                     end: 1,
                     value: ":",
-                    column: 1,
+                    column: 2,
                 },
                 Token {
                     kind: Kind::Semicolon,
                     start: 2,
                     end: 2,
                     value: ";",
-                    column: 2,
+                    column: 3,
                 },
                 Token {
                     kind: Kind::CloseCurly,
                     start: 3,
                     end: 3,
                     value: "}",
-                    column: 3,
+                    column: 4,
                 }
             ]
         )
@@ -468,42 +468,42 @@ mod tests {
                     start: 0,
                     end: 1,
                     value: "\\(",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 3,
                     value: "\\{",
-                    column: 2,
+                    column: 3,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 4,
                     end: 5,
                     value: "\\\"",
-                    column: 4,
+                    column: 5,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 6,
                     end: 7,
                     value: "\\@",
-                    column: 6,
+                    column: 7,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 8,
                     end: 9,
                     value: "\\\\",
-                    column: 8,
+                    column: 9,
                 },
                 Token {
                     kind: Kind::String,
                     start: 10,
                     end: 11,
                     value: "\"\"",
-                    column: 10,
+                    column: 11,
                 }
             ]
         )
@@ -519,14 +519,14 @@ mod tests {
                     start: 0,
                     end: 3,
                     value: "\\\\\\\\",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::OpenCurly,
                     start: 4,
                     end: 4,
                     value: "{",
-                    column: 4,
+                    column: 5,
                 }
             ]
         )
@@ -541,7 +541,7 @@ mod tests {
                 start: 0,
                 end: 3,
                 value: "(ab)",
-                column: 0,
+                column: 1,
             }]
         )
     }
@@ -556,28 +556,28 @@ mod tests {
                     start: 0,
                     end: 0,
                     value: "a",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::OpenSquare,
                     start: 1,
                     end: 1,
                     value: "[",
-                    column: 1,
+                    column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 3,
                     value: "bc",
-                    column: 2,
+                    column: 3,
                 },
                 Token {
                     kind: Kind::CloseSquare,
                     start: 4,
                     end: 4,
                     value: "]",
-                    column: 4,
+                    column: 5,
                 }
             ]
         );
@@ -594,98 +594,98 @@ mod tests {
                     start: 0,
                     end: 0,
                     value: "(",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 1,
                     end: 2,
                     value: "()",
-                    column: 1,
+                    column: 2,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 3,
                     end: 3,
                     value: ")",
-                    column: 3,
+                    column: 4,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 4,
                     end: 4,
                     value: "(",
-                    column: 4,
+                    column: 5,
                 },
                 Token {
                     kind: Kind::String,
                     start: 5,
                     end: 6,
                     value: "\"\"",
-                    column: 5,
+                    column: 6,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 7,
                     end: 7,
                     value: ")",
-                    column: 7,
+                    column: 8,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 8,
                     end: 8,
                     value: "(",
-                    column: 8,
+                    column: 9,
                 },
                 Token {
                     kind: Kind::Comment,
                     start: 9,
                     end: 12,
                     value: "/**/",
-                    column: 9,
+                    column: 10,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 13,
                     end: 13,
                     value: ")",
-                    column: 13,
+                    column: 14,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 14,
                     end: 14,
                     value: "(",
-                    column: 14,
+                    column: 15,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 15,
                     end: 16,
                     value: "\\\\",
-                    column: 15,
+                    column: 16,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 17,
                     end: 17,
                     value: ")",
-                    column: 17,
+                    column: 18,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 18,
                     end: 18,
                     value: "(",
-                    column: 18,
+                    column: 19,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 19,
                     end: 19,
                     value: "\n",
-                    column: 19,
+                    column: 20,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
@@ -715,14 +715,14 @@ mod tests {
                     start: 0,
                     end: 2,
                     value: "'\"'",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::String,
                     start: 3,
                     end: 6,
                     value: "\"\\\"\"",
-                    column: 3,
+                    column: 4,
                 }
             ]
         )
@@ -737,7 +737,7 @@ mod tests {
                 start: 0,
                 end: 3,
                 value: "\"\\\\\"",
-                column: 0,
+                column: 1,
             }]
         )
     }
@@ -752,7 +752,7 @@ mod tests {
                     start: 0,
                     end: 3,
                     value: "\"\n\n\"",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::String,
@@ -775,14 +775,14 @@ mod tests {
                     start: 0,
                     end: 4,
                     value: "@word",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 5,
                     end: 5,
                     value: " ",
-                    column: 5,
+                    column: 6,
                 }
             ]
         )
@@ -798,56 +798,56 @@ mod tests {
                     start: 0,
                     end: 3,
                     value: "@one",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::OpenCurly,
                     start: 4,
                     end: 4,
                     value: "{",
-                    column: 4,
+                    column: 5,
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 5,
                     end: 8,
                     value: "@two",
-                    column: 5,
+                    column: 6,
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 9,
                     end: 10,
                     value: "()",
-                    column: 9,
+                    column: 10,
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 11,
                     end: 16,
                     value: "@three",
-                    column: 11,
+                    column: 12,
                 },
                 Token {
                     kind: Kind::String,
                     start: 17,
                     end: 18,
                     value: "\"\"",
-                    column: 17,
+                    column: 18,
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 19,
                     end: 23,
                     value: "@four",
-                    column: 19,
+                    column: 20,
                 },
                 Token {
                     kind: Kind::Semicolon,
                     start: 24,
                     end: 24,
                     value: ";",
-                    column: 24,
+                    column: 25,
                 }
             ]
         )
@@ -863,14 +863,14 @@ mod tests {
                     start: 0,
                     end: 2,
                     value: "url",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 3,
                     end: 8,
                     value: "(/*\\))",
-                    column: 3,
+                    column: 4,
                 }
             ]
         )
@@ -887,28 +887,28 @@ mod tests {
                     start: 0,
                     end: 2,
                     value: "url",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 3,
                     end: 3,
                     value: "(",
-                    column: 3,
+                    column: 4,
                 },
                 Token {
                     kind: Kind::String,
                     start: 4,
                     end: 6,
                     value: "\")\"",
-                    column: 4,
+                    column: 5,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 7,
                     end: 7,
                     value: ")",
-                    column: 7,
+                    column: 8,
                 }
             ]
         )
@@ -923,7 +923,7 @@ mod tests {
                 start: 0,
                 end: 0,
                 value: "@",
-                column: 0,
+                column: 1,
             }]
         )
     }
@@ -937,7 +937,7 @@ mod tests {
                 start: 0,
                 end: 8,
                 value: "/* a\nb */",
-                column: 0,
+                column: 1,
             }]
         )
     }
@@ -952,14 +952,14 @@ mod tests {
                     start: 0,
                     end: 0,
                     value: "a",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Comment,
                     start: 1,
                     end: 7,
                     value: "/* \n */",
-                    column: 1,
+                    column: 2,
                 },
                 Token {
                     kind: Kind::Word,
@@ -982,21 +982,21 @@ mod tests {
                     start: 0,
                     end: 0,
                     value: "a",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 1,
                     end: 1,
                     value: "\u{000C}",
-                    column: 1,
+                    column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 2,
                     value: "b",
-                    column: 2,
+                    column: 3,
                 }
             ]
         )
@@ -1012,14 +1012,14 @@ mod tests {
                     start: 0,
                     end: 0,
                     value: "a",
-                    column: 0,
+                    column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 1,
                     end: 1,
                     value: "\r",
-                    column: 1,
+                    column: 2,
                 },
                 Token {
                     kind: Kind::Word,
@@ -1063,28 +1063,28 @@ mod tests {
                     end: 0,
                     kind: Kind::Word,
                     value: "a",
-                    column: 0
+                    column: 1
                 },
                 Token {
                     start: 1,
                     end: 1,
                     kind: Kind::Space,
                     value: " ",
-                    column: 1
+                    column: 2
                 },
                 Token {
                     start: 2,
                     end: 2,
                     kind: Kind::OpenCurly,
                     value: "{",
-                    column: 2
+                    column: 3
                 },
                 Token {
                     start: 3,
                     end: 5,
                     kind: Kind::Space,
                     value: "\n  ",
-                    column: 3
+                    column: 4
                 },
                 Token {
                     start: 6,
