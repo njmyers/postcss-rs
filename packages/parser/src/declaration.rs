@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::characters;
 use crate::Node;
 use crate::NodeBuilder;
 
@@ -18,7 +19,7 @@ pub struct Declaration {
 }
 
 impl Declaration {
-    pub fn create<'a>(
+    pub fn create(
         prop: Token,
         tokenizer: &mut Tokenizer,
         spaces: &[Token],
@@ -46,7 +47,7 @@ impl Declaration {
 
             if let Some(token) = tokenizer.peek() {
                 match token.kind {
-                    Kind::Space if token.value == "\n" && !statement.open => break,
+                    Kind::Space if token.value == characters::NEWLINE && !statement.open => break,
                     _ => (),
                 }
             }
