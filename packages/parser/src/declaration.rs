@@ -53,7 +53,8 @@ impl Declaration {
             }
         }
 
-        builder.declaration(Self::new(prop.value, &statement.to_string()));
+        let declaration = Self::new(prop.value, &statement.to_string());
+        builder.declaration(declaration);
 
         return (builder.build(tokenizer, &[]), terminator);
     }
@@ -66,20 +67,7 @@ impl Declaration {
     }
 }
 
-pub struct StatementTerminator {
-    pub semicolon: bool,
-}
-
-impl StatementTerminator {
-    fn new() -> Self {
-        return Self { semicolon: false };
-    }
-
-    fn process(&mut self, token: &Token) {
-        self.semicolon = self.semicolon || token.kind == Kind::Semicolon;
-    }
-}
-
+#[derive(PartialEq, Eq, Debug)]
 pub struct Statement<'a> {
     pub open: bool,
     pub values: Tokens<'a>,
@@ -115,5 +103,26 @@ impl<'a> Statement<'a> {
 impl<'a> fmt::Display for Statement<'a> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         return write!(formatter, "{}", self.values);
+    }
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub struct StatementTerminator {
+    pub semicolon: bool,
+}
+
+impl StatementTerminator {
+    fn new() -> Self {
+        return Self::default();
+    }
+
+    fn process(&mut self, token: &Token) {
+        self.semicolon = self.semicolon || token.kind == Kind::Semicolon;
+    }
+}
+
+impl Default for StatementTerminator {
+    fn default() -> Self {
+        return Self { semicolon: false };
     }
 }
