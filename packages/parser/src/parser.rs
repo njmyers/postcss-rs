@@ -172,14 +172,12 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_function() {
         let (ast, expected) = parse_and_read("function.css", "function.json");
         assert_eq!(ast, expected);
     }
 
     #[test]
-    #[ignore]
     fn it_parses_ie_progid() {
         let (ast, expected) = parse_and_read("ie-progid.css", "ie-progid.json");
         assert_eq!(ast, expected);
