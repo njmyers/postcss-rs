@@ -9,3 +9,6 @@ target/
 
 output/*
 !output/.gitkeep
+
+left.rs
+right.rs
