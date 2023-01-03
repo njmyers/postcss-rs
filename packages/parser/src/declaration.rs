@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::Node;
 use crate::NodeBuilder;
 
@@ -16,41 +18,43 @@ pub struct Declaration {
 }
 
 impl Declaration {
-    pub fn create(prop: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> (Node, bool) {
+    pub fn create<'a>(
+        prop: Token,
+        tokenizer: &mut Tokenizer,
+        spaces: &[Token],
+    ) -> (Node, StatementTerminator) {
         let mut builder = NodeBuilder::new(&prop, tokenizer, spaces);
-        let mut semicolon = false;
-        let mut open = false;
-        let mut values = Tokens::new();
+        let mut statement = Statement::new();
+        let mut terminator = StatementTerminator::new();
 
         while let Some(token) = tokenizer.next() {
-            semicolon = semicolon || token.kind == Kind::Semicolon;
+            terminator.process(&token);
 
             match token.kind {
-                Kind::OpenCurly => {
-                    values.push(token);
-                    open = true;
+                Kind::OpenCurly => statement.open(token),
+                Kind::CloseCurly if statement.open => statement.close(token),
+
+                Kind::CloseCurly if !statement.open => break,
+                Kind::Semicolon if !statement.open => break,
+                Kind::Colon if !statement.open => builder.between(&token),
+
+                Kind::Space if !statement.is_empty() => statement.push(token),
+                Kind::Space if !statement.open => builder.between(&token),
+
+                _ => statement.push(token),
+            }
+
+            if let Some(token) = tokenizer.peek() {
+                match token.kind {
+                    Kind::Space if token.value == "\n" && !statement.open => break,
+                    _ => (),
                 }
-
-                Kind::CloseCurly if open => {
-                    values.push(token);
-                    open = false;
-                }
-
-                Kind::CloseCurly if !open => break,
-                Kind::Semicolon if !open => break,
-                Kind::Colon if !open => builder.between(&token),
-
-                Kind::Space if token.value == "\n" && !open => break,
-                Kind::Space if !values.is_empty() => values.push(token),
-                Kind::Space if !open => builder.between(&token),
-
-                _ => values.push(token),
             }
         }
 
-        builder.declaration(Self::new(prop.value, &values.to_string()));
+        builder.declaration(Self::new(prop.value, &statement.to_string()));
 
-        return (builder.build(tokenizer, &[]), semicolon);
+        return (builder.build(tokenizer, &[]), terminator);
     }
 
     fn new(prop: &str, value: &str) -> Self {
@@ -58,5 +62,57 @@ impl Declaration {
             prop: String::from(prop),
             value: String::from(value),
         };
+    }
+}
+
+pub struct StatementTerminator {
+    pub semicolon: bool,
+}
+
+impl StatementTerminator {
+    fn new() -> Self {
+        return Self { semicolon: false };
+    }
+
+    fn process(&mut self, token: &Token) {
+        self.semicolon = self.semicolon || token.kind == Kind::Semicolon;
+    }
+}
+
+pub struct Statement<'a> {
+    pub open: bool,
+    pub values: Tokens<'a>,
+}
+
+impl<'a> Statement<'a> {
+    fn new() -> Self {
+        return Self {
+            open: false,
+            values: Tokens::new(),
+        };
+    }
+
+    fn open(&mut self, token: Token<'a>) {
+        self.open = true;
+        self.values.push(token);
+    }
+
+    fn close(&mut self, token: Token<'a>) {
+        self.open = false;
+        self.values.push(token);
+    }
+
+    fn push(&mut self, token: Token<'a>) {
+        self.values.push(token);
+    }
+
+    fn is_empty(&self) -> bool {
+        return self.values.is_empty();
+    }
+}
+
+impl<'a> fmt::Display for Statement<'a> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        return write!(formatter, "{}", self.values);
     }
 }

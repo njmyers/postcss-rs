@@ -28,12 +28,8 @@ impl Rule {
         while let Some(token) = tokenizer.next() {
             match token.kind {
                 Kind::Word => {
-                    let (child, semicolon) = Declaration::create(token, tokenizer, &spaces);
-
-                    if semicolon {
-                        builder.semicolon();
-                    }
-
+                    let (child, terminator) = Declaration::create(token, tokenizer, &spaces);
+                    builder.terminator(&terminator);
                     builder.append(child);
                     spaces.clear();
                 }

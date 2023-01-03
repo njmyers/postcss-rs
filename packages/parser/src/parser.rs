@@ -128,7 +128,7 @@ mod tests {
     #[test]
     #[ignore]
     fn it_parses_bom() {
-        let (ast, expected) = parse_and_read("bom.css", "bom.json");
+        let (ast, expected) = parse_and_read_json_only(String::from("\u{FEFFa}{}"), "bom.json");
         assert_eq!(ast, expected);
     }
 
@@ -263,17 +263,28 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_spaces() {
-        let (ast, expected) = parse_and_read("space.css", "space.json");
+        let (ast, expected) = parse_and_read_json_only(String::from(" \n"), "spaces.json");
         assert_eq!(ast, expected);
     }
 
     #[test]
-    #[ignore]
-    fn it_parses_tabs() {
+    fn it_parses_tab() {
         let (ast, expected) = parse_and_read("tab.css", "tab.json");
         assert_eq!(ast, expected);
+    }
+
+    fn parse_and_read_json_only(css: String, json_path: &str) -> (Node, Node) {
+        let mut parser = Parser::new(&css);
+        let ast = parser.parse();
+        let json = serde_json::to_string_pretty(&ast).unwrap();
+
+        let expected_ast: Node = serde_json::from_str(&read(json_path)).unwrap();
+
+        #[cfg(feature = "output")]
+        write(json_path, &json);
+
+        return (ast, expected_ast);
     }
 
     fn parse_and_read(css_path: &str, json_path: &str) -> (Node, Node) {

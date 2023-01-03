@@ -2,6 +2,7 @@ use crate::AtRule;
 use crate::Declaration;
 use crate::Raws;
 use crate::Rule;
+use crate::StatementTerminator;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -175,6 +176,14 @@ impl NodeBuilder {
 
     pub fn after(&mut self, token: &Token) {
         self.node.raws.after.push(token);
+    }
+
+    pub fn terminator(&mut self, terminator: &StatementTerminator) {
+        if terminator.semicolon {
+            self.node.raws.semicolon.set_true();
+        } else {
+            self.node.raws.semicolon.set_false();
+        }
     }
 
     pub fn semicolon(&mut self) {
