@@ -70,7 +70,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_at_rule_decls() {
         let (ast, expected) = parse_and_read("atrule-decls.css", "atrule-decls.json");
         assert_eq!(ast, expected);

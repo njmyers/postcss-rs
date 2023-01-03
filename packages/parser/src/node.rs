@@ -178,6 +178,14 @@ impl NodeBuilder {
         self.node.raws.after.push(token);
     }
 
+    pub fn ensure_empty_after_name(&mut self) {
+        self.node.raws.after_name.push_str("");
+    }
+
+    pub fn after_name(&mut self, token: &Token) {
+        self.node.raws.after_name.push(token);
+    }
+
     pub fn terminator(&mut self, terminator: &StatementTerminator) {
         if terminator.semicolon {
             self.node.raws.semicolon.set_true();

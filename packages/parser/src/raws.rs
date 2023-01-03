@@ -14,6 +14,8 @@ pub struct Raws {
     pub before: Raw,
     #[serde(default, skip_serializing_if = "Raw::skip")]
     pub between: Raw,
+    #[serde(default, rename = "afterName", skip_serializing_if = "Raw::skip")]
+    pub after_name: Raw,
     #[serde(default, skip_serializing_if = "Semicolon::skip")]
     pub semicolon: Semicolon,
     #[serde(default, skip_serializing_if = "Raw::skip")]
@@ -25,6 +27,7 @@ impl Default for Raws {
         return Self {
             before: Raw::default(),
             between: Raw::default(),
+            after_name: Raw::default(),
             semicolon: Semicolon::default(),
             after: Raw::default(),
         };

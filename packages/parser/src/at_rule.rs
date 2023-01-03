@@ -20,12 +20,15 @@ impl AtRule {
     pub fn create(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
         builder.ensure_empty_before();
+        builder.ensure_empty_after_name();
 
         let mut data = Self::new(&token.value[1..]);
         let mut params = Tokens::new();
+        let mut spaces = Tokens::new();
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
+                Kind::Space if params.is_empty() => spaces.push(token),
                 Kind::Space => builder.between(&token),
                 Kind::Word => params.push(token),
                 Kind::Brackets => params.push(token),
@@ -36,16 +39,17 @@ impl AtRule {
             };
         }
 
-        data.params = Some(params.to_string());
+        data.set_params(&params);
+        data.set_params_spaces(&mut builder, &spaces, &params);
 
         let mut spaces: Vec<Token> = Vec::new();
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
                 Kind::Word => {
-                    let (child, terminator) = Declaration::create(token, tokenizer, &spaces);
+                    let (node, terminator) = Declaration::create(token, tokenizer, &spaces);
                     builder.terminator(&terminator);
-                    builder.append(child);
+                    builder.append(node);
                     spaces.clear();
                 }
                 Kind::Space => spaces.push(token),
@@ -64,5 +68,19 @@ impl AtRule {
             name: String::from(name),
             params: None,
         };
+    }
+
+    fn set_params(&mut self, params: &Tokens) {
+        self.params = Some(params.to_string());
+    }
+
+    fn set_params_spaces(&mut self, builder: &mut NodeBuilder, spaces: &Tokens, params: &Tokens) {
+        for token in spaces.iter() {
+            if !params.is_empty() {
+                builder.after_name(token);
+            } else {
+                builder.between(token);
+            }
+        }
     }
 }
