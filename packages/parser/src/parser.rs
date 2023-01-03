@@ -1,3 +1,6 @@
+use std::str;
+use std::str::Utf8Error;
+
 use crate::AtRule;
 use crate::Node;
 use crate::NodeBuilder;
@@ -7,13 +10,21 @@ use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Tokenizer;
 use postcss_rs_tokenizer::Tokens;
 
+use unicode_bom::Bom;
+
+/// PostCSS parser implementation.
+///
+/// This parser creates PostCSS compatible JSON representations however it does not create a PostCSS
+/// compatible object interface. For that please see the [`postcss-rs-node`] package.
 pub struct Parser<'a> {
     css: &'a str,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(css: &'a str) -> Self {
-        return Self { css };
+    pub fn new(css: &'a str) -> Result<Self, Utf8Error> {
+        return Ok(Self {
+            css: Self::clean(css)?,
+        });
     }
 
     pub fn parse(&mut self) -> Node {
@@ -43,6 +54,16 @@ impl<'a> Parser<'a> {
         }
 
         return root.build_root(&spaces);
+    }
+
+    fn clean(css: &str) -> Result<&str, Utf8Error> {
+        let bytes = css.as_bytes();
+        let bom = Bom::from(bytes);
+
+        return match bom {
+            Bom::Null => Ok(css),
+            _ => return str::from_utf8(&bytes[bom.len()..]),
+        };
     }
 }
 
@@ -118,9 +139,8 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_bom() {
-        let (ast, expected) = parse_and_read_json_only(String::from("\u{FEFFa}{}"), "bom.json");
+        let (ast, expected) = parse_and_read("bom.css", "bom.json");
         assert_eq!(ast, expected);
     }
 
@@ -265,7 +285,7 @@ mod tests {
     }
 
     fn parse_and_read_json_only(css: String, json_path: &str) -> (Node, Node) {
-        let mut parser = Parser::new(&css);
+        let mut parser = Parser::new(&css).unwrap();
         let ast = parser.parse();
         let json = serde_json::to_string_pretty(&ast).unwrap();
 
@@ -279,7 +299,7 @@ mod tests {
 
     fn parse_and_read(css_path: &str, json_path: &str) -> (Node, Node) {
         let css = read(css_path);
-        let mut parser = Parser::new(&css);
+        let mut parser = Parser::new(&css).unwrap();
         let ast = parser.parse();
         let json = serde_json::to_string_pretty(&ast).unwrap();
 

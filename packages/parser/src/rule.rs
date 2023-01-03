@@ -21,6 +21,8 @@ impl Rule {
         let rule = Self::selector(token, tokenizer, &mut builder);
 
         builder.ensure_empty_before();
+        builder.ensure_empty_between();
+        builder.ensure_empty_after();
         builder.rule(Self::new(&rule));
 
         let mut spaces: Vec<Token> = Vec::new();
