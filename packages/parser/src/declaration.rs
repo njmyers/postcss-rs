@@ -1,8 +1,8 @@
-use std::fmt;
-
 use crate::characters;
 use crate::Node;
 use crate::NodeBuilder;
+use crate::Statement;
+use crate::StatementTerminator;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -10,7 +10,6 @@ use serde::Serialize;
 use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
-use postcss_rs_tokenizer::Tokens;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Declaration {
@@ -64,65 +63,5 @@ impl Declaration {
             prop: String::from(prop),
             value: String::from(value),
         };
-    }
-}
-
-#[derive(PartialEq, Eq, Debug)]
-pub struct Statement<'a> {
-    pub open: bool,
-    pub values: Tokens<'a>,
-}
-
-impl<'a> Statement<'a> {
-    fn new() -> Self {
-        return Self {
-            open: false,
-            values: Tokens::new(),
-        };
-    }
-
-    fn open(&mut self, token: Token<'a>) {
-        self.open = true;
-        self.values.push(token);
-    }
-
-    fn close(&mut self, token: Token<'a>) {
-        self.open = false;
-        self.values.push(token);
-    }
-
-    fn push(&mut self, token: Token<'a>) {
-        self.values.push(token);
-    }
-
-    fn is_empty(&self) -> bool {
-        return self.values.is_empty();
-    }
-}
-
-impl<'a> fmt::Display for Statement<'a> {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        return write!(formatter, "{}", self.values);
-    }
-}
-
-#[derive(PartialEq, Eq, Debug)]
-pub struct StatementTerminator {
-    pub semicolon: bool,
-}
-
-impl StatementTerminator {
-    fn new() -> Self {
-        return Self::default();
-    }
-
-    fn process(&mut self, token: &Token) {
-        self.semicolon = self.semicolon || token.kind == Kind::Semicolon;
-    }
-}
-
-impl Default for StatementTerminator {
-    fn default() -> Self {
-        return Self { semicolon: false };
     }
 }

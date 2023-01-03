@@ -7,6 +7,7 @@ mod node;
 mod parser;
 mod raws;
 mod rule;
+mod statement;
 
 pub mod characters;
 
@@ -16,3 +17,4 @@ pub use node::*;
 pub use parser::*;
 pub use raws::*;
 pub use rule::*;
+pub use statement::*;

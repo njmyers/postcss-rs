@@ -1,11 +1,11 @@
 use crate::AtRule;
-use crate::Data;
 use crate::Node;
+use crate::NodeBuilder;
 use crate::Rule;
 
 use postcss_rs_tokenizer::Kind;
-use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
+use postcss_rs_tokenizer::Tokens;
 
 pub struct Parser<'a> {
     css: &'a str,
@@ -18,15 +18,17 @@ impl<'a> Parser<'a> {
 
     pub fn parse(&mut self) -> Node {
         let mut tokenizer = Tokenizer::new(self.css);
-        let mut root = Node::new(Data::Root);
-        let mut spaces: Vec<Token> = Vec::new();
+        let mut spaces = Tokens::new();
 
-        root.raws.after.push_str("");
+        let mut root = NodeBuilder::default();
+        root.ensure_empty_after();
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
                 Kind::AtWord => {
-                    root.append(AtRule::create(token, &mut tokenizer, &spaces));
+                    let (node, terminator) = AtRule::create(token, &mut tokenizer, &spaces);
+                    root.terminator(&terminator);
+                    root.append(node);
                     spaces.clear();
                 }
 
@@ -40,13 +42,7 @@ impl<'a> Parser<'a> {
             };
         }
 
-        if !root.nodes.is_empty() {
-            root.raws.semicolon.set_false();
-        }
-
-        root.raws.after.push_tokens(&spaces);
-
-        return root;
+        return root.build_root(&spaces);
     }
 }
 
@@ -76,7 +72,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_at_rule_empty() {
         let (ast, expected) = parse_and_read("atrule-empty.css", "atrule-empty.json");
         assert_eq!(ast, expected);

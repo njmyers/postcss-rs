@@ -126,7 +126,7 @@ impl Default for Node {
 }
 
 pub struct NodeBuilder {
-    node: Node,
+    pub node: Node,
 }
 
 impl NodeBuilder {
@@ -203,6 +203,26 @@ impl NodeBuilder {
         self.node.source.end = Some(Source::create_end(tokenizer));
 
         return self.node;
+    }
+
+    pub fn build_root(mut self, after: &[Token]) -> Node {
+        let semicolon = self.node.raws.semicolon.unwrap_or(false);
+
+        if !self.node.nodes.is_empty() && !semicolon {
+            self.node.raws.semicolon.set_false();
+        }
+
+        self.node.raws.after.push_tokens(after);
+
+        return self.node;
+    }
+}
+
+impl Default for NodeBuilder {
+    fn default() -> Self {
+        return Self {
+            node: Node::new(Data::Root),
+        };
     }
 }
 

@@ -1,9 +1,14 @@
+use std::ops::Deref;
+use std::ops::DerefMut;
+
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::Declaration;
 use crate::Node;
 use crate::NodeBuilder;
+use crate::Statement;
+use crate::StatementTerminator;
 
 use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Token;
@@ -17,16 +22,24 @@ pub struct AtRule {
 }
 
 impl AtRule {
-    pub fn create(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
+    pub fn create(
+        token: Token,
+        tokenizer: &mut Tokenizer,
+        spaces: &[Token],
+    ) -> (Node, StatementTerminator) {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
         builder.ensure_empty_before();
+        builder.ensure_empty_between();
         builder.ensure_empty_after_name();
 
         let mut data = Self::new(&token.value[1..]);
-        let mut params = Tokens::new();
         let mut spaces = Tokens::new();
+        let mut params = ParamsBuilder::new();
+        let mut terminator = StatementTerminator::new();
 
         while let Some(token) = tokenizer.next() {
+            terminator.process(&token);
+
             match token.kind {
                 Kind::Space if params.is_empty() => spaces.push(token),
                 Kind::Space => builder.between(&token),
@@ -34,13 +47,13 @@ impl AtRule {
                 Kind::Brackets => params.push(token),
                 Kind::OpenCurly => break,
                 Kind::Colon => params.push(token),
-                Kind::Semicolon => params.push(token),
+                Kind::String => params.push(token),
                 _ => break,
             };
         }
 
+        params.set_spaces(&mut builder, &spaces);
         data.set_params(&params);
-        data.set_params_spaces(&mut builder, &spaces, &params);
 
         let mut spaces: Vec<Token> = Vec::new();
 
@@ -59,8 +72,9 @@ impl AtRule {
         }
 
         builder.at_rule(data);
+        let node = builder.build(tokenizer, &spaces);
 
-        return builder.build(tokenizer, &spaces);
+        return (node, terminator);
     }
 
     fn new(name: &str) -> Self {
@@ -70,17 +84,39 @@ impl AtRule {
         };
     }
 
-    fn set_params(&mut self, params: &Tokens) {
+    fn set_params(&mut self, params: &ParamsBuilder) {
         self.params = Some(params.to_string());
     }
+}
 
-    fn set_params_spaces(&mut self, builder: &mut NodeBuilder, spaces: &Tokens, params: &Tokens) {
+struct ParamsBuilder<'a>(Statement<'a>);
+
+impl<'a> ParamsBuilder<'a> {
+    fn new() -> Self {
+        return Self(Statement::new());
+    }
+
+    fn set_spaces(&self, builder: &mut NodeBuilder, spaces: &Tokens) {
         for token in spaces.iter() {
-            if !params.is_empty() {
+            if !self.is_empty() {
                 builder.after_name(token);
             } else {
                 builder.between(token);
             }
         }
+    }
+}
+
+impl<'a> Deref for ParamsBuilder<'a> {
+    type Target = Statement<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        return &self.0;
+    }
+}
+
+impl<'a> DerefMut for ParamsBuilder<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        return &mut self.0;
     }
 }

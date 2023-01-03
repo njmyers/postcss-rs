@@ -83,6 +83,10 @@ impl<'a> Tokens<'a> {
     pub fn push(&mut self, token: Token<'a>) {
         self.0.push(token);
     }
+
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
 }
 
 impl<'a> fmt::Display for Tokens<'a> {
