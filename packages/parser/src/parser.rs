@@ -145,7 +145,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_colon_selector() {
         let (ast, expected) = parse_and_read("colon-selector.css", "colon-selector.json");
         assert_eq!(ast, expected);
