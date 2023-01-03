@@ -1,49 +1,51 @@
 #![deny(clippy::all)]
+#![allow(clippy::needless_return)]
 
 #[macro_use]
 extern crate napi_derive;
 
-use std::convert::TryInto;
+use napi::bindgen_prelude::*;
+use napi::Env;
+use napi::Result;
+use napi::Task;
 
-use napi::{CallContext, Env, JsNumber, JsObject, Result, Task};
+use postcss_rs_parser::Parser;
 
-struct AsyncTask(u32);
-
-impl Task for AsyncTask {
-  type Output = u32;
-  type JsValue = JsNumber;
-
-  fn compute(&mut self) -> Result<Self::Output> {
-    use std::thread::sleep;
-    use std::time::Duration;
-    sleep(Duration::from_millis(self.0 as u64));
-    Ok(self.0 * 2)
-  }
-
-  fn resolve(&mut self, env: Env, output: Self::Output) -> Result<Self::JsValue> {
-    env.create_uint32(output)
-  }
+/// A JavaScript compatible and PostCSS compatible AST.
+#[napi(js_name = "Node")]
+pub struct JsNode {
+    pub json: String,
 }
 
-#[module_exports]
-fn init(mut exports: JsObject) -> Result<()> {
-  exports.create_named_method("sync", sync_fn)?;
-
-  exports.create_named_method("sleep", sleep)?;
-  Ok(())
+/// Async compute task for parsing css.
+pub struct AsyncParseTask {
+    css: String,
 }
 
-#[js_function(1)]
-fn sync_fn(ctx: CallContext) -> Result<JsNumber> {
-  let argument: u32 = ctx.get::<JsNumber>(0)?.try_into()?;
+impl Task for AsyncParseTask {
+    type Output = JsNode;
+    type JsValue = JsNode;
 
-  ctx.env.create_uint32(argument + 100)
+    fn compute(&mut self) -> Result<Self::Output> {
+        let mut parser = Parser::new(&self.css).unwrap();
+        let node = parser.parse();
+
+        return Ok(JsNode {
+            json: node.to_json().unwrap(),
+        });
+    }
+
+    fn resolve(&mut self, _: Env, output: Self::Output) -> Result<Self::JsValue> {
+        return Ok(output);
+    }
 }
 
-#[js_function(1)]
-fn sleep(ctx: CallContext) -> Result<JsObject> {
-  let argument: u32 = ctx.get::<JsNumber>(0)?.try_into()?;
-  let task = AsyncTask(argument);
-  let async_task = ctx.env.spawn(task)?;
-  Ok(async_task.promise_object())
+#[napi]
+pub mod postcss {
+    pub use super::*;
+
+    #[napi]
+    pub fn parse(css: String) -> AsyncTask<AsyncParseTask> {
+        return AsyncTask::new(AsyncParseTask { css });
+    }
 }

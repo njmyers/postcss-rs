@@ -1,0 +1,18 @@
+{
+  "name": "@postcss-rs/root",
+  "version": "0.0.1",
+  "private": true,
+  "license": "MIT",
+  "author": "Nick Myers <nickmyers111@gmail.com>",
+  "workspaces": [
+    "packages/node",
+    "tests"
+  ],
+  "scripts": {
+    "test": "pnpm --recursive --sort run test"
+  },
+  "engines": {
+    "node": "14",
+    "pnpm": "7"
+  }
+}

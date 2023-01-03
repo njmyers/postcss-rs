@@ -1,2 +1,2 @@
 [workspace]
-members = ["packages/parser", "packages/tokenizer"]
+members = ["packages/parser", "packages/tokenizer", "packages/node"]
