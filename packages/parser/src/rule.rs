@@ -1,5 +1,3 @@
-use std::vec;
-
 use crate::Declaration;
 use crate::Node;
 use crate::NodeBuilder;
@@ -10,6 +8,7 @@ use serde::Serialize;
 use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
+use postcss_rs_tokenizer::Tokens;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Rule {
@@ -19,7 +18,7 @@ pub struct Rule {
 impl Rule {
     pub fn create(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
-        let rule = Self::parse_selector(token, tokenizer, &mut builder);
+        let rule = Self::selector(token, tokenizer, &mut builder);
 
         builder.ensure_empty_before();
         builder.rule(Self::new(&rule));
@@ -38,6 +37,7 @@ impl Rule {
                     builder.append(child);
                     spaces.clear();
                 }
+
                 Kind::Space => spaces.push(token),
                 Kind::CloseCurly => break,
                 _ => break,
@@ -53,11 +53,7 @@ impl Rule {
         };
     }
 
-    fn parse_selector(
-        token: Token,
-        tokenizer: &mut Tokenizer,
-        builder: &mut NodeBuilder,
-    ) -> String {
+    fn selector(token: Token, tokenizer: &mut Tokenizer, builder: &mut NodeBuilder) -> String {
         if token.kind == Kind::OpenCurly {
             builder.ensure_empty_after();
             builder.ensure_empty_between();
@@ -65,7 +61,8 @@ impl Rule {
             return String::from("");
         }
 
-        let mut rules = vec![token];
+        let mut rules = Tokens::new();
+        rules.push(token);
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
@@ -76,16 +73,6 @@ impl Rule {
             };
         }
 
-        return Self::combine(&rules);
-    }
-
-    fn combine(params: &[Token]) -> String {
-        let mut value = String::new();
-
-        for token in params {
-            value.push_str(token.value)
-        }
-
-        return value;
+        return rules.to_string();
     }
 }

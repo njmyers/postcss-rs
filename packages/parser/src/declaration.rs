@@ -7,6 +7,7 @@ use serde::Serialize;
 use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
+use postcss_rs_tokenizer::Tokens;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Declaration {
@@ -19,7 +20,7 @@ impl Declaration {
         let mut builder = NodeBuilder::new(&prop, tokenizer, spaces);
         let mut semicolon = false;
         let mut open = false;
-        let mut values: Vec<Token> = Vec::new();
+        let mut values = Tokens::new();
 
         while let Some(token) = tokenizer.next() {
             semicolon = semicolon || token.kind == Kind::Semicolon;
@@ -39,6 +40,7 @@ impl Declaration {
                 Kind::Semicolon if !open => break,
                 Kind::Colon if !open => builder.between(&token),
 
+                Kind::Space if token.value == "\n" && !open => break,
                 Kind::Space if !values.is_empty() => values.push(token),
                 Kind::Space if !open => builder.between(&token),
 
@@ -46,7 +48,7 @@ impl Declaration {
             }
         }
 
-        builder.declaration(Self::new(prop.value, &Self::combine(values)));
+        builder.declaration(Self::new(prop.value, &values.to_string()));
 
         return (builder.build(tokenizer, &[]), semicolon);
     }
@@ -56,15 +58,5 @@ impl Declaration {
             prop: String::from(prop),
             value: String::from(value),
         };
-    }
-
-    fn combine(tokens: Vec<Token>) -> String {
-        let mut value = String::new();
-
-        for token in tokens {
-            value.push_str(token.value)
-        }
-
-        return value;
     }
 }

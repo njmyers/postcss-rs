@@ -8,6 +8,7 @@ use crate::NodeBuilder;
 use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
+use postcss_rs_tokenizer::Tokens;
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct AtRule {
@@ -21,7 +22,7 @@ impl AtRule {
         builder.ensure_empty_before();
 
         let mut data = Self::new(&token.value[1..]);
-        let mut params: Vec<Token> = Vec::new();
+        let mut params = Tokens::new();
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
@@ -35,7 +36,7 @@ impl AtRule {
             };
         }
 
-        data.params = Some(Self::combine(params));
+        data.params = Some(params.to_string());
 
         let mut spaces: Vec<Token> = Vec::new();
 
@@ -67,15 +68,5 @@ impl AtRule {
             name: String::from(name),
             params: None,
         };
-    }
-
-    fn combine(params: Vec<Token>) -> String {
-        let mut value = String::new();
-
-        for token in params {
-            value.push_str(token.value)
-        }
-
-        return value;
     }
 }

@@ -265,7 +265,7 @@ mod tests {
     #[test]
     #[ignore]
     fn it_parses_spaces() {
-        let (ast, expected) = parse_and_read("spaces.css", "spaces.json");
+        let (ast, expected) = parse_and_read("space.css", "space.json");
         assert_eq!(ast, expected);
     }
 

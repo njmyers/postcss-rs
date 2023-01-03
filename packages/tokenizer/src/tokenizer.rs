@@ -8,9 +8,11 @@ use crate::symbol::*;
 use crate::whitespace::*;
 use crate::word::*;
 
-use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::fmt;
+use std::ops::Deref;
+
+use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Copy, Clone)]
 pub enum Kind {
@@ -67,6 +69,43 @@ impl<'a> fmt::Display for Token<'a> {
             "{{ kind: {}, start: {}, end: {}, value: {}, column: {} }}",
             self.kind, self.start, self.end, self.value, self.column
         )
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub struct Tokens<'a>(Vec<Token<'a>>);
+
+impl<'a> Tokens<'a> {
+    pub fn new() -> Self {
+        return Self(Vec::new());
+    }
+
+    pub fn push(&mut self, token: Token<'a>) {
+        self.0.push(token);
+    }
+}
+
+impl<'a> fmt::Display for Tokens<'a> {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        for token in self.0.iter() {
+            write!(formatter, "{}", token.value)?;
+        }
+
+        return Ok(());
+    }
+}
+
+impl<'a> Default for Tokens<'a> {
+    fn default() -> Self {
+        return Self::new();
+    }
+}
+
+impl<'a> Deref for Tokens<'a> {
+    type Target = Vec<Token<'a>>;
+
+    fn deref(&self) -> &Self::Target {
+        return &self.0;
     }
 }
 
