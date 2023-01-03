@@ -78,7 +78,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_at_rule_no_params() {
         let (ast, expected) = parse_and_read("atrule-no-params.css", "atrule-no-params.json");
         assert_eq!(ast, expected);
@@ -92,7 +91,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_at_rule_no_space() {
         let (ast, expected) = parse_and_read("atrule-no-space.css", "atrule-no-space.json");
         assert_eq!(ast, expected);
