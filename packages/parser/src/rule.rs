@@ -1,6 +1,7 @@
 use crate::Declaration;
 use crate::Node;
 use crate::NodeBuilder;
+use crate::Statement;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -10,6 +11,16 @@ use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
 use postcss_rs_tokenizer::Tokens;
 
+/// An empty struct used for creating a css rule.
+///
+/// Rules are on of the basic parts of css and consist of selectors as well as a list of property
+/// declarations.
+///
+/// ```css
+/// .rule {
+///   background: white;
+/// }
+/// ```
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Rule {
     pub selector: String,
@@ -18,14 +29,14 @@ pub struct Rule {
 impl Rule {
     pub fn create(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
-        let rule = Self::selector(token, tokenizer, &mut builder);
+        let selector = Selector::create(token, tokenizer, &mut builder);
 
         builder.ensure_empty_before();
         builder.ensure_empty_between();
         builder.ensure_empty_after();
-        builder.rule(Self::new(&rule));
+        builder.rule(Self::new(selector));
 
-        let mut spaces: Vec<Token> = Vec::new();
+        let mut spaces = Tokens::new();
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
@@ -45,32 +56,40 @@ impl Rule {
         return builder.build(tokenizer, &spaces);
     }
 
-    fn new(selector: &str) -> Self {
-        return Self {
-            selector: String::from(selector),
-        };
+    fn new(selector: String) -> Self {
+        return Self { selector };
     }
+}
 
-    fn selector(token: Token, tokenizer: &mut Tokenizer, builder: &mut NodeBuilder) -> String {
+struct Selector;
+
+impl Selector {
+    /// A string value representing an empty selector
+    const EMPTY_SELECTOR: &str = "";
+
+    /// A builder struct used for creating a rule selector.
+    pub fn create(token: Token, tokenizer: &mut Tokenizer, builder: &mut NodeBuilder) -> String {
         if token.kind == Kind::OpenCurly {
             builder.ensure_empty_after();
             builder.ensure_empty_between();
 
-            return String::from("");
+            return String::from(Self::EMPTY_SELECTOR);
         }
 
-        let mut rules = Tokens::new();
-        rules.push(token);
+        let mut statement = Statement::new();
+        statement.push(token);
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
-                Kind::Brackets => rules.push(token),
+                Kind::Brackets => statement.push(token),
+                Kind::Colon => statement.push(token),
+                Kind::Word => statement.push(token),
                 Kind::Space => builder.between(&token),
                 Kind::OpenCurly => break,
                 _ => break,
             };
         }
 
-        return rules.to_string();
+        return statement.to_string();
     }
 }

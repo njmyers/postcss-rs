@@ -2,9 +2,9 @@ use crate::brackets::*;
 use crate::characters::*;
 use crate::comment::*;
 use crate::string::*;
+use crate::symbol::*;
 use crate::utils;
 use crate::whitespace::*;
-use crate::symbol::*;
 
 use std::cmp;
 
