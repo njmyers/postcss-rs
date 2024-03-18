@@ -1,2 +1,3 @@
 [workspace]
 members = ["packages/parser", "packages/tokenizer", "packages/node"]
+resolver = "2"

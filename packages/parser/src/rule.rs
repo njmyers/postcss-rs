@@ -65,7 +65,7 @@ struct Selector;
 
 impl Selector {
     /// A string value representing an empty selector
-    const EMPTY_SELECTOR: &str = "";
+    const EMPTY_SELECTOR: &'static str = "";
 
     /// A builder struct used for creating a rule selector.
     pub fn create(token: Token, tokenizer: &mut Tokenizer, builder: &mut NodeBuilder) -> String {
