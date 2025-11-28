@@ -157,7 +157,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6f61fba1741ea2b3d6a1e3178721804bb716a68a6aeba1149b5d52e3d464ea66"
 
 [[package]]
-name = "postcss-rs"
+name = "postcss-rs-node-postcss"
 version = "0.0.0"
 dependencies = [
  "napi",
@@ -167,10 +167,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "postcss-rs-node-tokenizer"
+version = "0.0.0"
+dependencies = [
+ "napi",
+ "napi-build",
+ "napi-derive",
+ "postcss-rs-tokenizer",
+]
+
+[[package]]
 name = "postcss-rs-parser"
 version = "0.1.0"
 dependencies = [
  "postcss-rs-tokenizer",
+ "regex",
  "serde",
  "serde_json",
  "serde_test",
