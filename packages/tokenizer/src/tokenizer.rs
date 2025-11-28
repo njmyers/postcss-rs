@@ -53,16 +53,16 @@ impl fmt::Display for Kind {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Copy, Clone)]
-pub struct Token<'a> {
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
+pub struct Token {
     pub start: usize,
     pub end: usize,
     pub kind: Kind,
-    pub value: &'a str,
+    pub value: String,
     pub column: usize,
 }
 
-impl<'a> fmt::Display for Token<'a> {
+impl fmt::Display for Token {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
             formatter,
@@ -73,14 +73,14 @@ impl<'a> fmt::Display for Token<'a> {
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
-pub struct Tokens<'a>(Vec<Token<'a>>);
+pub struct Tokens(Vec<Token>);
 
-impl<'a> Tokens<'a> {
+impl Tokens {
     pub fn new() -> Self {
         return Self(Vec::new());
     }
 
-    pub fn push(&mut self, token: Token<'a>) {
+    pub fn push(&mut self, token: Token) {
         self.0.push(token);
     }
 
@@ -89,7 +89,7 @@ impl<'a> Tokens<'a> {
     }
 }
 
-impl<'a> fmt::Display for Tokens<'a> {
+impl fmt::Display for Tokens {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         for token in self.0.iter() {
             write!(formatter, "{}", token.value)?;
@@ -99,14 +99,14 @@ impl<'a> fmt::Display for Tokens<'a> {
     }
 }
 
-impl<'a> Default for Tokens<'a> {
+impl Default for Tokens {
     fn default() -> Self {
         return Self::new();
     }
 }
 
-impl<'a> Deref for Tokens<'a> {
-    type Target = Vec<Token<'a>>;
+impl Deref for Tokens {
+    type Target = Vec<Token>;
 
     fn deref(&self) -> &Self::Target {
         return &self.0;
@@ -114,16 +114,17 @@ impl<'a> Deref for Tokens<'a> {
 }
 
 #[derive(PartialEq, Eq, Clone, Debug)]
-pub struct Tokenizer<'a> {
-    css: &'a str,
+pub struct Tokenizer {
+    css: String,
     letters: Vec<char>,
-    stack: RefCell<Vec<Token<'a>>>,
+    stack: RefCell<Vec<Token>>,
     pub index: usize,
     pub lines: Lines,
 }
 
-impl<'a> Tokenizer<'a> {
-    pub fn new(css: &'a str) -> Self {
+impl Tokenizer {
+    pub fn new(css: impl Into<String>) -> Self {
+        let css = css.into();
         let letters: Vec<char> = css.chars().collect();
 
         return Self {
@@ -141,10 +142,10 @@ impl<'a> Tokenizer<'a> {
 
     pub fn prev(&self) -> Option<Token> {
         let stack = self.stack.borrow();
-        return stack.last().copied();
+        return stack.last().cloned();
     }
 
-    fn create(&mut self, length: usize, kind: Kind) -> Token<'a> {
+    fn create(&mut self, length: usize, kind: Kind) -> Token {
         let column = self.lines.offset(self.index);
         let start = self.index;
         let end = start + length;
@@ -163,19 +164,19 @@ impl<'a> Tokenizer<'a> {
             start,
             end,
             kind,
-            value,
+            value: value.to_string(),
             column,
         };
 
         let mut stack = self.stack.borrow_mut();
-        stack.push(token);
+        stack.push(token.clone());
 
         return token;
     }
 }
 
-impl<'a> Iterator for Tokenizer<'a> {
-    type Item = Token<'a>;
+impl Iterator for Tokenizer {
+    type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
         let letters = &self.letters[self.index..];
@@ -339,7 +340,7 @@ mod tests {
                 kind: Kind::Space,
                 start: 0,
                 end: 3,
-                value: "\r\n \t",
+                value: "\r\n \t".to_string(),
                 column: 1,
             }],
         )
@@ -353,7 +354,7 @@ mod tests {
                 kind: Kind::Word,
                 start: 0,
                 end: 1,
-                value: "ab",
+                value: "ab".to_string(),
                 column: 1,
             }]
         );
@@ -368,14 +369,14 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 1,
-                    value: "aa",
+                    value: "aa".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 4,
-                    value: "!bb",
+                    value: "!bb".to_string(),
                     column: 3,
                 }
             ]
@@ -391,21 +392,21 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 0,
-                    value: "a",
+                    value: "a".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 1,
                     end: 3,
-                    value: " \n ",
+                    value: " \n ".to_string(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 4,
                     end: 4,
-                    value: "b",
+                    value: "b".to_string(),
                     column: 2,
                 }
             ]
@@ -421,28 +422,28 @@ mod tests {
                     kind: Kind::OpenCurly,
                     start: 0,
                     end: 0,
-                    value: "{",
+                    value: "{".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Colon,
                     start: 1,
                     end: 1,
-                    value: ":",
+                    value: ":".to_string(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Semicolon,
                     start: 2,
                     end: 2,
-                    value: ";",
+                    value: ";".to_string(),
                     column: 3,
                 },
                 Token {
                     kind: Kind::CloseCurly,
                     start: 3,
                     end: 3,
-                    value: "}",
+                    value: "}".to_string(),
                     column: 4,
                 }
             ]
@@ -458,42 +459,42 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 1,
-                    value: "\\(",
+                    value: "\\(".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 3,
-                    value: "\\{",
+                    value: "\\{".to_string(),
                     column: 3,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 4,
                     end: 5,
-                    value: "\\\"",
+                    value: "\\\"".to_string(),
                     column: 5,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 6,
                     end: 7,
-                    value: "\\@",
+                    value: "\\@".to_string(),
                     column: 7,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 8,
                     end: 9,
-                    value: "\\\\",
+                    value: "\\\\".to_string(),
                     column: 9,
                 },
                 Token {
                     kind: Kind::String,
                     start: 10,
                     end: 11,
-                    value: "\"\"",
+                    value: "\"\"".to_string(),
                     column: 11,
                 }
             ]
@@ -509,14 +510,14 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 3,
-                    value: "\\\\\\\\",
+                    value: "\\\\\\\\".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::OpenCurly,
                     start: 4,
                     end: 4,
-                    value: "{",
+                    value: "{".to_string(),
                     column: 5,
                 }
             ]
@@ -531,7 +532,7 @@ mod tests {
                 kind: Kind::Brackets,
                 start: 0,
                 end: 3,
-                value: "(ab)",
+                value: "(ab)".to_string(),
                 column: 1,
             }]
         )
@@ -546,28 +547,28 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 0,
-                    value: "a",
+                    value: "a".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::OpenSquare,
                     start: 1,
                     end: 1,
-                    value: "[",
+                    value: "[".to_string(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 3,
-                    value: "bc",
+                    value: "bc".to_string(),
                     column: 3,
                 },
                 Token {
                     kind: Kind::CloseSquare,
                     start: 4,
                     end: 4,
-                    value: "]",
+                    value: "]".to_string(),
                     column: 5,
                 }
             ]
@@ -584,112 +585,112 @@ mod tests {
                     kind: Kind::OpenCurvy,
                     start: 0,
                     end: 0,
-                    value: "(",
+                    value: "(".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 1,
                     end: 2,
-                    value: "()",
+                    value: "()".to_string(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 3,
                     end: 3,
-                    value: ")",
+                    value: ")".to_string(),
                     column: 4,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 4,
                     end: 4,
-                    value: "(",
+                    value: "(".to_string(),
                     column: 5,
                 },
                 Token {
                     kind: Kind::String,
                     start: 5,
                     end: 6,
-                    value: "\"\"",
+                    value: "\"\"".to_string(),
                     column: 6,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 7,
                     end: 7,
-                    value: ")",
+                    value: ")".to_string(),
                     column: 8,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 8,
                     end: 8,
-                    value: "(",
+                    value: "(".to_string(),
                     column: 9,
                 },
                 Token {
                     kind: Kind::Comment,
                     start: 9,
                     end: 12,
-                    value: "/**/",
+                    value: "/**/".to_string(),
                     column: 10,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 13,
                     end: 13,
-                    value: ")",
+                    value: ")".to_string(),
                     column: 14,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 14,
                     end: 14,
-                    value: "(",
+                    value: "(".to_string(),
                     column: 15,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 15,
                     end: 16,
-                    value: "\\\\",
+                    value: "\\\\".to_string(),
                     column: 16,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 17,
                     end: 17,
-                    value: ")",
+                    value: ")".to_string(),
                     column: 18,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 18,
                     end: 18,
-                    value: "(",
+                    value: "(".to_string(),
                     column: 19,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 19,
                     end: 19,
-                    value: "\n",
+                    value: "\n".to_string(),
                     column: 20,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 20,
                     end: 20,
-                    value: ")",
+                    value: ")".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 21,
                     end: 21,
-                    value: "(",
+                    value: "(".to_string(),
                     column: 2,
                 },
             ]
@@ -705,14 +706,14 @@ mod tests {
                     kind: Kind::String,
                     start: 0,
                     end: 2,
-                    value: "'\"'",
+                    value: "'\"'".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::String,
                     start: 3,
                     end: 6,
-                    value: "\"\\\"\"",
+                    value: "\"\\\"\"".to_string(),
                     column: 4,
                 }
             ]
@@ -727,7 +728,7 @@ mod tests {
                 kind: Kind::String,
                 start: 0,
                 end: 3,
-                value: "\"\\\\\"",
+                value: "\"\\\\\"".to_string(),
                 column: 1,
             }]
         )
@@ -742,14 +743,14 @@ mod tests {
                     kind: Kind::String,
                     start: 0,
                     end: 3,
-                    value: "\"\n\n\"",
+                    value: "\"\n\n\"".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::String,
                     start: 4,
                     end: 7,
-                    value: "\"\n\n\"",
+                    value: "\"\n\n\"".to_string(),
                     column: 2,
                 }
             ]
@@ -765,14 +766,14 @@ mod tests {
                     kind: Kind::AtWord,
                     start: 0,
                     end: 4,
-                    value: "@word",
+                    value: "@word".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 5,
                     end: 5,
-                    value: " ",
+                    value: " ".to_string(),
                     column: 6,
                 }
             ]
@@ -788,56 +789,56 @@ mod tests {
                     kind: Kind::AtWord,
                     start: 0,
                     end: 3,
-                    value: "@one",
+                    value: "@one".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::OpenCurly,
                     start: 4,
                     end: 4,
-                    value: "{",
+                    value: "{".to_string(),
                     column: 5,
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 5,
                     end: 8,
-                    value: "@two",
+                    value: "@two".to_string(),
                     column: 6,
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 9,
                     end: 10,
-                    value: "()",
+                    value: "()".to_string(),
                     column: 10,
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 11,
                     end: 16,
-                    value: "@three",
+                    value: "@three".to_string(),
                     column: 12,
                 },
                 Token {
                     kind: Kind::String,
                     start: 17,
                     end: 18,
-                    value: "\"\"",
+                    value: "\"\"".to_string(),
                     column: 18,
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 19,
                     end: 23,
-                    value: "@four",
+                    value: "@four".to_string(),
                     column: 20,
                 },
                 Token {
                     kind: Kind::Semicolon,
                     start: 24,
                     end: 24,
-                    value: ";",
+                    value: ";".to_string(),
                     column: 25,
                 }
             ]
@@ -853,14 +854,14 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 2,
-                    value: "url",
+                    value: "url".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 3,
                     end: 8,
-                    value: "(/*\\))",
+                    value: "(/*\\))".to_string(),
                     column: 4,
                 }
             ]
@@ -877,28 +878,28 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 2,
-                    value: "url",
+                    value: "url".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 3,
                     end: 3,
-                    value: "(",
+                    value: "(".to_string(),
                     column: 4,
                 },
                 Token {
                     kind: Kind::String,
                     start: 4,
                     end: 6,
-                    value: "\")\"",
+                    value: "\")\"".to_string(),
                     column: 5,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 7,
                     end: 7,
-                    value: ")",
+                    value: ")".to_string(),
                     column: 8,
                 }
             ]
@@ -913,7 +914,7 @@ mod tests {
                 kind: Kind::AtWord,
                 start: 0,
                 end: 0,
-                value: "@",
+                value: "@".to_string(),
                 column: 1,
             }]
         )
@@ -927,7 +928,7 @@ mod tests {
                 kind: Kind::Comment,
                 start: 0,
                 end: 8,
-                value: "/* a\nb */",
+                value: "/* a\nb */".to_string(),
                 column: 1,
             }]
         )
@@ -942,21 +943,21 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 0,
-                    value: "a",
+                    value: "a".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Comment,
                     start: 1,
                     end: 7,
-                    value: "/* \n */",
+                    value: "/* \n */".to_string(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 8,
                     end: 8,
-                    value: "b",
+                    value: "b".to_string(),
                     column: 4,
                 },
             ]
@@ -972,21 +973,21 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 0,
-                    value: "a",
+                    value: "a".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 1,
                     end: 1,
-                    value: "\u{000C}",
+                    value: "\u{000C}".to_string(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 2,
-                    value: "b",
+                    value: "b".to_string(),
                     column: 3,
                 }
             ]
@@ -1002,35 +1003,35 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 0,
-                    value: "a",
+                    value: "a".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 1,
                     end: 1,
-                    value: "\r",
+                    value: "\r".to_string(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 2,
-                    value: "b",
+                    value: "b".to_string(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 3,
                     end: 4,
-                    value: "\r\n",
+                    value: "\r\n".to_string(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 5,
                     end: 5,
-                    value: "c",
+                    value: "c".to_string(),
                     column: 1,
                 },
             ]
@@ -1053,182 +1054,182 @@ mod tests {
                     start: 0,
                     end: 0,
                     kind: Kind::Word,
-                    value: "a",
+                    value: "a".to_string(),
                     column: 1
                 },
                 Token {
                     start: 1,
                     end: 1,
                     kind: Kind::Space,
-                    value: " ",
+                    value: " ".to_string(),
                     column: 2
                 },
                 Token {
                     start: 2,
                     end: 2,
                     kind: Kind::OpenCurly,
-                    value: "{",
+                    value: "{".to_string(),
                     column: 3
                 },
                 Token {
                     start: 3,
                     end: 5,
                     kind: Kind::Space,
-                    value: "\n  ",
+                    value: "\n  ".to_string(),
                     column: 4
                 },
                 Token {
                     start: 6,
                     end: 12,
                     kind: Kind::Word,
-                    value: "content",
+                    value: "content".to_string(),
                     column: 3
                 },
                 Token {
                     start: 13,
                     end: 13,
                     kind: Kind::Colon,
-                    value: ":",
+                    value: ":".to_string(),
                     column: 10
                 },
                 Token {
                     start: 14,
                     end: 14,
                     kind: Kind::Space,
-                    value: " ",
+                    value: " ".to_string(),
                     column: 11
                 },
                 Token {
                     start: 15,
                     end: 17,
                     kind: Kind::String,
-                    value: "\"a\"",
+                    value: "\"a\"".to_string(),
                     column: 12
                 },
                 Token {
                     start: 18,
                     end: 18,
                     kind: Kind::Semicolon,
-                    value: ";",
+                    value: ";".to_string(),
                     column: 15
                 },
                 Token {
                     start: 19,
                     end: 21,
                     kind: Kind::Space,
-                    value: "\n  ",
+                    value: "\n  ".to_string(),
                     column: 16
                 },
                 Token {
                     start: 22,
                     end: 26,
                     kind: Kind::Word,
-                    value: "width",
+                    value: "width".to_string(),
                     column: 3
                 },
                 Token {
                     start: 27,
                     end: 27,
                     kind: Kind::Colon,
-                    value: ":",
+                    value: ":".to_string(),
                     column: 8
                 },
                 Token {
                     start: 28,
                     end: 28,
                     kind: Kind::Space,
-                    value: " ",
+                    value: " ".to_string(),
                     column: 9
                 },
                 Token {
                     start: 29,
                     end: 32,
                     kind: Kind::Word,
-                    value: "calc",
+                    value: "calc".to_string(),
                     column: 10
                 },
                 Token {
                     start: 33,
                     end: 38,
                     kind: Kind::Brackets,
-                    value: "(1px;)",
+                    value: "(1px;)".to_string(),
                     column: 14
                 },
                 Token {
                     start: 39,
                     end: 41,
                     kind: Kind::Space,
-                    value: "\n  ",
+                    value: "\n  ".to_string(),
                     column: 20
                 },
                 Token {
                     start: 42,
                     end: 42,
                     kind: Kind::CloseCurly,
-                    value: "}",
+                    value: "}".to_string(),
                     column: 3
                 },
                 Token {
                     start: 43,
                     end: 43,
                     kind: Kind::Space,
-                    value: "\n",
+                    value: "\n".to_string(),
                     column: 4
                 },
                 Token {
                     start: 44,
                     end: 61,
                     kind: Kind::Comment,
-                    value: "/* small screen */",
+                    value: "/* small screen */".to_string(),
                     column: 1
                 },
                 Token {
                     start: 62,
                     end: 62,
                     kind: Kind::Space,
-                    value: "\n",
+                    value: "\n".to_string(),
                     column: 19
                 },
                 Token {
                     start: 63,
                     end: 68,
                     kind: Kind::AtWord,
-                    value: "@media",
+                    value: "@media".to_string(),
                     column: 1
                 },
                 Token {
                     start: 69,
                     end: 69,
                     kind: Kind::Space,
-                    value: " ",
+                    value: " ".to_string(),
                     column: 7
                 },
                 Token {
                     start: 70,
                     end: 75,
                     kind: Kind::Word,
-                    value: "screen",
+                    value: "screen".to_string(),
                     column: 8
                 },
                 Token {
                     start: 76,
                     end: 76,
                     kind: Kind::Space,
-                    value: " ",
+                    value: " ".to_string(),
                     column: 14
                 },
                 Token {
                     start: 77,
                     end: 77,
                     kind: Kind::OpenCurly,
-                    value: "{",
+                    value: "{".to_string(),
                     column: 15
                 },
                 Token {
                     start: 78,
                     end: 78,
                     kind: Kind::CloseCurly,
-                    value: "}",
+                    value: "}".to_string(),
                     column: 16
                 }
             ]
