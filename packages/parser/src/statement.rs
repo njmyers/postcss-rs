@@ -5,27 +5,27 @@ use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokens;
 
 #[derive(PartialEq, Eq, Debug)]
-pub struct Statement<'a> {
+pub struct Statement {
     pub open: bool,
-    pub values: Tokens<'a>,
+    pub values: Tokens,
 }
 
-impl<'a> Statement<'a> {
+impl Statement {
     pub fn new() -> Self {
         return Self::default();
     }
 
-    pub fn open(&mut self, token: Token<'a>) {
+    pub fn open(&mut self, token: Token) {
         self.open = true;
         self.values.push(token);
     }
 
-    pub fn close(&mut self, token: Token<'a>) {
+    pub fn close(&mut self, token: Token) {
         self.open = false;
         self.values.push(token);
     }
 
-    pub fn push(&mut self, token: Token<'a>) {
+    pub fn push(&mut self, token: Token) {
         self.values.push(token);
     }
 
@@ -34,7 +34,7 @@ impl<'a> Statement<'a> {
     }
 }
 
-impl<'a> Default for Statement<'a> {
+impl Default for Statement {
     fn default() -> Self {
         return Self {
             open: false,
@@ -43,7 +43,7 @@ impl<'a> Default for Statement<'a> {
     }
 }
 
-impl<'a> fmt::Display for Statement<'a> {
+impl fmt::Display for Statement {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         return write!(formatter, "{}", self.values);
     }

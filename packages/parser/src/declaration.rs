@@ -52,7 +52,7 @@ impl Declaration {
             }
         }
 
-        let declaration = Self::new(prop.value, &statement.to_string());
+        let declaration = Self::new(&prop.value, &statement.to_string());
         builder.declaration(declaration);
 
         return (builder.build(tokenizer, &[]), terminator);

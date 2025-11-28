@@ -57,14 +57,14 @@ impl Raw {
     ///     kind: Kind::Space,
     ///     start: 0,
     ///     end: 1,
-    ///     value: "\n",
+    ///     value: "\n".to_string(),
     ///     column: 0,
     /// });
     ///
-    /// assert_eq!(&raw, "\n");
+    /// assert_eq!(&raw, &"\n");
     /// ```
     pub fn push(&mut self, token: &Token) {
-        self.push_str(token.value);
+        self.push_str(&token.value);
     }
 
     /// Push a new string slice to a raw value
@@ -77,7 +77,7 @@ impl Raw {
     /// let mut raw = Raw::default();
     /// raw.push_str("\n");
     ///
-    /// assert_eq!(&raw, "\n");
+    /// assert_eq!(&raw, &"\n");
     /// ```
     pub fn push_str(&mut self, raws: &str) {
         match self.0 {
@@ -121,8 +121,8 @@ impl Deref for Raw {
     }
 }
 
-impl PartialEq<str> for Raw {
-    fn eq(&self, other: &str) -> bool {
+impl PartialEq<&str> for Raw {
+    fn eq(&self, other: &&str) -> bool {
         let option: &Option<String> = self;
 
         return match option {
