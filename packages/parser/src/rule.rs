@@ -47,6 +47,12 @@ impl Rule {
                     spaces.clear();
                 }
 
+                Kind::Comment => {
+                    let comment = Self::create_comment(token, &mut *tokenizer, &spaces);
+                    builder.append(comment);
+                    spaces.clear();
+                }
+
                 Kind::Space => spaces.push(token),
                 Kind::CloseCurly => break,
                 _ => break,
@@ -58,6 +64,16 @@ impl Rule {
 
     fn new(selector: String) -> Self {
         return Self { selector };
+    }
+
+    fn create_comment(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
+        let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
+        builder.ensure_empty_before();
+
+        let mut node = builder.build(tokenizer, &[]);
+        node.data = crate::Data::Comment;
+
+        return node;
     }
 }
 
@@ -84,6 +100,26 @@ impl Selector {
                 Kind::Brackets => statement.push(token),
                 Kind::Colon => statement.push(token),
                 Kind::Word => statement.push(token),
+                Kind::OpenSquare => statement.push(token),
+                Kind::CloseSquare => statement.push(token),
+                Kind::String => statement.push(token),
+                Kind::Comment => {
+                    // Check if there are more selector tokens after the comment
+                    if let Some(next) = tokenizer.peek() {
+                        match next.kind {
+                            Kind::Word
+                            | Kind::Colon
+                            | Kind::Brackets
+                            | Kind::OpenSquare
+                            | Kind::CloseSquare
+                            | Kind::String
+                            | Kind::Comment => statement.push(token),
+                            _ => builder.between(&token),
+                        }
+                    } else {
+                        builder.between(&token);
+                    }
+                }
                 Kind::Space => builder.between(&token),
                 Kind::OpenCurly => break,
                 _ => break,
