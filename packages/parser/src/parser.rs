@@ -36,6 +36,7 @@ impl<'a> Parser<'a> {
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
+                // Handle at-rules (@media, @supports, etc.)
                 Kind::AtWord => {
                     let (node, terminator) = AtRule::create(token, &mut tokenizer, &spaces);
                     root.terminator(&terminator);
@@ -43,12 +44,16 @@ impl<'a> Parser<'a> {
                     spaces.clear();
                 }
 
-                Kind::Word | Kind::OpenCurly => {
+                // Handle rules (selectors can start with word, bracket, or open curly)
+                Kind::Word | Kind::OpenCurly | Kind::OpenSquare => {
                     root.append(Rule::create(token, &mut tokenizer, &spaces));
                     spaces.clear();
                 }
 
+                // Handle whitespace
                 Kind::Space => spaces.push(token),
+
+                // Ignore other tokens
                 _ => (),
             };
         }
@@ -80,7 +85,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_at_rule_brackets() {
         let (ast, expected) = parse_and_read("at-rule-brackets.css", "at-rule-brackets.json");
         assert_eq!(ast, expected);

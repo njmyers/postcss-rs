@@ -36,30 +36,58 @@ impl AtRule {
         at_rule.set_params(params);
 
         let mut spaces = Tokens::new();
+        let mut body_terminator: Option<StatementTerminator> = None;
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
+                // Word tokens can be either declarations or rules
                 Kind::Word => {
                     if AtRuleDeclaration::test(tokenizer) {
-                        let (node, terminator) = Declaration::create(token, tokenizer, &spaces);
-                        builder.terminator(&terminator);
+                        let (node, child_terminator) = Declaration::create(token, tokenizer, &spaces);
+                        builder.terminator(&child_terminator);
                         builder.append(node);
+                        body_terminator = Some(child_terminator);
                         spaces.clear();
                     } else {
                         let node = Rule::create(token, tokenizer, &spaces);
                         builder.append(node);
+                        body_terminator = Some(terminator.clone());
+                        spaces.clear();
                     }
                 }
+
+                // Nested at-rules
                 Kind::AtWord => {
-                    let (node, terminator) = AtRule::create(token, tokenizer, &spaces);
-                    builder.terminator(&terminator);
+                    let (node, child_terminator) = AtRule::create(token, tokenizer, &spaces);
+                    builder.terminator(&child_terminator);
                     builder.append(node);
+                    body_terminator = Some(child_terminator);
                     spaces.clear();
                 }
+
+                // Rules starting with brackets or curly braces
+                Kind::OpenSquare | Kind::OpenCurly => {
+                    let node = Rule::create(token, tokenizer, &spaces);
+                    builder.append(node);
+                    body_terminator = Some(terminator.clone());
+                    spaces.clear();
+                }
+
+                // Whitespace handling
                 Kind::Space => spaces.push(token),
+
+                // End of at-rule body
                 Kind::CloseCurly => break,
+
+                // Unknown tokens end the at-rule body
                 _ => break,
             };
+        }
+
+        // Apply terminator to set semicolon in raws for at-rules with bodies
+        // Use the body terminator if we have one (indicating we entered the body)
+        if let Some(bt) = body_terminator {
+            builder.terminator(&bt);
         }
 
         builder.at_rule(at_rule);
@@ -133,14 +161,36 @@ impl Params {
             terminator.process(&token);
 
             match token.kind {
+                // Handle spacing before params start
                 Kind::Space if statement.is_empty() => spaces.push(token),
+                // Handle spacing within params - add to statement when brackets are open
+                Kind::Space if statement.is_open() => statement.push(token),
+                // Handle spacing after params - add to between
                 Kind::Space => parent.between(&token),
+
+                // Handle tokens that are part of params
                 Kind::Word => statement.push(token),
                 Kind::Brackets => statement.push(token),
-                Kind::OpenCurly => break,
                 Kind::Colon => statement.push(token),
                 Kind::String => statement.push(token),
-                _ => break,
+                Kind::OpenSquare => statement.push(token),
+                Kind::CloseSquare => statement.push(token),
+                Kind::OpenCurvy => statement.push(token),
+                Kind::CloseCurvy => statement.push(token),
+
+                // Handle curly braces - they can be part of params if nested, or signal end of params
+                Kind::OpenCurly if statement.is_open() => statement.push(token),
+                Kind::OpenCurly => break,
+                Kind::CloseCurly if statement.is_open() => statement.push(token),
+                Kind::CloseCurly => break,
+
+                // Handle semicolon - ends params only if not nested
+                Kind::Semicolon if statement.is_open() => statement.push(token),
+                Kind::Semicolon => break,
+
+                // Handle other tokens
+                Kind::Comment => statement.push(token),
+                Kind::AtWord => break,
             };
         }
 

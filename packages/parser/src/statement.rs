@@ -54,7 +54,7 @@ impl fmt::Display for Statement {
     }
 }
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct StatementTerminator {
     pub semicolon: bool,
 }
