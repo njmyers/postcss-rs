@@ -57,15 +57,39 @@ impl Bracket {
     }
 
     /// Tokenize the bracketed statement contained within brackets like `(word)`.
+    /// Properly handles nested brackets of all types: (), {}, and [].
     pub fn tokenize(letters: &[char]) -> usize {
         let lookbehind: usize = 1;
         let count = letters.len();
         let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
+        // Track depth of all bracket types
+        let mut curvy_depth = 0; // Track () parentheses
+        let mut curly_depth = 0; // Track {} curly braces
+        let mut square_depth = 0; // Track [] square brackets
+
         let result = letters_lookbehind.position(|(previous, letter)| {
+            // Skip if escaped or in string
+            if Escape::test(previous) || DoubleString::test(previous) {
+                return false;
+            }
+
+            // Update depth based on bracket type
+            match letter {
+                OPEN_CURVY => curvy_depth += 1,
+                CLOSE_CURVY => curvy_depth -= 1,
+                OPEN_CURLY => curly_depth += 1,
+                CLOSE_CURLY => curly_depth -= 1,
+                OPEN_SQUARE => square_depth += 1,
+                CLOSE_SQUARE => square_depth -= 1,
+                _ => {}
+            }
+
+            // Match closing paren only when all brackets are balanced
             return letter == CLOSE_CURVY
-                && !Escape::test(previous)
-                && !DoubleString::test(previous);
+                && curvy_depth < 0  // Found more ) than (
+                && curly_depth == 0 // All {} are balanced
+                && square_depth == 0; // All [] are balanced
         });
 
         let length = utils::unwrap_position(result, letters) + lookbehind;
