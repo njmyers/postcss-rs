@@ -57,6 +57,7 @@ impl fmt::Display for Statement {
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct StatementTerminator {
     pub semicolon: bool,
+    pub ended_by: Option<Kind>,
 }
 
 impl StatementTerminator {
@@ -67,11 +68,18 @@ impl StatementTerminator {
     pub fn process(&mut self, token: &Token) {
         self.semicolon = self.semicolon || token.kind == Kind::Semicolon;
     }
+
+    pub fn set_ended_by(&mut self, kind: Kind) {
+        self.ended_by = Some(kind);
+    }
 }
 
 impl Default for StatementTerminator {
     fn default() -> Self {
-        return Self { semicolon: false };
+        return Self {
+            semicolon: false,
+            ended_by: None,
+        };
     }
 }
 

@@ -38,60 +38,76 @@ impl AtRule {
         let mut spaces = Tokens::new();
         let mut body_terminator: Option<StatementTerminator> = None;
 
-        while let Some(token) = tokenizer.next() {
-            match token.kind {
-                // Word tokens can be either declarations or rules
-                Kind::Word => {
-                    if AtRuleDeclaration::test(tokenizer) {
-                        let (node, child_terminator) = Declaration::create(token, tokenizer, &spaces);
+        // Parse body if params were terminated by OpenCurly
+        if let Some(Kind::OpenCurly) = terminator.ended_by {
+            // Consume the OpenCurly and parse the body
+            tokenizer.next();
+            builder.ensure_empty_after();
+
+            while let Some(token) = tokenizer.next() {
+                match token.kind {
+                    // Word tokens can be either declarations or rules
+                    Kind::Word => {
+                        if AtRuleDeclaration::test(tokenizer) {
+                            let (node, child_terminator) =
+                                Declaration::create(token, tokenizer, &spaces);
+                            builder.terminator(&child_terminator);
+                            builder.append(node);
+                            body_terminator = Some(child_terminator);
+                            spaces.clear();
+                        } else {
+                            let node = Rule::create(token, tokenizer, &spaces);
+                            builder.append(node);
+                            body_terminator = Some(terminator.clone());
+                            spaces.clear();
+                        }
+                    }
+
+                    // Nested at-rules
+                    Kind::AtWord => {
+                        let (node, child_terminator) =
+                            AtRule::create(token, tokenizer, &spaces);
                         builder.terminator(&child_terminator);
                         builder.append(node);
                         body_terminator = Some(child_terminator);
                         spaces.clear();
-                    } else {
+                    }
+
+                    // Rules starting with brackets or curly braces
+                    Kind::OpenSquare | Kind::OpenCurly => {
                         let node = Rule::create(token, tokenizer, &spaces);
                         builder.append(node);
                         body_terminator = Some(terminator.clone());
                         spaces.clear();
                     }
-                }
 
-                // Nested at-rules
-                Kind::AtWord => {
-                    let (node, child_terminator) = AtRule::create(token, tokenizer, &spaces);
-                    builder.terminator(&child_terminator);
-                    builder.append(node);
-                    body_terminator = Some(child_terminator);
-                    spaces.clear();
-                }
+                    // Whitespace handling
+                    Kind::Space => spaces.push(token),
 
-                // Rules starting with brackets or curly braces
-                Kind::OpenSquare | Kind::OpenCurly => {
-                    let node = Rule::create(token, tokenizer, &spaces);
-                    builder.append(node);
-                    body_terminator = Some(terminator.clone());
-                    spaces.clear();
-                }
+                    // End of at-rule body
+                    Kind::CloseCurly => break,
 
-                // Whitespace handling
-                Kind::Space => spaces.push(token),
+                    // Unknown tokens end the at-rule body
+                    _ => break,
+                };
+            }
 
-                // End of at-rule body
-                Kind::CloseCurly => break,
-
-                // Unknown tokens end the at-rule body
-                _ => break,
-            };
-        }
-
-        // Apply terminator to set semicolon in raws for at-rules with bodies
-        // Use the body terminator if we have one (indicating we entered the body)
-        if let Some(bt) = body_terminator {
-            builder.terminator(&bt);
+            // Apply body terminator if we have one
+            body_terminator.iter().for_each(|bt| builder.terminator(bt));
         }
 
         builder.at_rule(at_rule);
-        let node = builder.build(tokenizer, &spaces);
+
+        // Build the node based on terminator
+        let node = match terminator.ended_by {
+            // Ended by CloseCurly (parent's closing brace) - don't set end
+            Some(Kind::CloseCurly) => {
+                builder.node.raws.after.push_tokens(&spaces);
+                builder.node
+            }
+            // All other cases - set end source
+            _ => builder.build(tokenizer, &spaces),
+        };
 
         return (node, terminator);
     }
@@ -157,7 +173,32 @@ impl Params {
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
 
-        while let Some(token) = tokenizer.next() {
+        loop {
+            // Peek at the next token
+            let peeked_token = match tokenizer.peek() {
+                Some(t) => t,
+                None => break,
+            };
+
+            // Check if this token should end params without being consumed
+            match peeked_token.kind {
+                Kind::OpenCurly if !statement.is_open() => {
+                    terminator.set_ended_by(Kind::OpenCurly);
+                    break;
+                }
+                Kind::CloseCurly if !statement.is_open() => {
+                    terminator.set_ended_by(Kind::CloseCurly);
+                    break;
+                }
+                Kind::AtWord => {
+                    terminator.set_ended_by(Kind::AtWord);
+                    break;
+                }
+                _ => {}
+            };
+
+            // Consume the token
+            let token = tokenizer.next().unwrap();
             terminator.process(&token);
 
             match token.kind {
@@ -178,19 +219,22 @@ impl Params {
                 Kind::OpenCurvy => statement.push(token),
                 Kind::CloseCurvy => statement.push(token),
 
-                // Handle curly braces - they can be part of params if nested, or signal end of params
+                // Handle curly braces - they can be part of params if nested
                 Kind::OpenCurly if statement.is_open() => statement.push(token),
-                Kind::OpenCurly => break,
                 Kind::CloseCurly if statement.is_open() => statement.push(token),
-                Kind::CloseCurly => break,
 
                 // Handle semicolon - ends params only if not nested
                 Kind::Semicolon if statement.is_open() => statement.push(token),
-                Kind::Semicolon => break,
+                Kind::Semicolon => {
+                    terminator.set_ended_by(Kind::Semicolon);
+                    break;
+                }
 
                 // Handle other tokens
                 Kind::Comment => statement.push(token),
-                Kind::AtWord => break,
+
+                // These cases should not be reached due to peek check above
+                Kind::OpenCurly | Kind::CloseCurly | Kind::AtWord => break,
             };
         }
 
