@@ -38,17 +38,22 @@ impl Declaration {
                     }
                     // Space with newline ends declaration when not open
                     Kind::Space if peeked.value == characters::NEWLINE && !statement.is_open() => break,
-                    // Space before CloseCurly is trailing - don't consume it
+
+                    // Check for trailing spaces before CloseCurly
+                    // We need two-token lookahead: Space followed by CloseCurly
+                    // Clone is needed to peek ahead without consuming tokens, which
+                    // preserves correct source end positions for the declaration
                     Kind::Space if !statement.is_empty() && !statement.is_open() => {
-                        // Create a clone to peek ahead
-                        let mut temp_tokenizer = tokenizer.clone();
-                        temp_tokenizer.next(); // consume the space
-                        if let Some(next) = temp_tokenizer.peek() {
-                            if next.kind == Kind::CloseCurly {
-                                // This space is trailing before close brace - don't consume it
+                        let mut lookahead = tokenizer.clone();
+                        lookahead.next(); // skip the space
+
+                        match lookahead.peek() {
+                            Some(next) if next.kind == Kind::CloseCurly => {
+                                // Trailing space before brace - don't consume it
                                 terminator.set_ended_by(Kind::CloseCurly);
                                 break;
                             }
+                            _ => {} // Not trailing, will be consumed normally
                         }
                     }
                     _ => {}
