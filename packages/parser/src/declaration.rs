@@ -32,21 +32,21 @@ impl Declaration {
 
             match token.kind {
                 Kind::OpenCurly => statement.open(token),
-                Kind::CloseCurly if statement.open => statement.close(token),
+                Kind::CloseCurly if statement.is_open() => statement.close(token),
 
-                Kind::CloseCurly if !statement.open => break,
-                Kind::Semicolon if !statement.open => break,
-                Kind::Colon if !statement.open => builder.between(&token),
+                Kind::CloseCurly if !statement.is_open() => break,
+                Kind::Semicolon if !statement.is_open() => break,
+                Kind::Colon if !statement.is_open() => builder.between(&token),
 
                 Kind::Space if !statement.is_empty() => statement.push(token),
-                Kind::Space if !statement.open => builder.between(&token),
+                Kind::Space if !statement.is_open() => builder.between(&token),
 
                 _ => statement.push(token),
             }
 
             if let Some(token) = tokenizer.peek() {
                 match token.kind {
-                    Kind::Space if token.value == characters::NEWLINE && !statement.open => break,
+                    Kind::Space if token.value == characters::NEWLINE && !statement.is_open() => break,
                     _ => (),
                 }
             }
