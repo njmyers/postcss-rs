@@ -1,5 +1,5 @@
 {
-  "name": "postcss-rs-node-freebsd-x64",
+  "name": "@postcss-rs/node-freebsd-x64",
   "version": "0.0.0",
   "os": [
     "freebsd"
@@ -7,9 +7,9 @@
   "cpu": [
     "x64"
   ],
-  "main": "postcss-rs-node.freebsd-x64.node",
+  "main": "@postcss-rs/node.freebsd-x64.node",
   "files": [
-    "postcss-rs-node.freebsd-x64.node"
+    "@postcss-rs/node.freebsd-x64.node"
   ],
   "license": "MIT",
   "engines": {

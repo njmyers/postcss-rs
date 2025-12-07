@@ -1,5 +1,5 @@
 {
-  "name": "postcss-rs-node-darwin-x64",
+  "name": "@postcss-rs/node-darwin-x64",
   "version": "0.0.0",
   "os": [
     "darwin"
@@ -7,9 +7,9 @@
   "cpu": [
     "x64"
   ],
-  "main": "postcss-rs-node.darwin-x64.node",
+  "main": "@postcss-rs/node.darwin-x64.node",
   "files": [
-    "postcss-rs-node.darwin-x64.node"
+    "@postcss-rs/node.darwin-x64.node"
   ],
   "license": "MIT",
   "engines": {

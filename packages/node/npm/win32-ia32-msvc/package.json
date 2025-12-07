@@ -1,5 +1,5 @@
 {
-  "name": "postcss-rs-node-win32-ia32-msvc",
+  "name": "@postcss-rs/node-win32-ia32-msvc",
   "version": "0.0.0",
   "os": [
     "win32"
@@ -7,9 +7,9 @@
   "cpu": [
     "ia32"
   ],
-  "main": "postcss-rs-node.win32-ia32-msvc.node",
+  "main": "@postcss-rs/node.win32-ia32-msvc.node",
   "files": [
-    "postcss-rs-node.win32-ia32-msvc.node"
+    "@postcss-rs/node.win32-ia32-msvc.node"
   ],
   "license": "MIT",
   "engines": {

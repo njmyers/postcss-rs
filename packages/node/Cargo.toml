@@ -1,6 +1,6 @@
 [package]
 edition = "2021"
-name = "postcss-rs"
+name = "postcss-rs-node"
 version = "0.0.0"
 
 [lib]
@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 napi = "3"
 napi-derive = "3"
 postcss-rs-parser = { path = "../parser" }
+postcss-rs-tokenizer = { path = "../tokenizer" }
 
 [build-dependencies]
 napi-build = "2"
-

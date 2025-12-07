@@ -1,5 +1,5 @@
 {
-  "name": "postcss-rs-node-linux-x64-gnu",
+  "name": "@postcss-rs/node-linux-x64-gnu",
   "version": "0.0.0",
   "os": [
     "linux"
@@ -7,9 +7,9 @@
   "cpu": [
     "x64"
   ],
-  "main": "postcss-rs-node.linux-x64-gnu.node",
+  "main": "@postcss-rs/node.linux-x64-gnu.node",
   "files": [
-    "postcss-rs-node.linux-x64-gnu.node"
+    "@postcss-rs/node.linux-x64-gnu.node"
   ],
   "license": "MIT",
   "engines": {

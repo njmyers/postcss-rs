@@ -1,5 +1,5 @@
 {
-  "name": "postcss-rs-node-linux-arm-gnueabihf",
+  "name": "@postcss-rs/node-linux-arm-gnueabihf",
   "version": "0.0.0",
   "os": [
     "linux"
@@ -7,9 +7,9 @@
   "cpu": [
     "arm"
   ],
-  "main": "postcss-rs-node.linux-arm-gnueabihf.node",
+  "main": "@postcss-rs/node.linux-arm-gnueabihf.node",
   "files": [
-    "postcss-rs-node.linux-arm-gnueabihf.node"
+    "@postcss-rs/node.linux-arm-gnueabihf.node"
   ],
   "license": "MIT",
   "engines": {

@@ -1,5 +1,5 @@
 {
-  "name": "postcss-rs-node-linux-arm64-musl",
+  "name": "@postcss-rs/node-linux-arm64-musl",
   "version": "0.0.0",
   "os": [
     "linux"
@@ -7,9 +7,9 @@
   "cpu": [
     "arm64"
   ],
-  "main": "postcss-rs-node.linux-arm64-musl.node",
+  "main": "@postcss-rs/node.linux-arm64-musl.node",
   "files": [
-    "postcss-rs-node.linux-arm64-musl.node"
+    "@postcss-rs/node.linux-arm64-musl.node"
   ],
   "license": "MIT",
   "engines": {

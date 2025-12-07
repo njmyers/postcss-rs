@@ -1,3 +1,3 @@
-# `postcss-rs-node-linux-x64-musl`
+# `@postcss-rs/node-linux-x64-musl`
 
-This is the **x86_64-unknown-linux-musl** binary for `postcss-rs-node`
+This is the **x86_64-unknown-linux-musl** binary for `@postcss-rs/node`
