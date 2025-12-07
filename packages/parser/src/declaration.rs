@@ -27,28 +27,57 @@ impl Declaration {
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
 
-        while let Some(token) = tokenizer.next() {
+        loop {
+            // Peek at next token to check for terminators
+            if let Some(peeked) = tokenizer.peek() {
+                match peeked.kind {
+                    // CloseCurly ends declaration without being consumed (belongs to parent)
+                    Kind::CloseCurly if !statement.is_open() => {
+                        terminator.set_ended_by(Kind::CloseCurly);
+                        break;
+                    }
+                    // Space with newline ends declaration when not open
+                    Kind::Space if peeked.value == characters::NEWLINE && !statement.is_open() => break,
+                    // Space before CloseCurly is trailing - don't consume it
+                    Kind::Space if !statement.is_empty() && !statement.is_open() => {
+                        // Create a clone to peek ahead
+                        let mut temp_tokenizer = tokenizer.clone();
+                        temp_tokenizer.next(); // consume the space
+                        if let Some(next) = temp_tokenizer.peek() {
+                            if next.kind == Kind::CloseCurly {
+                                // This space is trailing before close brace - don't consume it
+                                terminator.set_ended_by(Kind::CloseCurly);
+                                break;
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            // Consume the token
+            let token = match tokenizer.next() {
+                Some(t) => t,
+                None => break,
+            };
+
             terminator.process(&token);
 
             match token.kind {
                 Kind::OpenCurly => statement.open(token),
                 Kind::CloseCurly if statement.is_open() => statement.close(token),
 
-                Kind::CloseCurly if !statement.is_open() => break,
-                Kind::Semicolon if !statement.is_open() => break,
+                // Semicolon ends declaration and is consumed
+                Kind::Semicolon if !statement.is_open() => {
+                    terminator.set_ended_by(Kind::Semicolon);
+                    break;
+                }
                 Kind::Colon if !statement.is_open() => builder.between(&token),
 
                 Kind::Space if !statement.is_empty() => statement.push(token),
                 Kind::Space if !statement.is_open() => builder.between(&token),
 
                 _ => statement.push(token),
-            }
-
-            if let Some(token) = tokenizer.peek() {
-                match token.kind {
-                    Kind::Space if token.value == characters::NEWLINE && !statement.is_open() => break,
-                    _ => (),
-                }
             }
         }
 
