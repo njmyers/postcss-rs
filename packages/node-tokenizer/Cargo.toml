@@ -7,12 +7,9 @@ version = "0.0.0"
 crate-type = ["cdylib"]
 
 [dependencies]
-napi = "2"
-napi-derive = "2"
+napi = "3"
+napi-derive = "3"
 postcss-rs-tokenizer = { path = "../tokenizer" }
 
 [build-dependencies]
 napi-build = "2"
-
-[profile.release]
-lto = true

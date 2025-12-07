@@ -1,10 +1,9 @@
 #![deny(clippy::all)]
 #![allow(clippy::needless_return)]
 
-#[macro_use]
-extern crate napi_derive;
-
 use napi::bindgen_prelude::*;
+use napi_derive::napi;
+
 use napi::Env;
 use napi::Result;
 use napi::Task;

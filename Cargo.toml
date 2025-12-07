@@ -4,5 +4,9 @@ members = [
   "packages/tokenizer",
   "packages/node-tokenizer",
   "packages/node-postcss",
+  "packages/node",
 ]
 resolver = "2"
+
+[profile.release]
+lto = true
