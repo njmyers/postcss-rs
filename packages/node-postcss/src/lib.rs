@@ -1,7 +1,6 @@
 #![deny(clippy::all)]
 #![allow(clippy::needless_return)]
 
-use napi::bindgen_prelude::*;
 use napi_derive::napi;
 
 // use napi::*;
