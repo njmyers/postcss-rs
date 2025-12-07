@@ -24,7 +24,7 @@ impl Escape {
         let position = utils::unwrap_position(result, letters);
         let string_length = cmp::min(position + lookbehind, count);
 
-        if string_length % 2 == 0 {
+        if string_length.is_multiple_of(2) {
             return utils::back(string_length);
         }
 
