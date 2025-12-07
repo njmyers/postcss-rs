@@ -202,12 +202,12 @@ impl Params {
             terminator.process(&token);
 
             match token.kind {
-                // Handle spacing before params start
-                Kind::Space if statement.is_empty() => spaces.push(token),
-                // Handle spacing within params - add to statement when brackets are open
-                Kind::Space if statement.is_open() => statement.push(token),
-                // Handle spacing after params - add to between
-                Kind::Space => parent.between(&token),
+                // Handle spacing and comments before params start
+                Kind::Space | Kind::Comment if statement.is_empty() => spaces.push(token),
+                // Handle spacing and comments within params - add to statement when brackets are open
+                Kind::Space | Kind::Comment if statement.is_open() => statement.push(token),
+                // Handle spacing and comments after params - add to between
+                Kind::Space | Kind::Comment => parent.between(&token),
 
                 // Handle tokens that are part of params
                 Kind::Word => statement.push(token),
@@ -229,9 +229,6 @@ impl Params {
                     terminator.set_ended_by(Kind::Semicolon);
                     break;
                 }
-
-                // Handle other tokens
-                Kind::Comment => statement.push(token),
 
                 // These cases should not be reached due to peek check above
                 Kind::OpenCurly | Kind::CloseCurly | Kind::AtWord => break,
