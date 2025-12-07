@@ -121,7 +121,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_at_rule_params() {
         let (ast, expected) = parse_and_read("atrule-params.css", "atrule-params.json");
         assert_eq!(ast, expected);
