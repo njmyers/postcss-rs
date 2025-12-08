@@ -40,16 +40,12 @@ impl Declaration {
                     Kind::Space if peeked.value == characters::NEWLINE && !statement.is_open() => break,
 
                     // Check for trailing spaces before CloseCurly
-                    // We need two-token lookahead: Space followed by CloseCurly
-                    // Clone is needed to peek ahead without consuming tokens, which
-                    // preserves correct source end positions for the declaration
+                    // We need two-token lookahead: current space + what follows
+                    // Use peek_nth(2) to avoid consuming tokens and preserve correct source positions
                     Kind::Space if !statement.is_empty() && !statement.is_open() => {
-                        let mut lookahead = tokenizer.clone();
-                        lookahead.next(); // skip the space
-
-                        match lookahead.peek() {
+                        match tokenizer.peek_nth(2) {
                             Some(next) if next.kind == Kind::CloseCurly => {
-                                // Trailing space before brace - don't consume it
+                                // Space followed by CloseCurly - trailing space, don't consume
                                 terminator.set_ended_by(Kind::CloseCurly);
                                 break;
                             }
