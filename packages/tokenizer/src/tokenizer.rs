@@ -140,6 +140,22 @@ impl Tokenizer {
         return self.clone().next();
     }
 
+    /// Peek ahead n tokens without consuming them
+    ///
+    /// peek_nth(1) is equivalent to peek()
+    /// peek_nth(2) returns the token after the next token
+    pub fn peek_nth(&self, n: usize) -> Option<Token> {
+        let mut lookahead = self.clone();
+
+        // Advance n-1 times
+        for _ in 1..n {
+            lookahead.next()?;
+        }
+
+        // Return the nth token
+        return lookahead.next();
+    }
+
     pub fn prev(&self) -> Option<Token> {
         let stack = self.stack.borrow();
         return stack.last().cloned();
