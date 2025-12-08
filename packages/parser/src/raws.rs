@@ -20,6 +20,10 @@ pub struct Raws {
     pub semicolon: Semicolon,
     #[serde(default, skip_serializing_if = "Raw::skip")]
     pub after: Raw,
+    #[serde(default, skip_serializing_if = "Raw::skip")]
+    pub left: Raw,
+    #[serde(default, skip_serializing_if = "Raw::skip")]
+    pub right: Raw,
 }
 
 impl Default for Raws {
@@ -30,6 +34,8 @@ impl Default for Raws {
             after_name: Raw::default(),
             semicolon: Semicolon::default(),
             after: Raw::default(),
+            left: Raw::default(),
+            right: Raw::default(),
         };
     }
 }

@@ -2,6 +2,7 @@ use std::str;
 use std::str::Utf8Error;
 
 use crate::AtRule;
+use crate::Comment;
 use crate::Node;
 use crate::NodeBuilder;
 use crate::Rule;
@@ -47,6 +48,12 @@ impl<'a> Parser<'a> {
                 // Handle rules (selectors can start with word, bracket, or open curly)
                 Kind::Word | Kind::OpenCurly | Kind::OpenSquare => {
                     root.append(Rule::create(token, &mut tokenizer, &spaces));
+                    spaces.clear();
+                }
+
+                // Handle comments
+                Kind::Comment => {
+                    root.append(Comment::create(token, &mut tokenizer, &spaces));
                     spaces.clear();
                 }
 
@@ -152,7 +159,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_comments() {
         let (ast, expected) = parse_and_read("comments.css", "comments.json");
         assert_eq!(ast, expected);

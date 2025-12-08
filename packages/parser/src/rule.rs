@@ -67,13 +67,7 @@ impl Rule {
     }
 
     fn create_comment(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
-        let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
-        builder.ensure_empty_before();
-
-        let mut node = builder.build(tokenizer, &[]);
-        node.data = crate::Data::Comment;
-
-        return node;
+        return crate::Comment::create(token, tokenizer, spaces);
     }
 }
 

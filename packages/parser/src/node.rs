@@ -81,7 +81,12 @@ pub enum Data {
     #[serde(rename = "atrule")]
     AtRule(AtRule),
     #[serde(rename = "comment")]
-    Comment,
+    Comment(CommentData),
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct CommentData {
+    pub text: String,
 }
 
 impl Default for Data {
@@ -152,6 +157,24 @@ impl NodeBuilder {
 
     pub fn declaration(&mut self, data: Declaration) {
         self.node.data = Data::Declaration(data);
+    }
+
+    pub fn comment(&mut self) {
+        // Comment data is already set by comment_text
+    }
+
+    pub fn comment_text(&mut self, text: &str) {
+        self.node.data = Data::Comment(CommentData {
+            text: String::from(text),
+        });
+    }
+
+    pub fn comment_left(&mut self, left: &str) {
+        self.node.raws.left.push_str(left);
+    }
+
+    pub fn comment_right(&mut self, right: &str) {
+        self.node.raws.right.push_str(right);
     }
 
     pub fn ensure_empty_before(&mut self) {
