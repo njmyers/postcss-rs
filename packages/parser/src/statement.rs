@@ -8,6 +8,7 @@ use postcss_rs_tokenizer::Tokens;
 pub struct Statement {
     pub brackets: BracketDepth,
     pub values: Tokens,
+    pub values_clean: Tokens,
 }
 
 impl Statement {
@@ -17,15 +18,23 @@ impl Statement {
 
     pub fn open(&mut self, token: Token) {
         self.brackets.process(&token);
+        self.values_clean.push(token.clone());
         self.values.push(token);
     }
 
     pub fn close(&mut self, token: Token) {
         self.brackets.process(&token);
+        self.values_clean.push(token.clone());
         self.values.push(token);
     }
 
     pub fn push(&mut self, token: Token) {
+        self.brackets.process(&token);
+        self.values_clean.push(token.clone());
+        self.values.push(token);
+    }
+
+    pub fn push_raw_only(&mut self, token: Token) {
         self.brackets.process(&token);
         self.values.push(token);
     }
@@ -37,6 +46,10 @@ impl Statement {
     pub fn is_open(&self) -> bool {
         return self.brackets.is_open();
     }
+
+    pub fn to_string_clean(&self) -> String {
+        return self.values_clean.to_string();
+    }
 }
 
 impl Default for Statement {
@@ -44,6 +57,7 @@ impl Default for Statement {
         return Self {
             brackets: BracketDepth::new(),
             values: Tokens::new(),
+            values_clean: Tokens::new(),
         };
     }
 }

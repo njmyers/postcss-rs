@@ -20,6 +20,12 @@ pub struct Raws {
     pub semicolon: Semicolon,
     #[serde(default, skip_serializing_if = "Raw::skip")]
     pub after: Raw,
+    #[serde(default, skip_serializing_if = "Raw::skip")]
+    pub left: Raw,
+    #[serde(default, skip_serializing_if = "Raw::skip")]
+    pub right: Raw,
+    #[serde(default, skip_serializing_if = "ValueRaw::skip")]
+    pub value: ValueRaw,
 }
 
 impl Default for Raws {
@@ -30,6 +36,9 @@ impl Default for Raws {
             after_name: Raw::default(),
             semicolon: Semicolon::default(),
             after: Raw::default(),
+            left: Raw::default(),
+            right: Raw::default(),
+            value: ValueRaw::default(),
         };
     }
 }
@@ -204,5 +213,36 @@ impl Deref for Semicolon {
 
     fn deref(&self) -> &Option<bool> {
         return &self.0;
+    }
+}
+
+/// A struct representing value raws with both the raw (with comments) and clean (without comments) versions
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
+pub struct ValueRaw {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw: Option<String>,
+}
+
+impl ValueRaw {
+    pub fn new(value: String, raw: String) -> Self {
+        return Self {
+            value: Some(value),
+            raw: Some(raw),
+        };
+    }
+
+    pub fn skip(&self) -> bool {
+        return self.value.is_none() && self.raw.is_none();
+    }
+}
+
+impl Default for ValueRaw {
+    fn default() -> Self {
+        return Self {
+            value: None,
+            raw: None,
+        };
     }
 }

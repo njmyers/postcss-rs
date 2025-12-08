@@ -39,6 +39,14 @@ impl Declaration {
                     // Space with newline ends declaration when not open
                     Kind::Space if peeked.value == characters::NEWLINE && !statement.is_open() => break,
 
+                    // Space with newline followed by comment or CloseCurly ends declaration
+                    Kind::Space if peeked.value.starts_with(characters::NEWLINE) && !statement.is_open() => {
+                        match tokenizer.peek_nth(2) {
+                            Some(next) if next.kind == Kind::Comment || next.kind == Kind::CloseCurly => break,
+                            _ => {} // Not before terminator, continue
+                        }
+                    }
+
                     // Check for trailing spaces before CloseCurly
                     // We need two-token lookahead: current space + what follows
                     // Use peek_nth(2) to avoid consuming tokens and preserve correct source positions
@@ -75,6 +83,20 @@ impl Declaration {
                 }
                 Kind::Colon if !statement.is_open() => builder.between(&token),
 
+                // Comment inside value - check if it's before an opening paren
+                Kind::Comment if !statement.is_empty() => {
+                    // Check if next token is opening paren - if so, keep comment in both versions
+                    match tokenizer.peek() {
+                        Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
+                            statement.push(token);
+                        }
+                        _ => {
+                            // Regular inline comment - only add to raw, not clean
+                            statement.push_raw_only(token);
+                        }
+                    }
+                }
+
                 Kind::Space if !statement.is_empty() => statement.push(token),
                 Kind::Space if !statement.is_open() => builder.between(&token),
 
@@ -82,8 +104,16 @@ impl Declaration {
             }
         }
 
-        let declaration = Self::new(&prop.value, &statement.to_string());
+        // Use clean value (without comments) as the main value
+        let clean_value = statement.to_string_clean();
+        let declaration = Self::new(&prop.value, &clean_value);
         builder.declaration(declaration);
+
+        // If raw differs from clean (inline comments were stripped), store both in raws.value
+        let raw_value = statement.to_string();
+        if raw_value != clean_value {
+            builder.value_raw(&clean_value, &raw_value);
+        }
 
         return (builder.build(tokenizer, &[]), terminator);
     }
