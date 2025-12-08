@@ -25,7 +25,7 @@ impl Declaration {
     ) -> (Node, StatementTerminator) {
         let mut builder = NodeBuilder::new(&prop, tokenizer, spaces);
         let mut statement = Statement::new();
-        let mut statement_no_comments = Statement::new();
+        let mut value_statement = Statement::new();
         let mut has_inline_comments = false;
         let mut terminator = StatementTerminator::new();
 
@@ -77,11 +77,11 @@ impl Declaration {
             match token.kind {
                 Kind::OpenCurly => {
                     statement.open(token.clone());
-                    statement_no_comments.open(token);
+                    value_statement.open(token);
                 }
                 Kind::CloseCurly if statement.is_open() => {
                     statement.close(token.clone());
-                    statement_no_comments.close(token);
+                    value_statement.close(token);
                 }
 
                 // Semicolon ends declaration and is consumed
@@ -99,31 +99,31 @@ impl Declaration {
                     match tokenizer.peek() {
                         Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
                             // Comment before function call - keep it
-                            statement_no_comments.push(token);
+                            value_statement.push(token);
                         }
                         _ => {
                             // Regular inline comment - strip it
                             has_inline_comments = true;
-                            // Don't add to statement_no_comments
+                            // Don't add to value_statement
                         }
                     }
                 }
 
                 Kind::Space if !statement.is_empty() => {
                     statement.push(token.clone());
-                    statement_no_comments.push(token);
+                    value_statement.push(token);
                 }
                 Kind::Space if !statement.is_open() => builder.between(&token),
 
                 _ => {
                     statement.push(token.clone());
-                    statement_no_comments.push(token);
+                    value_statement.push(token);
                 }
             }
         }
 
         // Use clean value (without comments) as the main value
-        let clean_value = statement_no_comments.to_string();
+        let clean_value = value_statement.to_string();
         let declaration = Self::new(&prop.value, &clean_value);
         builder.declaration(declaration);
 
