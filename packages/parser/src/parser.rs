@@ -133,7 +133,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_between() {
         let (ast, expected) = parse_and_read("between.css", "between.json");
         assert_eq!(ast, expected);
