@@ -25,6 +25,8 @@ impl Declaration {
     ) -> (Node, StatementTerminator) {
         let mut builder = NodeBuilder::new(&prop, tokenizer, spaces);
         let mut statement = Statement::new();
+        let mut statement_no_comments = Statement::new();
+        let mut has_inline_comments = false;
         let mut terminator = StatementTerminator::new();
 
         loop {
@@ -38,6 +40,14 @@ impl Declaration {
                     }
                     // Space with newline ends declaration when not open
                     Kind::Space if peeked.value == characters::NEWLINE && !statement.is_open() => break,
+
+                    // Space with newline followed by comment or CloseCurly ends declaration
+                    Kind::Space if peeked.value.starts_with(characters::NEWLINE) && !statement.is_open() => {
+                        match tokenizer.peek_nth(2) {
+                            Some(next) if next.kind == Kind::Comment || next.kind == Kind::CloseCurly => break,
+                            _ => {} // Not before terminator, continue
+                        }
+                    }
 
                     // Check for trailing spaces before CloseCurly
                     // We need two-token lookahead: current space + what follows
@@ -65,8 +75,14 @@ impl Declaration {
             terminator.process(&token);
 
             match token.kind {
-                Kind::OpenCurly => statement.open(token),
-                Kind::CloseCurly if statement.is_open() => statement.close(token),
+                Kind::OpenCurly => {
+                    statement.open(token.clone());
+                    statement_no_comments.open(token);
+                }
+                Kind::CloseCurly if statement.is_open() => {
+                    statement.close(token.clone());
+                    statement_no_comments.close(token);
+                }
 
                 // Semicolon ends declaration and is consumed
                 Kind::Semicolon if !statement.is_open() => {
@@ -75,15 +91,47 @@ impl Declaration {
                 }
                 Kind::Colon if !statement.is_open() => builder.between(&token),
 
-                Kind::Space if !statement.is_empty() => statement.push(token),
+                // Comment inside value - check if it's before an opening paren
+                Kind::Comment if !statement.is_empty() => {
+                    statement.push(token.clone());
+
+                    // Check if next token is opening paren - if so, keep comment in both versions
+                    match tokenizer.peek() {
+                        Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
+                            // Comment before function call - keep it
+                            statement_no_comments.push(token);
+                        }
+                        _ => {
+                            // Regular inline comment - strip it
+                            has_inline_comments = true;
+                            // Don't add to statement_no_comments
+                        }
+                    }
+                }
+
+                Kind::Space if !statement.is_empty() => {
+                    statement.push(token.clone());
+                    statement_no_comments.push(token);
+                }
                 Kind::Space if !statement.is_open() => builder.between(&token),
 
-                _ => statement.push(token),
+                _ => {
+                    statement.push(token.clone());
+                    statement_no_comments.push(token);
+                }
             }
         }
 
-        let declaration = Self::new(&prop.value, &statement.to_string());
+        // Use clean value (without comments) as the main value
+        let clean_value = statement_no_comments.to_string();
+        let declaration = Self::new(&prop.value, &clean_value);
         builder.declaration(declaration);
+
+        // If there were inline comments, store both raw and clean in raws.value
+        if has_inline_comments {
+            let raw_value = statement.to_string();
+            builder.value_raw(&clean_value, &raw_value);
+        }
 
         return (builder.build(tokenizer, &[]), terminator);
     }

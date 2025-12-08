@@ -19,23 +19,21 @@ impl Comment {
         let (text, left, right) = if value.len() >= 4 {
             let inner = &value[2..value.len() - 2];
 
-            // Count leading spaces
+            // Count leading spaces first
             let left_count = inner.chars().take_while(|c| c.is_whitespace()).count();
-            // Count trailing spaces
-            let right_count = inner.chars().rev().take_while(|c| c.is_whitespace()).count();
-
-            // Extract each part
             let left = &inner[..left_count];
+
+            // Count trailing spaces from what remains after left spaces
+            let remaining = &inner[left_count..];
+            let right_count = remaining.chars().rev().take_while(|c| c.is_whitespace()).count();
             let right = if right_count > 0 {
-                &inner[inner.len() - right_count..]
+                &remaining[remaining.len() - right_count..]
             } else {
                 ""
             };
-            let text = if inner.len() > left_count + right_count {
-                &inner[left_count..inner.len() - right_count]
-            } else {
-                ""
-            };
+
+            // Text is what's between left and right spaces
+            let text = &remaining[..remaining.len() - right_count];
 
             (text, left, right)
         } else {

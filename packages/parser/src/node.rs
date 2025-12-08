@@ -177,6 +177,10 @@ impl NodeBuilder {
         self.node.raws.right.push_str(right);
     }
 
+    pub fn value_raw(&mut self, value: &str, raw: &str) {
+        self.node.raws.value = crate::ValueRaw::new(String::from(value), String::from(raw));
+    }
+
     pub fn ensure_empty_before(&mut self) {
         self.node.raws.before.push_str("");
     }
