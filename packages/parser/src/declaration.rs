@@ -26,7 +26,6 @@ impl Declaration {
         let mut builder = NodeBuilder::new(&prop, tokenizer, spaces);
         let mut statement = Statement::new();
         let mut value_statement = Statement::new();
-        let mut has_inline_comments = false;
         let mut terminator = StatementTerminator::new();
 
         loop {
@@ -102,9 +101,7 @@ impl Declaration {
                             value_statement.push(token);
                         }
                         _ => {
-                            // Regular inline comment - strip it
-                            has_inline_comments = true;
-                            // Don't add to value_statement
+                            // Regular inline comment - strip it from value_statement
                         }
                     }
                 }
@@ -127,9 +124,9 @@ impl Declaration {
         let declaration = Self::new(&prop.value, &clean_value);
         builder.declaration(declaration);
 
-        // If there were inline comments, store both raw and clean in raws.value
-        if has_inline_comments {
-            let raw_value = statement.to_string();
+        // If raw differs from clean (inline comments were stripped), store both in raws.value
+        let raw_value = statement.to_string();
+        if raw_value != clean_value {
             builder.value_raw(&clean_value, &raw_value);
         }
 
