@@ -25,6 +25,7 @@ impl Declaration {
     ) -> (Node, StatementTerminator) {
         let mut builder = NodeBuilder::new(&prop, tokenizer, spaces);
         builder.ensure_empty_before();
+        builder.ensure_empty_between();
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
 
