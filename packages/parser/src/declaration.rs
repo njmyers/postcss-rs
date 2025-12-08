@@ -25,7 +25,6 @@ impl Declaration {
     ) -> (Node, StatementTerminator) {
         let mut builder = NodeBuilder::new(&prop, tokenizer, spaces);
         let mut statement = Statement::new();
-        let mut value_statement = Statement::new();
         let mut terminator = StatementTerminator::new();
 
         loop {
@@ -74,14 +73,8 @@ impl Declaration {
             terminator.process(&token);
 
             match token.kind {
-                Kind::OpenCurly => {
-                    statement.open(token.clone());
-                    value_statement.open(token);
-                }
-                Kind::CloseCurly if statement.is_open() => {
-                    statement.close(token.clone());
-                    value_statement.close(token);
-                }
+                Kind::OpenCurly => statement.open(token, true),
+                Kind::CloseCurly if statement.is_open() => statement.close(token, true),
 
                 // Semicolon ends declaration and is consumed
                 Kind::Semicolon if !statement.is_open() => {
@@ -92,35 +85,23 @@ impl Declaration {
 
                 // Comment inside value - check if it's before an opening paren
                 Kind::Comment if !statement.is_empty() => {
-                    statement.push(token.clone());
-
                     // Check if next token is opening paren - if so, keep comment in both versions
-                    match tokenizer.peek() {
-                        Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
-                            // Comment before function call - keep it
-                            value_statement.push(token);
-                        }
-                        _ => {
-                            // Regular inline comment - strip it from value_statement
-                        }
-                    }
+                    let include_in_clean = match tokenizer.peek() {
+                        Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => true,
+                        _ => false,
+                    };
+                    statement.push(token, include_in_clean);
                 }
 
-                Kind::Space if !statement.is_empty() => {
-                    statement.push(token.clone());
-                    value_statement.push(token);
-                }
+                Kind::Space if !statement.is_empty() => statement.push(token, true),
                 Kind::Space if !statement.is_open() => builder.between(&token),
 
-                _ => {
-                    statement.push(token.clone());
-                    value_statement.push(token);
-                }
+                _ => statement.push(token, true),
             }
         }
 
         // Use clean value (without comments) as the main value
-        let clean_value = value_statement.to_string();
+        let clean_value = statement.to_string_clean();
         let declaration = Self::new(&prop.value, &clean_value);
         builder.declaration(declaration);
 
