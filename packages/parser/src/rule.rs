@@ -87,16 +87,16 @@ impl Selector {
         }
 
         let mut statement = Statement::new();
-        statement.push(token, true);
+        statement.push(token);
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
-                Kind::Brackets => statement.push(token, true),
-                Kind::Colon => statement.push(token, true),
-                Kind::Word => statement.push(token, true),
-                Kind::OpenSquare => statement.push(token, true),
-                Kind::CloseSquare => statement.push(token, true),
-                Kind::String => statement.push(token, true),
+                Kind::Brackets => statement.push(token),
+                Kind::Colon => statement.push(token),
+                Kind::Word => statement.push(token),
+                Kind::OpenSquare => statement.push(token),
+                Kind::CloseSquare => statement.push(token),
+                Kind::String => statement.push(token),
                 Kind::Comment => {
                     // Check if there are more selector tokens after the comment
                     if let Some(next) = tokenizer.peek() {
@@ -107,7 +107,7 @@ impl Selector {
                             | Kind::OpenSquare
                             | Kind::CloseSquare
                             | Kind::String
-                            | Kind::Comment => statement.push(token, true),
+                            | Kind::Comment => statement.push(token),
                             _ => builder.between(&token),
                         }
                     } else {

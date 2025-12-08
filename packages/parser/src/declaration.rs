@@ -73,8 +73,8 @@ impl Declaration {
             terminator.process(&token);
 
             match token.kind {
-                Kind::OpenCurly => statement.open(token, true),
-                Kind::CloseCurly if statement.is_open() => statement.close(token, true),
+                Kind::OpenCurly => statement.open(token),
+                Kind::CloseCurly if statement.is_open() => statement.close(token),
 
                 // Semicolon ends declaration and is consumed
                 Kind::Semicolon if !statement.is_open() => {
@@ -86,17 +86,21 @@ impl Declaration {
                 // Comment inside value - check if it's before an opening paren
                 Kind::Comment if !statement.is_empty() => {
                     // Check if next token is opening paren - if so, keep comment in both versions
-                    let include_in_clean = match tokenizer.peek() {
-                        Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => true,
-                        _ => false,
-                    };
-                    statement.push(token, include_in_clean);
+                    match tokenizer.peek() {
+                        Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
+                            statement.push(token);
+                        }
+                        _ => {
+                            // Regular inline comment - only add to raw, not clean
+                            statement.push_raw_only(token);
+                        }
+                    }
                 }
 
-                Kind::Space if !statement.is_empty() => statement.push(token, true),
+                Kind::Space if !statement.is_empty() => statement.push(token),
                 Kind::Space if !statement.is_open() => builder.between(&token),
 
-                _ => statement.push(token, true),
+                _ => statement.push(token),
             }
         }
 

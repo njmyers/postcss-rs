@@ -16,27 +16,26 @@ impl Statement {
         return Self::default();
     }
 
-    pub fn open(&mut self, token: Token, include_in_clean: bool) {
+    pub fn open(&mut self, token: Token) {
         self.brackets.process(&token);
-        if include_in_clean {
-            self.values_clean.push(token.clone());
-        }
+        self.values_clean.push(token.clone());
         self.values.push(token);
     }
 
-    pub fn close(&mut self, token: Token, include_in_clean: bool) {
+    pub fn close(&mut self, token: Token) {
         self.brackets.process(&token);
-        if include_in_clean {
-            self.values_clean.push(token.clone());
-        }
+        self.values_clean.push(token.clone());
         self.values.push(token);
     }
 
-    pub fn push(&mut self, token: Token, include_in_clean: bool) {
+    pub fn push(&mut self, token: Token) {
         self.brackets.process(&token);
-        if include_in_clean {
-            self.values_clean.push(token.clone());
-        }
+        self.values_clean.push(token.clone());
+        self.values.push(token);
+    }
+
+    pub fn push_raw_only(&mut self, token: Token) {
+        self.brackets.process(&token);
         self.values.push(token);
     }
 

@@ -205,26 +205,26 @@ impl Params {
                 // Handle spacing and comments before params start
                 Kind::Space | Kind::Comment if statement.is_empty() => spaces.push(token),
                 // Handle spacing and comments within params - add to statement when brackets are open
-                Kind::Space | Kind::Comment if statement.is_open() => statement.push(token, true),
+                Kind::Space | Kind::Comment if statement.is_open() => statement.push(token),
                 // Handle spacing and comments after params - add to between
                 Kind::Space | Kind::Comment => parent.between(&token),
 
                 // Handle tokens that are part of params
-                Kind::Word => statement.push(token, true),
-                Kind::Brackets => statement.push(token, true),
-                Kind::Colon => statement.push(token, true),
-                Kind::String => statement.push(token, true),
-                Kind::OpenSquare => statement.push(token, true),
-                Kind::CloseSquare => statement.push(token, true),
-                Kind::OpenCurvy => statement.push(token, true),
-                Kind::CloseCurvy => statement.push(token, true),
+                Kind::Word => statement.push(token),
+                Kind::Brackets => statement.push(token),
+                Kind::Colon => statement.push(token),
+                Kind::String => statement.push(token),
+                Kind::OpenSquare => statement.push(token),
+                Kind::CloseSquare => statement.push(token),
+                Kind::OpenCurvy => statement.push(token),
+                Kind::CloseCurvy => statement.push(token),
 
                 // Handle curly braces - they can be part of params if nested
-                Kind::OpenCurly if statement.is_open() => statement.push(token, true),
-                Kind::CloseCurly if statement.is_open() => statement.push(token, true),
+                Kind::OpenCurly if statement.is_open() => statement.push(token),
+                Kind::CloseCurly if statement.is_open() => statement.push(token),
 
                 // Handle semicolon - ends params only if not nested
-                Kind::Semicolon if statement.is_open() => statement.push(token, true),
+                Kind::Semicolon if statement.is_open() => statement.push(token),
                 Kind::Semicolon => {
                     terminator.set_ended_by(Kind::Semicolon);
                     break;
