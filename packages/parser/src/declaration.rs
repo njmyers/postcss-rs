@@ -57,7 +57,8 @@ impl Declaration {
                     // Check for trailing spaces before CloseCurly
                     // We need two-token lookahead: current space + what follows
                     // Use peek_nth(2) to avoid consuming tokens and preserve correct source positions
-                    Kind::Space if !statement.is_empty() && !statement.is_open() => {
+                    // Check values_clean to ignore raw-only tokens like stripped comments
+                    Kind::Space if !statement.values_clean.is_empty() && !statement.is_open() => {
                         match tokenizer.peek_nth(2) {
                             Some(next) if next.kind == Kind::CloseCurly => {
                                 // Space followed by CloseCurly - trailing space, don't consume
@@ -106,7 +107,12 @@ impl Declaration {
                                 statement.push(token);
                             }
                             _ => {
-                                // Regular comment - strip it, keep pending spaces in pending
+                                // Regular comment - strip it but keep token order correct
+                                // Add pending spaces to both raw and clean to maintain correct order
+                                for space in pending_spaces.drain(..) {
+                                    statement.push(space);
+                                }
+                                // Add comment to raw only (stripped from clean)
                                 statement.push_raw_only(token);
                             }
                         }
