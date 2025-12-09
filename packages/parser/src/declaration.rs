@@ -92,7 +92,8 @@ impl Declaration {
 
                 // Comment handling
                 Kind::Comment => {
-                    if statement.is_empty() && !statement.is_open() {
+                    // Check if clean value is empty (ignore raw-only tokens)
+                    if statement.values_clean.is_empty() && !statement.is_open() {
                         // Comment before any real content - check if it's before a function call
                         match tokenizer.peek() {
                             Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
@@ -124,7 +125,8 @@ impl Declaration {
                 }
 
                 Kind::Space => {
-                    if statement.is_empty() && !statement.is_open() {
+                    // Check if clean value is empty (ignore raw-only tokens like stripped comments)
+                    if statement.values_clean.is_empty() && !statement.is_open() {
                         // Space before any value content - hold in pending
                         pending_spaces.push(token);
                     } else {
