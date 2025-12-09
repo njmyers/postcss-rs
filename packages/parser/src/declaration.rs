@@ -55,13 +55,13 @@ impl Declaration {
                     }
 
                     // Check for trailing spaces before CloseCurly
-                    // We need two-token lookahead: current space + what follows
-                    // Use peek_nth(2) to avoid consuming tokens and preserve correct source positions
-                    // Check values_clean to ignore raw-only tokens like stripped comments
-                    Kind::Space if !statement.values_clean.is_empty() && !statement.is_open() => {
+                    // Any space directly before CloseCurly (when not in open brackets) is trailing
+                    Kind::Space if !statement.is_open() => {
                         match tokenizer.peek_nth(2) {
                             Some(next) if next.kind == Kind::CloseCurly => {
-                                // Space followed by CloseCurly - trailing space, don't consume
+                                // Space followed by CloseCurly - this is a trailing space
+                                // We need to: 1) add it to value, 2) consume it, 3) use pre-consume position as end
+                                // Break here to avoid consuming - will handle in post-loop
                                 terminator.set_ended_by(Kind::CloseCurly);
                                 break;
                             }
@@ -167,6 +167,17 @@ impl Declaration {
             }
         }
 
+        // Handle trailing space before CloseCurly
+        // If we broke due to CloseCurly, there may be a trailing space to handle
+        if terminator.ended_by == Some(Kind::CloseCurly) {
+            if let Some(space_token) = tokenizer.peek() {
+                if space_token.kind == Kind::Space {
+                    // Add the trailing space to pending_spaces for the value
+                    pending_spaces.push(space_token);
+                }
+            }
+        }
+
         // End of declaration - handle any remaining pending spaces
         if !pending_spaces.is_empty() {
             // Declaration ended with only spaces - they should be the value
@@ -192,7 +203,18 @@ impl Declaration {
             builder.important_raw(&important_raw);
         }
 
-        return (builder.build(tokenizer, &[]), terminator);
+        let node = builder.build(tokenizer, &[]);
+
+        // Now consume the trailing space if present so the rule parser doesn't see it
+        if terminator.ended_by == Some(Kind::CloseCurly) {
+            if let Some(space_token) = tokenizer.peek() {
+                if space_token.kind == Kind::Space {
+                    tokenizer.next(); // Consume the space
+                }
+            }
+        }
+
+        return (node, terminator);
     }
 
     fn new(prop: &str, value: &str, important: Option<bool>) -> Self {
