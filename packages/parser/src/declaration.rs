@@ -28,6 +28,7 @@ impl Declaration {
         builder.ensure_empty_between();
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
+        let mut pending_spaces: Vec<Token> = Vec::new(); // Track spaces between colon and first non-space token
 
         loop {
             // Peek at next token to check for terminators
@@ -99,10 +100,34 @@ impl Declaration {
                     }
                 }
 
-                Kind::Space if !statement.is_empty() => statement.push(token),
-                Kind::Space if !statement.is_open() => builder.between(&token),
+                Kind::Space => {
+                    if statement.is_empty() && !statement.is_open() {
+                        // Space before any value content - hold in pending
+                        pending_spaces.push(token);
+                    } else {
+                        // Space within value - add to statement
+                        statement.push(token);
+                    }
+                }
 
-                _ => statement.push(token),
+                _ => {
+                    // Non-space token - decide what to do with pending spaces
+                    if !pending_spaces.is_empty() {
+                        // Add pending spaces to between (they're before actual content)
+                        for space in pending_spaces.drain(..) {
+                            builder.between(&space);
+                        }
+                    }
+                    statement.push(token);
+                }
+            }
+        }
+
+        // End of declaration - handle any remaining pending spaces
+        if !pending_spaces.is_empty() {
+            // Declaration ended with only spaces - they should be the value
+            for space in pending_spaces.iter() {
+                statement.push(space.clone());
             }
         }
 
