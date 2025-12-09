@@ -14,6 +14,8 @@ use postcss_rs_tokenizer::Tokenizer;
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Declaration {
     pub prop: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub important: Option<bool>,
     pub value: String,
 }
 
@@ -29,6 +31,8 @@ impl Declaration {
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
         let mut pending_spaces: Vec<Token> = Vec::new(); // Track spaces between colon and first non-space token
+        let mut important_flag = false;
+        let mut important_raw = String::new();
 
         loop {
             // Peek at next token to check for terminators
@@ -86,16 +90,35 @@ impl Declaration {
                 }
                 Kind::Colon if !statement.is_open() => builder.between(&token),
 
-                // Comment inside value - check if it's before an opening paren
-                Kind::Comment if !statement.is_empty() => {
-                    // Check if next token is opening paren - if so, keep comment in both versions
-                    match tokenizer.peek() {
-                        Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
-                            statement.push(token);
+                // Comment handling
+                Kind::Comment => {
+                    if statement.is_empty() && !statement.is_open() {
+                        // Comment before any real content - check if it's before a function call
+                        match tokenizer.peek() {
+                            Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
+                                // Comment before function - move pending to between, keep comment
+                                if !pending_spaces.is_empty() {
+                                    for space in pending_spaces.drain(..) {
+                                        builder.between(&space);
+                                    }
+                                }
+                                statement.push(token);
+                            }
+                            _ => {
+                                // Regular comment - strip it, keep pending spaces in pending
+                                statement.push_raw_only(token);
+                            }
                         }
-                        _ => {
-                            // Regular inline comment - only add to raw, not clean
-                            statement.push_raw_only(token);
+                    } else {
+                        // Comment inside value - check if it's before an opening paren
+                        match tokenizer.peek() {
+                            Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
+                                statement.push(token);
+                            }
+                            _ => {
+                                // Regular inline comment - only add to raw, not clean
+                                statement.push_raw_only(token);
+                            }
                         }
                     }
                 }
@@ -108,6 +131,19 @@ impl Declaration {
                         // Space within value - add to statement
                         statement.push(token);
                     }
+                }
+
+                // Check for !important
+                Kind::Word if token.value.starts_with("!important") => {
+                    important_flag = true;
+                    // Pending spaces before !important should stay in value, not in important_raw
+                    if !pending_spaces.is_empty() {
+                        for space in pending_spaces.drain(..) {
+                            statement.push(space);
+                        }
+                    }
+                    important_raw.push_str(&token.value);
+                    // Don't add to statement - strip from value
                 }
 
                 _ => {
@@ -133,7 +169,8 @@ impl Declaration {
 
         // Use clean value (without comments) as the main value
         let clean_value = statement.to_string_clean();
-        let declaration = Self::new(&prop.value, &clean_value);
+        let important = if important_flag { Some(true) } else { None };
+        let declaration = Self::new(&prop.value, &clean_value, important);
         builder.declaration(declaration);
 
         // If raw differs from clean (inline comments were stripped), store both in raws.value
@@ -142,12 +179,18 @@ impl Declaration {
             builder.value_raw(&clean_value, &raw_value);
         }
 
+        // If important flag was set, store the raw important string
+        if important_flag {
+            builder.important_raw(&important_raw);
+        }
+
         return (builder.build(tokenizer, &[]), terminator);
     }
 
-    fn new(prop: &str, value: &str) -> Self {
+    fn new(prop: &str, value: &str, important: Option<bool>) -> Self {
         return Self {
             prop: String::from(prop),
+            important,
             value: String::from(value),
         };
     }
