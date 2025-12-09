@@ -13,6 +13,11 @@ pub struct Word;
 impl Word {
     pub fn test(current: &char, next: &char) -> bool {
         if Self::leading(current) {
+            // Colons followed by digits should not be Word tokens (e.g., :1 in --a:1)
+            // But colons followed by letters are valid (e.g., :root, :hover)
+            if current == COLON && next.is_numeric() {
+                return false;
+            }
             return next.is_alphanumeric() || next == DASH || next == NULL_CHARACTER;
         }
 
