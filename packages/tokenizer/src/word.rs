@@ -29,7 +29,6 @@ impl Word {
         let lookbehind: usize = 1;
         let count = letters.len();
 
-        let mut position = 0;
         for i in 1..count {
             let letter = &letters[i];
 
@@ -76,17 +75,12 @@ impl Word {
             };
 
             if should_terminate {
-                position = i - 1;
-                break;
+                return i - 1;
             }
         }
 
-        if position == 0 {
-            // No terminator found, use all characters
-            return count - lookbehind;
-        }
-
-        return position;
+        // No terminator found, use all characters
+        return count - lookbehind;
     }
 
     fn leading(letter: &char) -> bool {
