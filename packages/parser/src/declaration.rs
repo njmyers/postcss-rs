@@ -31,8 +31,7 @@ impl Declaration {
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
         let mut pending_spaces: Vec<Token> = Vec::new(); // Track spaces between colon and first non-space token
-        let mut important_flag = false;
-        let mut important_raw = String::new();
+        let mut important_raw: Option<String> = None;
 
         loop {
             // Peek at next token to check for terminators
@@ -143,14 +142,13 @@ impl Declaration {
 
                 // Check for !important
                 Kind::Word if token.value.starts_with("!important") => {
-                    important_flag = true;
                     // Pending spaces before !important should stay in value, not in important_raw
                     if !pending_spaces.is_empty() {
                         for space in pending_spaces.drain(..) {
                             statement.push(space);
                         }
                     }
-                    important_raw.push_str(&token.value);
+                    important_raw = Some(token.value.clone());
                     // Don't add to statement - strip from value
                 }
 
@@ -188,7 +186,7 @@ impl Declaration {
 
         // Use clean value (without comments) as the main value
         let clean_value = statement.to_string_clean();
-        let important = if important_flag { Some(true) } else { None };
+        let important = important_raw.as_ref().map(|_| true);
         let declaration = Self::new(&prop.value, &clean_value, important);
         builder.declaration(declaration);
 
@@ -198,9 +196,9 @@ impl Declaration {
             builder.value_raw(&clean_value, &raw_value);
         }
 
-        // If important flag was set, store the raw important string
-        if important_flag {
-            builder.important_raw(&important_raw);
+        // If important was found, store the raw important string
+        if let Some(raw) = important_raw {
+            builder.important_raw(&raw);
         }
 
         let node = builder.build(tokenizer, &[]);
