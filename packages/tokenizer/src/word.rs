@@ -28,16 +28,36 @@ impl Word {
     pub fn tokenize(letters: &[char]) -> usize {
         let lookbehind: usize = 1;
         let count = letters.len();
-        let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
-        let result = letters_lookbehind.position(|(previous, letter)| {
-            // If previous character is an escape backslash, skip termination check
-            // The current letter is part of an escape sequence
-            if Escape::test(previous) {
-                return false;
+        let mut position = 0;
+        for i in 1..count {
+            let letter = &letters[i];
+
+            // Count consecutive backslashes before this character
+            let mut backslash_count = 0;
+            let mut j = i - 1;
+            loop {
+                if Escape::test(&letters[j]) {
+                    backslash_count += 1;
+                    if j == 0 {
+                        break;
+                    }
+                    j -= 1;
+                } else {
+                    break;
+                }
             }
 
-            return match letter {
+            // If there's an odd number of backslashes, the current character is escaped
+            let is_escaped = backslash_count % 2 == 1;
+
+            // If escaped, skip termination check
+            if is_escaped {
+                continue;
+            }
+
+            // Check if this character should terminate the word
+            let should_terminate = match letter {
                 letter if Whitespace::test(letter) => true,
                 letter if OpenCurly::test(letter) => true,
                 letter if CloseCurly::test(letter) => true,
@@ -54,10 +74,19 @@ impl Word {
                 letter if Self::leading(letter) => true,
                 _ => false,
             };
-        });
 
-        let string_length = utils::unwrap_position(result, letters);
-        return cmp::min(string_length, count - lookbehind);
+            if should_terminate {
+                position = i - 1;
+                break;
+            }
+        }
+
+        if position == 0 {
+            // No terminator found, use all characters
+            return count - lookbehind;
+        }
+
+        return position;
     }
 
     fn leading(letter: &char) -> bool {
