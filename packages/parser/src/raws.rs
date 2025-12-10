@@ -24,6 +24,8 @@ pub struct Raws {
     pub left: Raw,
     #[serde(default, skip_serializing_if = "Raw::skip")]
     pub right: Raw,
+    #[serde(default, skip_serializing_if = "Raw::skip")]
+    pub important: Raw,
     #[serde(default, skip_serializing_if = "ValueRaw::skip")]
     pub value: ValueRaw,
 }
@@ -38,6 +40,7 @@ impl Default for Raws {
             after: Raw::default(),
             left: Raw::default(),
             right: Raw::default(),
+            important: Raw::default(),
             value: ValueRaw::default(),
         };
     }

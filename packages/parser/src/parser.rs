@@ -164,7 +164,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_custom_properties() {
         let (ast, expected) = parse_and_read("custom-properties.css", "custom-properties.json");
         assert_eq!(ast, expected);

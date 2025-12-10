@@ -181,6 +181,10 @@ impl NodeBuilder {
         self.node.raws.value = crate::ValueRaw::new(String::from(value), String::from(raw));
     }
 
+    pub fn important_raw(&mut self, value: &str) {
+        self.node.raws.important = crate::Raw::new(value);
+    }
+
     pub fn ensure_empty_before(&mut self) {
         self.node.raws.before.push_str("");
     }
