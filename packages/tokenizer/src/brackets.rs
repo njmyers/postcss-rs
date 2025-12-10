@@ -1,6 +1,5 @@
 use crate::characters::*;
 use crate::escape::Escape;
-use crate::string::DoubleString;
 use crate::utils;
 use crate::Token;
 
@@ -68,13 +67,29 @@ impl Bracket {
         let mut curly_depth = 0; // Track {} curly braces
         let mut square_depth = 0; // Track [] square brackets
 
+        // Track string state
+        let mut in_double_string = false;
+        let mut in_single_string = false;
+
         let result = letters_lookbehind.position(|(previous, letter)| {
-            // Skip if escaped or in string
-            if Escape::test(previous) || DoubleString::test(previous) {
+            // Check if previous character is escaped
+            let is_escaped = Escape::test(previous);
+
+            // Track string boundaries (only if not escaped)
+            if !is_escaped {
+                match letter {
+                    DOUBLE_QUOTE => in_double_string = !in_double_string,
+                    SINGLE_QUOTE => in_single_string = !in_single_string,
+                    _ => {}
+                }
+            }
+
+            // Skip bracket processing if inside a string
+            if in_double_string || in_single_string {
                 return false;
             }
 
-            // Update depth based on bracket type
+            // Update depth based on bracket type (only when not in string)
             match letter {
                 OPEN_CURVY => curvy_depth += 1,
                 CLOSE_CURVY => curvy_depth -= 1,

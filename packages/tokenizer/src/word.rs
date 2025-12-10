@@ -1,6 +1,7 @@
 use crate::brackets::*;
 use crate::characters::*;
 use crate::comment::*;
+use crate::escape::Escape;
 use crate::string::*;
 use crate::symbol::*;
 use crate::utils;
@@ -29,7 +30,13 @@ impl Word {
         let count = letters.len();
         let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
-        let result = letters_lookbehind.position(|(_, letter)| {
+        let result = letters_lookbehind.position(|(previous, letter)| {
+            // If previous character is an escape backslash, skip termination check
+            // The current letter is part of an escape sequence
+            if Escape::test(previous) {
+                return false;
+            }
+
             return match letter {
                 letter if Whitespace::test(letter) => true,
                 letter if OpenCurly::test(letter) => true,

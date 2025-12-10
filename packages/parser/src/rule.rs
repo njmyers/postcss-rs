@@ -97,6 +97,9 @@ impl Selector {
                 Kind::OpenSquare => statement.push(token),
                 Kind::CloseSquare => statement.push(token),
                 Kind::String => statement.push(token),
+                Kind::Semicolon => statement.push(token),
+                Kind::OpenCurvy => statement.push(token),
+                Kind::CloseCurvy => statement.push(token),
                 Kind::Comment => {
                     // Check if there are more selector tokens after the comment
                     if let Some(next) = tokenizer.peek() {
@@ -107,6 +110,9 @@ impl Selector {
                             | Kind::OpenSquare
                             | Kind::CloseSquare
                             | Kind::String
+                            | Kind::Semicolon
+                            | Kind::OpenCurvy
+                            | Kind::CloseCurvy
                             | Kind::Comment => statement.push(token),
                             _ => builder.between(&token),
                         }
