@@ -31,38 +31,37 @@ impl Word {
         let letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
         let result = letters_lookbehind
-            .scan(false, |prev_was_escape, (_, letter)| {
-                // If previous was an escape backslash, current char is escaped
-                if *prev_was_escape {
-                    *prev_was_escape = false;
-                    return Some(false); // Don't terminate
-                }
-
-                // If current is a backslash, next char will be escaped
-                if Escape::test(letter) {
-                    *prev_was_escape = true;
-                    return Some(false); // Don't terminate on the backslash itself
-                }
-
-                // Check if this character should terminate the word
-                let should_terminate = match letter {
-                    letter if Whitespace::test(letter) => true,
-                    letter if OpenCurly::test(letter) => true,
-                    letter if CloseCurly::test(letter) => true,
-                    letter if OpenSquare::test(letter) => true,
-                    letter if CloseSquare::test(letter) => true,
-                    letter if OpenCurvy::test(letter) => true,
-                    letter if CloseCurvy::test(letter) => true,
-                    letter if Semicolon::test(letter) => true,
-                    letter if Colon::test(letter) => true,
-                    letter if SingleString::test(letter) => true,
-                    letter if DoubleString::test(letter) => true,
-                    letter if Bracket::is_opening_token(letter) => true,
-                    letter if Comment::is_forward_slash(letter) => true,
-                    letter if Self::leading(letter) => true,
-                    _ => false,
+            .scan(false, |is_escaped, (_, letter)| {
+                // Determine if current character should be skipped and what next state is
+                let (should_terminate, next_escaped) = if *is_escaped {
+                    // Current char is escaped - skip it, next won't be escaped
+                    (false, false)
+                } else if Escape::test(letter) {
+                    // Current is backslash - don't terminate, next char will be escaped
+                    (false, true)
+                } else {
+                    // Normal character - check if it should terminate
+                    let terminates = match letter {
+                        letter if Whitespace::test(letter) => true,
+                        letter if OpenCurly::test(letter) => true,
+                        letter if CloseCurly::test(letter) => true,
+                        letter if OpenSquare::test(letter) => true,
+                        letter if CloseSquare::test(letter) => true,
+                        letter if OpenCurvy::test(letter) => true,
+                        letter if CloseCurvy::test(letter) => true,
+                        letter if Semicolon::test(letter) => true,
+                        letter if Colon::test(letter) => true,
+                        letter if SingleString::test(letter) => true,
+                        letter if DoubleString::test(letter) => true,
+                        letter if Bracket::is_opening_token(letter) => true,
+                        letter if Comment::is_forward_slash(letter) => true,
+                        letter if Self::leading(letter) => true,
+                        _ => false,
+                    };
+                    (terminates, false)
                 };
 
+                *is_escaped = next_escaped;
                 Some(should_terminate)
             })
             .position(|should_terminate| should_terminate);
