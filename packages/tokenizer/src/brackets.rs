@@ -67,24 +67,16 @@ impl Bracket {
         let mut curly_depth = 0; // Track {} curly braces
         let mut square_depth = 0; // Track [] square brackets
 
-        // Track string and comment state
+        // Track string state
         let mut in_double_string = false;
         let mut in_single_string = false;
-        let mut in_comment = false;
 
         let result = letters_lookbehind.position(|(previous, letter)| {
-            // Check if previous character is escaped (only matters outside comments)
-            let is_escaped = !in_comment && Escape::test(previous);
+            // Check if previous character is escaped
+            let is_escaped = Escape::test(previous);
 
-            // Track comment boundaries (/* and */)
-            if previous == FORWARD_SLASH && letter == ASTERISK {
-                in_comment = true;
-            } else if previous == ASTERISK && letter == FORWARD_SLASH {
-                in_comment = false;
-            }
-
-            // Track string boundaries (only if not escaped and not in comment)
-            if !is_escaped && !in_comment {
+            // Track string boundaries (only if not escaped)
+            if !is_escaped {
                 match letter {
                     DOUBLE_QUOTE => in_double_string = !in_double_string,
                     SINGLE_QUOTE => in_single_string = !in_single_string,
@@ -92,8 +84,8 @@ impl Bracket {
                 }
             }
 
-            // Skip bracket processing if inside a string or comment
-            if in_double_string || in_single_string || in_comment {
+            // Skip bracket processing if inside a string or if current char is escaped
+            if in_double_string || in_single_string || is_escaped {
                 return false;
             }
 
