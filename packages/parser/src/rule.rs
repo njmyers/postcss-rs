@@ -41,7 +41,36 @@ impl Rule {
         while let Some(token) = tokenizer.next() {
             match token.kind {
                 Kind::Word => {
-                    let (child, terminator) = Declaration::create(token, tokenizer, &spaces);
+                    // Collect consecutive Word tokens to build the complete property name
+                    // This handles cases like `\62 olor` where hex escapes are followed by more text
+                    let mut prop_tokens = vec![token];
+
+                    while let Some(next) = tokenizer.peek() {
+                        if next.kind == Kind::Word {
+                            prop_tokens.push(tokenizer.next().unwrap());
+                        } else {
+                            break;
+                        }
+                    }
+
+                    // Combine all property tokens into a single token
+                    let prop = if prop_tokens.len() == 1 {
+                        prop_tokens[0].clone()
+                    } else {
+                        let mut combined_value = String::new();
+                        for t in &prop_tokens {
+                            combined_value.push_str(&t.value);
+                        }
+                        Token {
+                            kind: Kind::Word,
+                            start: prop_tokens[0].start,
+                            end: prop_tokens.last().unwrap().end,
+                            value: combined_value,
+                            column: prop_tokens[0].column,
+                        }
+                    };
+
+                    let (child, terminator) = Declaration::create(prop, tokenizer, &spaces);
                     builder.terminator(&terminator);
                     builder.append(child);
                     spaces.clear();
