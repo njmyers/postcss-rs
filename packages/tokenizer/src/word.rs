@@ -4,7 +4,10 @@ use crate::comment::*;
 use crate::escape::Escape;
 use crate::string::*;
 use crate::symbol::*;
+use crate::utils;
 use crate::whitespace::*;
+
+use std::cmp;
 
 pub struct Word;
 
@@ -25,51 +28,47 @@ impl Word {
     pub fn tokenize(letters: &[char]) -> usize {
         let lookbehind: usize = 1;
         let count = letters.len();
+        let letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
-        // Track whether the next character is escaped by a backslash
-        let mut next_is_escaped = false;
+        let result = letters_lookbehind
+            .scan(false, |prev_was_escape, (_, letter)| {
+                // If previous was an escape backslash, current char is escaped
+                if *prev_was_escape {
+                    *prev_was_escape = false;
+                    return Some(false); // Don't terminate
+                }
 
-        for i in 1..count {
-            let letter = &letters[i];
+                // If current is a backslash, next char will be escaped
+                if Escape::test(letter) {
+                    *prev_was_escape = true;
+                    return Some(false); // Don't terminate on the backslash itself
+                }
 
-            // If this character was escaped by previous backslash, skip it
-            if next_is_escaped {
-                next_is_escaped = false;
-                continue;
-            }
+                // Check if this character should terminate the word
+                let should_terminate = match letter {
+                    letter if Whitespace::test(letter) => true,
+                    letter if OpenCurly::test(letter) => true,
+                    letter if CloseCurly::test(letter) => true,
+                    letter if OpenSquare::test(letter) => true,
+                    letter if CloseSquare::test(letter) => true,
+                    letter if OpenCurvy::test(letter) => true,
+                    letter if CloseCurvy::test(letter) => true,
+                    letter if Semicolon::test(letter) => true,
+                    letter if Colon::test(letter) => true,
+                    letter if SingleString::test(letter) => true,
+                    letter if DoubleString::test(letter) => true,
+                    letter if Bracket::is_opening_token(letter) => true,
+                    letter if Comment::is_forward_slash(letter) => true,
+                    letter if Self::leading(letter) => true,
+                    _ => false,
+                };
 
-            // If this is a backslash, the next character will be escaped
-            if Escape::test(letter) {
-                next_is_escaped = true;
-                continue;
-            }
+                Some(should_terminate)
+            })
+            .position(|should_terminate| should_terminate);
 
-            // Check if this character should terminate the word
-            let should_terminate = match letter {
-                letter if Whitespace::test(letter) => true,
-                letter if OpenCurly::test(letter) => true,
-                letter if CloseCurly::test(letter) => true,
-                letter if OpenSquare::test(letter) => true,
-                letter if CloseSquare::test(letter) => true,
-                letter if OpenCurvy::test(letter) => true,
-                letter if CloseCurvy::test(letter) => true,
-                letter if Semicolon::test(letter) => true,
-                letter if Colon::test(letter) => true,
-                letter if SingleString::test(letter) => true,
-                letter if DoubleString::test(letter) => true,
-                letter if Bracket::is_opening_token(letter) => true,
-                letter if Comment::is_forward_slash(letter) => true,
-                letter if Self::leading(letter) => true,
-                _ => false,
-            };
-
-            if should_terminate {
-                return i - 1;
-            }
-        }
-
-        // No terminator found, use all characters
-        return count - lookbehind;
+        let string_length = utils::unwrap_position(result, letters);
+        return cmp::min(string_length, count - lookbehind);
     }
 
     fn leading(letter: &char) -> bool {
