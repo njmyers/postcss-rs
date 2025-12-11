@@ -5,6 +5,67 @@ use crate::Token;
 
 use std::cmp;
 
+/// Tracks the state of bracket parsing including string context and nesting depth
+#[derive(Debug, Clone, Copy)]
+struct BracketState {
+    in_double_string: bool,
+    in_single_string: bool,
+    curvy_depth: i32,  // Track () parentheses
+    curly_depth: i32,  // Track {} curly braces
+    square_depth: i32, // Track [] square brackets
+}
+
+impl BracketState {
+    fn new() -> Self {
+        Self {
+            in_double_string: false,
+            in_single_string: false,
+            curvy_depth: 0,
+            curly_depth: 0,
+            square_depth: 0,
+        }
+    }
+
+    /// Process a character and return the next state and whether to terminate
+    fn process(&self, letter: &char, is_escaped: bool) -> (Self, bool) {
+        let mut next = *self;
+
+        // Update string state if character is not escaped
+        if !is_escaped {
+            match letter {
+                DOUBLE_QUOTE => next.in_double_string = !next.in_double_string,
+                SINGLE_QUOTE => next.in_single_string = !next.in_single_string,
+                _ => {}
+            }
+        }
+
+        // Skip bracket processing if inside a string or if current char is escaped
+        let in_string = next.in_double_string || next.in_single_string;
+        if in_string || is_escaped {
+            return (next, false);
+        }
+
+        // Update depth based on bracket type
+        match letter {
+            OPEN_CURVY => next.curvy_depth += 1,
+            CLOSE_CURVY => next.curvy_depth -= 1,
+            OPEN_CURLY => next.curly_depth += 1,
+            CLOSE_CURLY => next.curly_depth -= 1,
+            OPEN_SQUARE => next.square_depth += 1,
+            CLOSE_SQUARE => next.square_depth -= 1,
+            _ => {}
+        }
+
+        // Terminate when we find a closing paren that closes the initial bracket
+        let should_terminate = letter == CLOSE_CURVY
+            && next.curvy_depth < 0  // Found more ) than (
+            && next.curly_depth == 0 // All {} are balanced
+            && next.square_depth == 0; // All [] are balanced
+
+        (next, should_terminate)
+    }
+}
+
 pub struct Bracket;
 
 impl Bracket {
@@ -60,52 +121,16 @@ impl Bracket {
     pub fn tokenize(letters: &[char]) -> usize {
         let lookbehind: usize = 1;
         let count = letters.len();
-        let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
+        let letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
-        // Track depth of all bracket types
-        let mut curvy_depth = 0; // Track () parentheses
-        let mut curly_depth = 0; // Track {} curly braces
-        let mut square_depth = 0; // Track [] square brackets
-
-        // Track string state
-        let mut in_double_string = false;
-        let mut in_single_string = false;
-
-        let result = letters_lookbehind.position(|(previous, letter)| {
-            // Check if previous character is escaped
-            let is_escaped = Escape::test(previous);
-
-            // Track string boundaries (only if not escaped)
-            if !is_escaped {
-                match letter {
-                    DOUBLE_QUOTE => in_double_string = !in_double_string,
-                    SINGLE_QUOTE => in_single_string = !in_single_string,
-                    _ => {}
-                }
-            }
-
-            // Skip bracket processing if inside a string or if current char is escaped
-            if in_double_string || in_single_string || is_escaped {
-                return false;
-            }
-
-            // Update depth based on bracket type (only when not in string)
-            match letter {
-                OPEN_CURVY => curvy_depth += 1,
-                CLOSE_CURVY => curvy_depth -= 1,
-                OPEN_CURLY => curly_depth += 1,
-                CLOSE_CURLY => curly_depth -= 1,
-                OPEN_SQUARE => square_depth += 1,
-                CLOSE_SQUARE => square_depth -= 1,
-                _ => {}
-            }
-
-            // Match closing paren only when all brackets are balanced
-            return letter == CLOSE_CURVY
-                && curvy_depth < 0  // Found more ) than (
-                && curly_depth == 0 // All {} are balanced
-                && square_depth == 0; // All [] are balanced
-        });
+        let result = letters_lookbehind
+            .scan(BracketState::new(), |state, (previous, letter)| {
+                let is_escaped = Escape::test(previous);
+                let (next_state, should_terminate) = state.process(letter, is_escaped);
+                *state = next_state;
+                Some(should_terminate)
+            })
+            .position(|should_terminate| should_terminate);
 
         let length = utils::unwrap_position(result, letters) + lookbehind;
         return cmp::min(length, count - lookbehind);
