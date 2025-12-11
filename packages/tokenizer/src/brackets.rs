@@ -143,3 +143,248 @@ impl Bracket {
         };
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bracket_state_initializes_with_zero_state() {
+        let state = BracketState::new();
+        assert_eq!(state.in_double_string, false);
+        assert_eq!(state.in_single_string, false);
+        assert_eq!(state.curvy_depth, 0);
+        assert_eq!(state.curly_depth, 0);
+        assert_eq!(state.square_depth, 0);
+    }
+
+    #[test]
+    fn bracket_state_enters_double_string() {
+        let state = BracketState::new();
+        let (next, should_terminate) = state.process(&'"', false);
+
+        assert_eq!(next.in_double_string, true);
+        assert_eq!(next.in_single_string, false);
+        assert_eq!(should_terminate, false);
+    }
+
+    #[test]
+    fn bracket_state_exits_double_string() {
+        let mut state = BracketState::new();
+        state.in_double_string = true;
+
+        let (next, should_terminate) = state.process(&'"', false);
+
+        assert_eq!(next.in_double_string, false);
+        assert_eq!(should_terminate, false);
+    }
+
+    #[test]
+    fn bracket_state_enters_single_string() {
+        let state = BracketState::new();
+        let (next, should_terminate) = state.process(&'\'', false);
+
+        assert_eq!(next.in_single_string, true);
+        assert_eq!(next.in_double_string, false);
+        assert_eq!(should_terminate, false);
+    }
+
+    #[test]
+    fn bracket_state_ignores_escaped_quotes() {
+        let state = BracketState::new();
+        let (next, should_terminate) = state.process(&'"', true);
+
+        // Should not enter string mode when quote is escaped
+        assert_eq!(next.in_double_string, false);
+        assert_eq!(next.in_single_string, false);
+        assert_eq!(should_terminate, false);
+    }
+
+    #[test]
+    fn bracket_state_tracks_curvy_depth() {
+        let state = BracketState::new();
+
+        // Open parenthesis
+        let (next, _) = state.process(&'(', false);
+        assert_eq!(next.curvy_depth, 1);
+
+        // Close parenthesis
+        let (next2, _) = next.process(&')', false);
+        assert_eq!(next2.curvy_depth, 0);
+    }
+
+    #[test]
+    fn bracket_state_tracks_curly_depth() {
+        let state = BracketState::new();
+
+        // Open brace
+        let (next, _) = state.process(&'{', false);
+        assert_eq!(next.curly_depth, 1);
+
+        // Close brace
+        let (next2, _) = next.process(&'}', false);
+        assert_eq!(next2.curly_depth, 0);
+    }
+
+    #[test]
+    fn bracket_state_tracks_square_depth() {
+        let state = BracketState::new();
+
+        // Open square bracket
+        let (next, _) = state.process(&'[', false);
+        assert_eq!(next.square_depth, 1);
+
+        // Close square bracket
+        let (next2, _) = next.process(&']', false);
+        assert_eq!(next2.square_depth, 0);
+    }
+
+    #[test]
+    fn bracket_state_ignores_brackets_in_double_string() {
+        let mut state = BracketState::new();
+        state.in_double_string = true;
+
+        let (next, should_terminate) = state.process(&'(', false);
+
+        // Should not increment depth when inside string
+        assert_eq!(next.curvy_depth, 0);
+        assert_eq!(should_terminate, false);
+    }
+
+    #[test]
+    fn bracket_state_ignores_brackets_in_single_string() {
+        let mut state = BracketState::new();
+        state.in_single_string = true;
+
+        let (next, should_terminate) = state.process(&'{', false);
+
+        // Should not increment depth when inside string
+        assert_eq!(next.curly_depth, 0);
+        assert_eq!(should_terminate, false);
+    }
+
+    #[test]
+    fn bracket_state_ignores_escaped_brackets() {
+        let state = BracketState::new();
+
+        let (next, should_terminate) = state.process(&'(', true);
+
+        // Should not increment depth when bracket is escaped
+        assert_eq!(next.curvy_depth, 0);
+        assert_eq!(should_terminate, false);
+    }
+
+    #[test]
+    fn bracket_state_terminates_on_balanced_close() {
+        let state = BracketState::new();
+
+        // Should terminate when we see ) with negative curvy_depth and all others balanced
+        let (next, should_terminate) = state.process(&')', false);
+
+        assert_eq!(next.curvy_depth, -1);
+        assert_eq!(should_terminate, true);
+    }
+
+    #[test]
+    fn bracket_state_does_not_terminate_with_unbalanced_braces() {
+        let mut state = BracketState::new();
+        state.curly_depth = 1; // Unbalanced braces
+
+        let (next, should_terminate) = state.process(&')', false);
+
+        assert_eq!(next.curvy_depth, -1);
+        assert_eq!(should_terminate, false); // Should not terminate - braces not balanced
+    }
+
+    #[test]
+    fn bracket_state_does_not_terminate_with_unbalanced_squares() {
+        let mut state = BracketState::new();
+        state.square_depth = 1; // Unbalanced square brackets
+
+        let (next, should_terminate) = state.process(&')', false);
+
+        assert_eq!(next.curvy_depth, -1);
+        assert_eq!(should_terminate, false); // Should not terminate - squares not balanced
+    }
+
+    #[test]
+    fn bracket_state_handles_nested_brackets() {
+        let state = BracketState::new();
+
+        // Simulate: url(a(b)c)
+        let (s1, _) = state.process(&'a', false);
+        let (s2, _) = s1.process(&'(', false);  // nested open
+        assert_eq!(s2.curvy_depth, 1);
+
+        let (s3, _) = s2.process(&'b', false);
+        let (s4, _) = s3.process(&')', false);  // nested close
+        assert_eq!(s4.curvy_depth, 0);
+
+        let (s5, _) = s4.process(&'c', false);
+        let (s6, terminate) = s5.process(&')', false);  // outer close
+
+        assert_eq!(s6.curvy_depth, -1);
+        assert_eq!(terminate, true);
+    }
+
+    #[test]
+    fn bracket_state_handles_mixed_bracket_types() {
+        let state = BracketState::new();
+
+        // Simulate: url(a[b]{c}d)
+        let (s1, _) = state.process(&'a', false);
+        let (s2, _) = s1.process(&'[', false);
+        assert_eq!(s2.square_depth, 1);
+
+        let (s3, _) = s2.process(&'b', false);
+        let (s4, _) = s3.process(&']', false);
+        assert_eq!(s4.square_depth, 0);
+
+        let (s5, _) = s4.process(&'{', false);
+        assert_eq!(s5.curly_depth, 1);
+
+        let (s6, _) = s5.process(&'c', false);
+        let (s7, _) = s6.process(&'}', false);
+        assert_eq!(s7.curly_depth, 0);
+
+        let (s8, _) = s7.process(&'d', false);
+        let (_s9, terminate) = s8.process(&')', false);
+
+        // All brackets balanced, should terminate
+        assert_eq!(terminate, true);
+    }
+
+    #[test]
+    fn bracket_state_handles_quotes_inside_brackets() {
+        let state = BracketState::new();
+
+        // Simulate: url("a(b)c")
+        let (s1, _) = state.process(&'"', false);
+        assert_eq!(s1.in_double_string, true);
+
+        let (s2, _) = s1.process(&'a', false);
+        let (s3, _) = s2.process(&'(', false); // Should be ignored (in string)
+        assert_eq!(s3.curvy_depth, 0);
+
+        let (s4, _) = s3.process(&'b', false);
+        let (s5, _) = s4.process(&')', false); // Should be ignored (in string)
+        assert_eq!(s5.curvy_depth, 0);
+
+        let (s6, _) = s5.process(&'c', false);
+        let (s7, _) = s6.process(&'"', false); // Exit string
+        assert_eq!(s7.in_double_string, false);
+
+        let (_s8, terminate) = s7.process(&')', false); // Should terminate
+        assert_eq!(terminate, true);
+    }
+
+    #[test]
+    fn bracket_state_handles_escaped_quote_in_string() {
+        let mut state = BracketState::new();
+        state.in_double_string = true;
+
+        // Escaped quote should not exit string
+        let (next, _) = state.process(&'"', true);
+        assert_eq!(next.in_double_string, true);
+    }
+}
