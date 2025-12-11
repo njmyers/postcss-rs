@@ -27,8 +27,9 @@ impl BracketState {
     }
 
     /// Process a character and return the next state and whether to terminate
-    fn process(&self, letter: &char, is_escaped: bool) -> (Self, bool) {
+    fn process(&self, previous: &char, letter: &char) -> (Self, bool) {
         let mut next = *self;
+        let is_escaped = Escape::test(previous);
 
         // Update string state if character is not escaped
         if !is_escaped {
@@ -125,8 +126,7 @@ impl Bracket {
 
         let result = letters_lookbehind
             .scan(BracketState::new(), |state, (previous, letter)| {
-                let is_escaped = Escape::test(previous);
-                let (next_state, should_terminate) = state.process(letter, is_escaped);
+                let (next_state, should_terminate) = state.process(previous, letter);
                 *state = next_state;
                 Some(should_terminate)
             })
@@ -161,7 +161,7 @@ mod tests {
     #[test]
     fn bracket_state_enters_double_string() {
         let state = BracketState::new();
-        let (next, should_terminate) = state.process(&'"', false);
+        let (next, should_terminate) = state.process(&'a', &'"');
 
         assert_eq!(next.in_double_string, true);
         assert_eq!(next.in_single_string, false);
@@ -173,7 +173,7 @@ mod tests {
         let mut state = BracketState::new();
         state.in_double_string = true;
 
-        let (next, should_terminate) = state.process(&'"', false);
+        let (next, should_terminate) = state.process(&'a', &'"');
 
         assert_eq!(next.in_double_string, false);
         assert_eq!(should_terminate, false);
@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn bracket_state_enters_single_string() {
         let state = BracketState::new();
-        let (next, should_terminate) = state.process(&'\'', false);
+        let (next, should_terminate) = state.process(&'a', &'\'');
 
         assert_eq!(next.in_single_string, true);
         assert_eq!(next.in_double_string, false);
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn bracket_state_ignores_escaped_quotes() {
         let state = BracketState::new();
-        let (next, should_terminate) = state.process(&'"', true);
+        let (next, should_terminate) = state.process(&'\\', &'"');
 
         // Should not enter string mode when quote is escaped
         assert_eq!(next.in_double_string, false);
@@ -205,11 +205,11 @@ mod tests {
         let state = BracketState::new();
 
         // Open parenthesis
-        let (next, _) = state.process(&'(', false);
+        let (next, _) = state.process(&'a', &'(');
         assert_eq!(next.curvy_depth, 1);
 
         // Close parenthesis
-        let (next2, _) = next.process(&')', false);
+        let (next2, _) = next.process(&'a', &')');
         assert_eq!(next2.curvy_depth, 0);
     }
 
@@ -218,11 +218,11 @@ mod tests {
         let state = BracketState::new();
 
         // Open brace
-        let (next, _) = state.process(&'{', false);
+        let (next, _) = state.process(&'a', &'{');
         assert_eq!(next.curly_depth, 1);
 
         // Close brace
-        let (next2, _) = next.process(&'}', false);
+        let (next2, _) = next.process(&'a', &'}');
         assert_eq!(next2.curly_depth, 0);
     }
 
@@ -231,11 +231,11 @@ mod tests {
         let state = BracketState::new();
 
         // Open square bracket
-        let (next, _) = state.process(&'[', false);
+        let (next, _) = state.process(&'a', &'[');
         assert_eq!(next.square_depth, 1);
 
         // Close square bracket
-        let (next2, _) = next.process(&']', false);
+        let (next2, _) = next.process(&'a', &']');
         assert_eq!(next2.square_depth, 0);
     }
 
@@ -244,7 +244,7 @@ mod tests {
         let mut state = BracketState::new();
         state.in_double_string = true;
 
-        let (next, should_terminate) = state.process(&'(', false);
+        let (next, should_terminate) = state.process(&'a', &'(');
 
         // Should not increment depth when inside string
         assert_eq!(next.curvy_depth, 0);
@@ -256,7 +256,7 @@ mod tests {
         let mut state = BracketState::new();
         state.in_single_string = true;
 
-        let (next, should_terminate) = state.process(&'{', false);
+        let (next, should_terminate) = state.process(&'a', &'{');
 
         // Should not increment depth when inside string
         assert_eq!(next.curly_depth, 0);
@@ -267,7 +267,7 @@ mod tests {
     fn bracket_state_ignores_escaped_brackets() {
         let state = BracketState::new();
 
-        let (next, should_terminate) = state.process(&'(', true);
+        let (next, should_terminate) = state.process(&'\\', &'(');
 
         // Should not increment depth when bracket is escaped
         assert_eq!(next.curvy_depth, 0);
@@ -279,7 +279,7 @@ mod tests {
         let state = BracketState::new();
 
         // Should terminate when we see ) with negative curvy_depth and all others balanced
-        let (next, should_terminate) = state.process(&')', false);
+        let (next, should_terminate) = state.process(&'a', &')');
 
         assert_eq!(next.curvy_depth, -1);
         assert_eq!(should_terminate, true);
@@ -290,7 +290,7 @@ mod tests {
         let mut state = BracketState::new();
         state.curly_depth = 1; // Unbalanced braces
 
-        let (next, should_terminate) = state.process(&')', false);
+        let (next, should_terminate) = state.process(&'a', &')');
 
         assert_eq!(next.curvy_depth, -1);
         assert_eq!(should_terminate, false); // Should not terminate - braces not balanced
@@ -301,7 +301,7 @@ mod tests {
         let mut state = BracketState::new();
         state.square_depth = 1; // Unbalanced square brackets
 
-        let (next, should_terminate) = state.process(&')', false);
+        let (next, should_terminate) = state.process(&'a', &')');
 
         assert_eq!(next.curvy_depth, -1);
         assert_eq!(should_terminate, false); // Should not terminate - squares not balanced
@@ -312,16 +312,16 @@ mod tests {
         let state = BracketState::new();
 
         // Simulate: url(a(b)c)
-        let (s1, _) = state.process(&'a', false);
-        let (s2, _) = s1.process(&'(', false);  // nested open
+        let (s1, _) = state.process(&'(', &'a');
+        let (s2, _) = s1.process(&'a', &'(');  // nested open
         assert_eq!(s2.curvy_depth, 1);
 
-        let (s3, _) = s2.process(&'b', false);
-        let (s4, _) = s3.process(&')', false);  // nested close
+        let (s3, _) = s2.process(&'(', &'b');
+        let (s4, _) = s3.process(&'b', &')');  // nested close
         assert_eq!(s4.curvy_depth, 0);
 
-        let (s5, _) = s4.process(&'c', false);
-        let (s6, terminate) = s5.process(&')', false);  // outer close
+        let (s5, _) = s4.process(&')', &'c');
+        let (s6, terminate) = s5.process(&'c', &')');  // outer close
 
         assert_eq!(s6.curvy_depth, -1);
         assert_eq!(terminate, true);
@@ -332,23 +332,23 @@ mod tests {
         let state = BracketState::new();
 
         // Simulate: url(a[b]{c}d)
-        let (s1, _) = state.process(&'a', false);
-        let (s2, _) = s1.process(&'[', false);
+        let (s1, _) = state.process(&'(', &'a');
+        let (s2, _) = s1.process(&'a', &'[');
         assert_eq!(s2.square_depth, 1);
 
-        let (s3, _) = s2.process(&'b', false);
-        let (s4, _) = s3.process(&']', false);
+        let (s3, _) = s2.process(&'[', &'b');
+        let (s4, _) = s3.process(&'b', &']');
         assert_eq!(s4.square_depth, 0);
 
-        let (s5, _) = s4.process(&'{', false);
+        let (s5, _) = s4.process(&']', &'{');
         assert_eq!(s5.curly_depth, 1);
 
-        let (s6, _) = s5.process(&'c', false);
-        let (s7, _) = s6.process(&'}', false);
+        let (s6, _) = s5.process(&'{', &'c');
+        let (s7, _) = s6.process(&'c', &'}');
         assert_eq!(s7.curly_depth, 0);
 
-        let (s8, _) = s7.process(&'d', false);
-        let (_s9, terminate) = s8.process(&')', false);
+        let (s8, _) = s7.process(&'}', &'d');
+        let (_s9, terminate) = s8.process(&'d', &')');
 
         // All brackets balanced, should terminate
         assert_eq!(terminate, true);
@@ -359,22 +359,22 @@ mod tests {
         let state = BracketState::new();
 
         // Simulate: url("a(b)c")
-        let (s1, _) = state.process(&'"', false);
+        let (s1, _) = state.process(&'(', &'"');
         assert_eq!(s1.in_double_string, true);
 
-        let (s2, _) = s1.process(&'a', false);
-        let (s3, _) = s2.process(&'(', false); // Should be ignored (in string)
+        let (s2, _) = s1.process(&'"', &'a');
+        let (s3, _) = s2.process(&'a', &'('); // Should be ignored (in string)
         assert_eq!(s3.curvy_depth, 0);
 
-        let (s4, _) = s3.process(&'b', false);
-        let (s5, _) = s4.process(&')', false); // Should be ignored (in string)
+        let (s4, _) = s3.process(&'(', &'b');
+        let (s5, _) = s4.process(&'b', &')'); // Should be ignored (in string)
         assert_eq!(s5.curvy_depth, 0);
 
-        let (s6, _) = s5.process(&'c', false);
-        let (s7, _) = s6.process(&'"', false); // Exit string
+        let (s6, _) = s5.process(&')', &'c');
+        let (s7, _) = s6.process(&'c', &'"'); // Exit string
         assert_eq!(s7.in_double_string, false);
 
-        let (_s8, terminate) = s7.process(&')', false); // Should terminate
+        let (_s8, terminate) = s7.process(&'"', &')'); // Should terminate
         assert_eq!(terminate, true);
     }
 
@@ -384,7 +384,7 @@ mod tests {
         state.in_double_string = true;
 
         // Escaped quote should not exit string
-        let (next, _) = state.process(&'"', true);
+        let (next, _) = state.process(&'\\', &'"');
         assert_eq!(next.in_double_string, true);
     }
 }
