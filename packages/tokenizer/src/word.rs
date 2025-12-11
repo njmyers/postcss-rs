@@ -4,10 +4,7 @@ use crate::comment::*;
 use crate::escape::Escape;
 use crate::string::*;
 use crate::symbol::*;
-use crate::utils;
 use crate::whitespace::*;
-
-use std::cmp;
 
 pub struct Word;
 
