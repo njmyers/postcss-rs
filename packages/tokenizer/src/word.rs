@@ -26,29 +26,21 @@ impl Word {
         let lookbehind: usize = 1;
         let count = letters.len();
 
+        // Track whether the next character is escaped by a backslash
+        let mut next_is_escaped = false;
+
         for i in 1..count {
             let letter = &letters[i];
 
-            // Count consecutive backslashes before this character
-            let mut backslash_count = 0;
-            let mut j = i - 1;
-            loop {
-                if Escape::test(&letters[j]) {
-                    backslash_count += 1;
-                    if j == 0 {
-                        break;
-                    }
-                    j -= 1;
-                } else {
-                    break;
-                }
+            // If this character was escaped by previous backslash, skip it
+            if next_is_escaped {
+                next_is_escaped = false;
+                continue;
             }
 
-            // If there's an odd number of backslashes, the current character is escaped
-            let is_escaped = backslash_count % 2 == 1;
-
-            // If escaped, skip termination check
-            if is_escaped {
+            // If this is a backslash, the next character will be escaped
+            if Escape::test(letter) {
+                next_is_escaped = true;
                 continue;
             }
 
