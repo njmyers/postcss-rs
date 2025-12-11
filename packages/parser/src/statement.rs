@@ -119,8 +119,10 @@ impl BracketDepth {
 
     pub fn process(&mut self, token: &Token) {
         match token.kind {
-            Kind::OpenCurly | Kind::OpenCurvy => self.curly += 1,
-            Kind::CloseCurly | Kind::CloseCurvy => self.curly = (self.curly - 1).max(0),
+            Kind::OpenCurly => self.curly += 1,
+            Kind::CloseCurly => self.curly = (self.curly - 1).max(0),
+            Kind::OpenCurvy => self.round += 1,
+            Kind::CloseCurvy => self.round = (self.round - 1).max(0),
             Kind::OpenSquare => self.square += 1,
             Kind::CloseSquare => self.square = (self.square - 1).max(0),
             Kind::Brackets => {
