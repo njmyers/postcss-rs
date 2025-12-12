@@ -254,7 +254,16 @@ impl Declaration {
         // Check if everything after ! matches "important" (case-insensitive)
         if after_bang.eq_ignore_ascii_case("important") {
             // Complete !important in single token
-            let raw = word[bang_pos..].to_string();
+            let mut raw = word[bang_pos..].to_string();
+
+            // Check for trailing space after "important"
+            if let Some(trailing) = tokenizer.peek() {
+                if trailing.kind == Kind::Space {
+                    raw.push_str(&trailing.value);
+                    tokenizer.next(); // Consume the space
+                }
+            }
+
             return (ImportantResult::Found(raw), before_bang);
         }
 
