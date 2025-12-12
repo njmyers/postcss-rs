@@ -87,6 +87,14 @@ impl Tokens {
     pub fn clear(&mut self) {
         self.0.clear();
     }
+
+    pub fn pop(&mut self) -> Option<Token> {
+        self.0.pop()
+    }
+
+    pub fn last(&self) -> Option<&Token> {
+        self.0.last()
+    }
 }
 
 impl fmt::Display for Tokens {
