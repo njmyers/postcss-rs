@@ -2,6 +2,7 @@ use crate::Declaration;
 use crate::Node;
 use crate::NodeBuilder;
 use crate::Statement;
+use crate::rule_word::RuleWord;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -41,7 +42,10 @@ impl Rule {
         while let Some(token) = tokenizer.next() {
             match token.kind {
                 Kind::Word => {
-                    let (child, terminator) = Declaration::create(token, tokenizer, &spaces);
+                    // Combine consecutive Word tokens for property names with escape sequences
+                    let prop = RuleWord::collect_and_combine(token, tokenizer);
+
+                    let (child, terminator) = Declaration::create(prop, tokenizer, &spaces);
                     builder.terminator(&terminator);
                     builder.append(child);
                     spaces.clear();
@@ -97,6 +101,9 @@ impl Selector {
                 Kind::OpenSquare => statement.push(token),
                 Kind::CloseSquare => statement.push(token),
                 Kind::String => statement.push(token),
+                Kind::Semicolon => statement.push(token),
+                Kind::OpenCurvy => statement.push(token),
+                Kind::CloseCurvy => statement.push(token),
                 Kind::Comment => {
                     // Check if there are more selector tokens after the comment
                     if let Some(next) = tokenizer.peek() {
@@ -107,6 +114,9 @@ impl Selector {
                             | Kind::OpenSquare
                             | Kind::CloseSquare
                             | Kind::String
+                            | Kind::Semicolon
+                            | Kind::OpenCurvy
+                            | Kind::CloseCurvy
                             | Kind::Comment => statement.push(token),
                             _ => builder.between(&token),
                         }

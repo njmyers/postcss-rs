@@ -8,6 +8,7 @@ mod node;
 mod parser;
 mod raws;
 mod rule;
+mod rule_word;
 mod statement;
 
 pub mod characters;

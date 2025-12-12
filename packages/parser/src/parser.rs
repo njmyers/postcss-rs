@@ -182,7 +182,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_escape() {
         let (ast, expected) = parse_and_read("escape.css", "escape.json");
         assert_eq!(ast, expected);
