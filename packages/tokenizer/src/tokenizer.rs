@@ -1255,10 +1255,6 @@ mod tests {
     #[test]
     fn debug_escape_attribute_selector_tokens() {
         let tokens = tokenizer(r#"[foo=\"] { }"#);
-        println!("\nTokens for '[foo=\\\"]]  {{ }}':");
-        for token in tokens.iter() {
-            println!("  {:?} -> {:?}", token.kind, token.value);
-        }
         assert!(tokens.len() > 0);
     }
 }
