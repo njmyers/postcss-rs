@@ -45,10 +45,28 @@ impl Rule {
                     // Combine consecutive Word tokens for property names with escape sequences
                     let prop = RuleWord::collect_and_combine(token, tokenizer);
 
-                    let (child, terminator) = Declaration::create(prop, tokenizer, &spaces);
-                    builder.terminator(&terminator);
-                    builder.append(child);
-                    spaces.clear();
+                    // Look ahead to determine if this is a nested rule or a declaration
+                    // Skip spaces to find the first non-space token
+                    let is_nested_rule = Self::peek_for_nested_rule(tokenizer);
+
+                    match is_nested_rule {
+                        true => {
+                            // Nested rule: word followed by opening brace (possibly with spaces)
+                            let nested_rule = Self::create(prop, tokenizer, &spaces);
+                            // Nested rules don't end with semicolons, so reset the terminator
+                            let terminator = crate::StatementTerminator::new();
+                            builder.terminator(&terminator);
+                            builder.append(nested_rule);
+                            spaces.clear();
+                        }
+                        false => {
+                            // Declaration: word followed by colon or other tokens
+                            let (child, terminator) = Declaration::create(prop, tokenizer, &spaces);
+                            builder.terminator(&terminator);
+                            builder.append(child);
+                            spaces.clear();
+                        }
+                    }
                 }
 
                 Kind::Comment => {
@@ -72,6 +90,29 @@ impl Rule {
 
     fn create_comment(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
         return crate::Comment::create(token, tokenizer, spaces);
+    }
+
+    /// Peek ahead to determine if the next non-space token indicates a nested rule
+    fn peek_for_nested_rule(tokenizer: &Tokenizer) -> bool {
+        let mut peek_index = 1;
+
+        // Skip spaces and look for the next significant token
+        loop {
+            match tokenizer.peek_nth(peek_index) {
+                Some(token) => match token.kind {
+                    // Found space, keep looking
+                    Kind::Space => peek_index += 1,
+                    // Found opening brace - it's a nested rule
+                    Kind::OpenCurly => return true,
+                    // Found brackets starting with '{' - it's a nested rule
+                    Kind::Brackets if token.value.starts_with('{') => return true,
+                    // Found anything else - it's a declaration
+                    _ => return false,
+                },
+                // No more tokens - it's a declaration
+                None => return false,
+            }
+        }
     }
 }
 
