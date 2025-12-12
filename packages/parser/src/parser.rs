@@ -45,8 +45,30 @@ impl<'a> Parser<'a> {
                     spaces.clear();
                 }
 
-                // Handle rules (selectors can start with word, bracket, or open curly)
-                Kind::Word | Kind::OpenCurly | Kind::OpenSquare => {
+                // Handle words - could be rules or root-level declarations
+                Kind::Word => {
+                    // Root-level declaration: word followed by colon
+                    if matches!(tokenizer.peek(), Some(next) if next.kind == Kind::Colon) {
+                        let (node, terminator) =
+                            crate::Declaration::create(token, &mut tokenizer, &spaces);
+                        root.terminator(&terminator);
+                        root.append(node);
+                        spaces.clear();
+                        continue;
+                    }
+
+                    // Rule: word followed by anything else (or no next token)
+                    let terminator = crate::StatementTerminator::new();
+                    root.terminator(&terminator);
+                    root.append(Rule::create(token, &mut tokenizer, &spaces));
+                    spaces.clear();
+                }
+
+                // Handle rules starting with brackets or braces
+                Kind::OpenCurly | Kind::OpenSquare => {
+                    // Rules don't end with semicolons, so reset the terminator
+                    let terminator = crate::StatementTerminator::new();
+                    root.terminator(&terminator);
                     root.append(Rule::create(token, &mut tokenizer, &spaces));
                     spaces.clear();
                 }
@@ -188,7 +210,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_extends() {
         let (ast, expected) = parse_and_read("extends.css", "extends.json");
         assert_eq!(ast, expected);
