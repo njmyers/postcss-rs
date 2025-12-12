@@ -18,26 +18,37 @@ enum WordResult {
     Terminate,
 }
 
+/// State of escape sequence processing
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum WordEscapeState {
+    /// Escape sequence is open - next character will be escaped
+    Open,
+    /// No active escape sequence
+    Closed,
+}
+
 /// Tracks the state of word tokenization including escape handling
 #[derive(Debug, Clone, Copy)]
 struct WordState {
-    is_escaped: bool,
+    escape_state: WordEscapeState,
 }
 
 impl WordState {
     fn new() -> Self {
-        Self { is_escaped: false }
+        Self {
+            escape_state: WordEscapeState::Closed,
+        }
     }
 
     /// Process a character and return the next state and word result
     fn process(&self, letter: &char) -> (Self, WordResult) {
         // Determine if current character should terminate and what next state is
-        let (result, next_escaped) = if self.is_escaped {
-            // Current char is escaped - don't terminate, next won't be escaped
-            (WordResult::Continue, false)
+        let (result, next_escape_state) = if self.escape_state == WordEscapeState::Open {
+            // Current char is escaped - don't terminate, close the escape sequence
+            (WordResult::Continue, WordEscapeState::Closed)
         } else if Escape::test(letter) {
-            // Current is backslash - don't terminate, next char will be escaped
-            (WordResult::Continue, true)
+            // Current is backslash - don't terminate, open escape sequence
+            (WordResult::Continue, WordEscapeState::Open)
         } else {
             // Normal character - check if it should terminate
             let terminates = match letter {
@@ -63,10 +74,15 @@ impl WordState {
             } else {
                 WordResult::Continue
             };
-            (word_result, false)
+            (word_result, WordEscapeState::Closed)
         };
 
-        (Self { is_escaped: next_escaped }, result)
+        (
+            Self {
+                escape_state: next_escape_state,
+            },
+            result,
+        )
     }
 }
 
@@ -125,9 +141,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn word_state_initializes_unescaped() {
+    fn word_state_initializes_with_closed_escape() {
         let state = WordState::new();
-        assert_eq!(state.is_escaped, false);
+        assert_eq!(state.escape_state, WordEscapeState::Closed);
     }
 
     #[test]
@@ -136,7 +152,7 @@ mod tests {
         let (next, result) = state.process(&'a');
 
         assert_eq!(result, WordResult::Continue);
-        assert_eq!(next.is_escaped, false);
+        assert_eq!(next.escape_state, WordEscapeState::Closed);
     }
 
     #[test]
@@ -145,7 +161,7 @@ mod tests {
         let (next, result) = state.process(&' ');
 
         assert_eq!(result, WordResult::Terminate);
-        assert_eq!(next.is_escaped, false);
+        assert_eq!(next.escape_state, WordEscapeState::Closed);
     }
 
     #[test]
@@ -154,7 +170,7 @@ mod tests {
         let (next, result) = state.process(&';');
 
         assert_eq!(result, WordResult::Terminate);
-        assert_eq!(next.is_escaped, false);
+        assert_eq!(next.escape_state, WordEscapeState::Closed);
     }
 
     #[test]
@@ -163,7 +179,7 @@ mod tests {
         let (next, result) = state.process(&':');
 
         assert_eq!(result, WordResult::Terminate);
-        assert_eq!(next.is_escaped, false);
+        assert_eq!(next.escape_state, WordEscapeState::Closed);
     }
 
     #[test]
@@ -172,43 +188,43 @@ mod tests {
         let (next, result) = state.process(&'(');
 
         assert_eq!(result, WordResult::Terminate);
-        assert_eq!(next.is_escaped, false);
+        assert_eq!(next.escape_state, WordEscapeState::Closed);
     }
 
     #[test]
-    fn word_state_sets_escaped_on_backslash() {
+    fn word_state_opens_escape_on_backslash() {
         let state = WordState::new();
         let (next, result) = state.process(&'\\');
 
         assert_eq!(result, WordResult::Continue);
-        assert_eq!(next.is_escaped, true);
+        assert_eq!(next.escape_state, WordEscapeState::Open);
     }
 
     #[test]
-    fn word_state_continues_when_character_is_escaped() {
+    fn word_state_continues_when_escape_is_open() {
         let mut state = WordState::new();
-        state.is_escaped = true;
+        state.escape_state = WordEscapeState::Open;
 
-        // Even a normally terminating character should continue when escaped
+        // Even a normally terminating character should continue when escape is open
         let (next, result) = state.process(&';');
 
         assert_eq!(result, WordResult::Continue);
-        assert_eq!(next.is_escaped, false); // No longer escaped after consuming the escaped char
+        assert_eq!(next.escape_state, WordEscapeState::Closed); // Escape closes after consuming the char
     }
 
     #[test]
     fn word_state_handles_escape_sequence() {
         let state = WordState::new();
 
-        // First character is backslash - sets escaped state
+        // First character is backslash - opens escape
         let (s1, r1) = state.process(&'\\');
         assert_eq!(r1, WordResult::Continue);
-        assert_eq!(s1.is_escaped, true);
+        assert_eq!(s1.escape_state, WordEscapeState::Open);
 
         // Next character is escaped, so it continues even though it's a semicolon
         let (s2, r2) = s1.process(&';');
         assert_eq!(r2, WordResult::Continue);
-        assert_eq!(s2.is_escaped, false);
+        assert_eq!(s2.escape_state, WordEscapeState::Closed);
 
         // Back to normal - this semicolon should terminate
         let (_s3, r3) = s2.process(&';');
@@ -219,14 +235,14 @@ mod tests {
     fn word_state_handles_escaped_backslash() {
         let state = WordState::new();
 
-        // First backslash
+        // First backslash opens escape
         let (s1, _) = state.process(&'\\');
-        assert_eq!(s1.is_escaped, true);
+        assert_eq!(s1.escape_state, WordEscapeState::Open);
 
-        // Second backslash is escaped
+        // Second backslash is escaped, closes the escape
         let (s2, r2) = s1.process(&'\\');
         assert_eq!(r2, WordResult::Continue);
-        assert_eq!(s2.is_escaped, false); // The second backslash was escaped, not an escape char
+        assert_eq!(s2.escape_state, WordEscapeState::Closed);
 
         // Next character should behave normally
         let (_s3, r3) = s2.process(&';');
