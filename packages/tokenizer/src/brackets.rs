@@ -5,6 +5,15 @@ use crate::Token;
 
 use std::cmp;
 
+/// Result of processing a character in bracket parsing
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BracketResult {
+    /// Continue parsing - bracket is still open
+    Open,
+    /// Stop parsing - found the closing bracket
+    Closed,
+}
+
 /// Tracks the state of bracket parsing including string context and nesting depth
 #[derive(Debug, Clone, Copy)]
 struct BracketState {
@@ -26,8 +35,8 @@ impl BracketState {
         }
     }
 
-    /// Process a character and return the next state and whether to terminate
-    fn process(&self, previous: &char, letter: &char) -> (Self, bool) {
+    /// Process a character and return the next state and bracket result
+    fn process(&self, previous: &char, letter: &char) -> (Self, BracketResult) {
         let mut next = *self;
         let is_escaped = Escape::test(previous);
 
@@ -43,7 +52,7 @@ impl BracketState {
         // Skip bracket processing if inside a string or if current char is escaped
         let in_string = next.in_double_string || next.in_single_string;
         if in_string || is_escaped {
-            return (next, false);
+            return (next, BracketResult::Open);
         }
 
         // Update depth based on bracket type
@@ -57,13 +66,19 @@ impl BracketState {
             _ => {}
         }
 
-        // Terminate when we find a closing paren that closes the initial bracket
-        let should_terminate = letter == CLOSE_CURVY
+        // Check if we found the closing bracket
+        let result = if letter == CLOSE_CURVY
             && next.curvy_depth < 0  // Found more ) than (
             && next.curly_depth == 0 // All {} are balanced
-            && next.square_depth == 0; // All [] are balanced
+            && next.square_depth == 0
+        // All [] are balanced
+        {
+            BracketResult::Closed
+        } else {
+            BracketResult::Open
+        };
 
-        (next, should_terminate)
+        (next, result)
     }
 }
 
@@ -126,11 +141,11 @@ impl Bracket {
 
         let result = letters_lookbehind
             .scan(BracketState::new(), |state, (previous, letter)| {
-                let (next_state, should_terminate) = state.process(previous, letter);
+                let (next_state, result) = state.process(previous, letter);
                 *state = next_state;
-                Some(should_terminate)
+                Some(result)
             })
-            .position(|should_terminate| should_terminate);
+            .position(|result| result == BracketResult::Closed);
 
         let length = utils::unwrap_position(result, letters) + lookbehind;
         return cmp::min(length, count - lookbehind);
@@ -161,11 +176,11 @@ mod tests {
     #[test]
     fn bracket_state_enters_double_string() {
         let state = BracketState::new();
-        let (next, should_terminate) = state.process(&'a', &'"');
+        let (next, result) = state.process(&'a', &'"');
 
         assert_eq!(next.in_double_string, true);
         assert_eq!(next.in_single_string, false);
-        assert_eq!(should_terminate, false);
+        assert_eq!(result, BracketResult::Open);
     }
 
     #[test]
@@ -173,31 +188,31 @@ mod tests {
         let mut state = BracketState::new();
         state.in_double_string = true;
 
-        let (next, should_terminate) = state.process(&'a', &'"');
+        let (next, result) = state.process(&'a', &'"');
 
         assert_eq!(next.in_double_string, false);
-        assert_eq!(should_terminate, false);
+        assert_eq!(result, BracketResult::Open);
     }
 
     #[test]
     fn bracket_state_enters_single_string() {
         let state = BracketState::new();
-        let (next, should_terminate) = state.process(&'a', &'\'');
+        let (next, result) = state.process(&'a', &'\'');
 
         assert_eq!(next.in_single_string, true);
         assert_eq!(next.in_double_string, false);
-        assert_eq!(should_terminate, false);
+        assert_eq!(result, BracketResult::Open);
     }
 
     #[test]
     fn bracket_state_ignores_escaped_quotes() {
         let state = BracketState::new();
-        let (next, should_terminate) = state.process(&'\\', &'"');
+        let (next, result) = state.process(&'\\', &'"');
 
         // Should not enter string mode when quote is escaped
         assert_eq!(next.in_double_string, false);
         assert_eq!(next.in_single_string, false);
-        assert_eq!(should_terminate, false);
+        assert_eq!(result, BracketResult::Open);
     }
 
     #[test]
@@ -244,11 +259,11 @@ mod tests {
         let mut state = BracketState::new();
         state.in_double_string = true;
 
-        let (next, should_terminate) = state.process(&'a', &'(');
+        let (next, result) = state.process(&'a', &'(');
 
         // Should not increment depth when inside string
         assert_eq!(next.curvy_depth, 0);
-        assert_eq!(should_terminate, false);
+        assert_eq!(result, BracketResult::Open);
     }
 
     #[test]
@@ -256,33 +271,33 @@ mod tests {
         let mut state = BracketState::new();
         state.in_single_string = true;
 
-        let (next, should_terminate) = state.process(&'a', &'{');
+        let (next, result) = state.process(&'a', &'{');
 
         // Should not increment depth when inside string
         assert_eq!(next.curly_depth, 0);
-        assert_eq!(should_terminate, false);
+        assert_eq!(result, BracketResult::Open);
     }
 
     #[test]
     fn bracket_state_ignores_escaped_brackets() {
         let state = BracketState::new();
 
-        let (next, should_terminate) = state.process(&'\\', &'(');
+        let (next, result) = state.process(&'\\', &'(');
 
         // Should not increment depth when bracket is escaped
         assert_eq!(next.curvy_depth, 0);
-        assert_eq!(should_terminate, false);
+        assert_eq!(result, BracketResult::Open);
     }
 
     #[test]
     fn bracket_state_terminates_on_balanced_close() {
         let state = BracketState::new();
 
-        // Should terminate when we see ) with negative curvy_depth and all others balanced
-        let (next, should_terminate) = state.process(&'a', &')');
+        // Should return Closed when we see ) with negative curvy_depth and all others balanced
+        let (next, result) = state.process(&'a', &')');
 
         assert_eq!(next.curvy_depth, -1);
-        assert_eq!(should_terminate, true);
+        assert_eq!(result, BracketResult::Closed);
     }
 
     #[test]
@@ -290,10 +305,10 @@ mod tests {
         let mut state = BracketState::new();
         state.curly_depth = 1; // Unbalanced braces
 
-        let (next, should_terminate) = state.process(&'a', &')');
+        let (next, result) = state.process(&'a', &')');
 
         assert_eq!(next.curvy_depth, -1);
-        assert_eq!(should_terminate, false); // Should not terminate - braces not balanced
+        assert_eq!(result, BracketResult::Open); // Should not close - braces not balanced
     }
 
     #[test]
@@ -301,10 +316,10 @@ mod tests {
         let mut state = BracketState::new();
         state.square_depth = 1; // Unbalanced square brackets
 
-        let (next, should_terminate) = state.process(&'a', &')');
+        let (next, result) = state.process(&'a', &')');
 
         assert_eq!(next.curvy_depth, -1);
-        assert_eq!(should_terminate, false); // Should not terminate - squares not balanced
+        assert_eq!(result, BracketResult::Open); // Should not close - squares not balanced
     }
 
     #[test]
@@ -321,10 +336,10 @@ mod tests {
         assert_eq!(s4.curvy_depth, 0);
 
         let (s5, _) = s4.process(&')', &'c');
-        let (s6, terminate) = s5.process(&'c', &')');  // outer close
+        let (s6, result) = s5.process(&'c', &')');  // outer close
 
         assert_eq!(s6.curvy_depth, -1);
-        assert_eq!(terminate, true);
+        assert_eq!(result, BracketResult::Closed);
     }
 
     #[test]
@@ -348,10 +363,10 @@ mod tests {
         assert_eq!(s7.curly_depth, 0);
 
         let (s8, _) = s7.process(&'}', &'d');
-        let (_s9, terminate) = s8.process(&'d', &')');
+        let (_s9, result) = s8.process(&'d', &')');
 
-        // All brackets balanced, should terminate
-        assert_eq!(terminate, true);
+        // All brackets balanced, should close
+        assert_eq!(result, BracketResult::Closed);
     }
 
     #[test]
@@ -374,8 +389,8 @@ mod tests {
         let (s7, _) = s6.process(&'c', &'"'); // Exit string
         assert_eq!(s7.in_double_string, false);
 
-        let (_s8, terminate) = s7.process(&'"', &')'); // Should terminate
-        assert_eq!(terminate, true);
+        let (_s8, result) = s7.process(&'"', &')'); // Should close
+        assert_eq!(result, BracketResult::Closed);
     }
 
     #[test]
