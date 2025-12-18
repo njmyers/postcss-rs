@@ -253,75 +253,74 @@ impl Declaration {
 
         // Check if everything after ! matches "important" (case-insensitive)
         if after_bang.eq_ignore_ascii_case("important") {
-            // Complete !important in single token
-            let mut raw = word[bang_pos..].to_string();
-
-            // Check for trailing space after "important"
-            if let Some(trailing) = tokenizer.peek() {
-                if trailing.kind == Kind::Space {
-                    raw.push_str(&trailing.value);
-                    tokenizer.next(); // Consume the space
-                }
-            }
-
+            let raw = Self::build_important_raw(&word[bang_pos..], tokenizer);
             return (ImportantResult::Found(raw), before_bang);
         }
 
-        // Check if we have a partial match or need to look ahead
-        if after_bang.is_empty() || Self::could_be_important_prefix(after_bang) {
-            // Collect subsequent tokens to build complete important pattern
-            let mut raw_parts = vec![word[bang_pos..].to_string()];
-            let mut found = after_bang.eq_ignore_ascii_case("important");
-            let mut peek_count = 0;
+        // Not a prefix of "important", bail early
+        if !after_bang.is_empty() && !Self::could_be_important_prefix(after_bang) {
+            return (ImportantResult::NotImportant, String::new());
+        }
 
-            while !found {
-                peek_count += 1;
-                let Some(next) = tokenizer.peek_nth(peek_count) else {
-                    // No more tokens, not important
-                    return (ImportantResult::NotImportant, String::new());
-                };
+        // Collect subsequent tokens to build complete important pattern
+        Self::collect_multitoken_important(&word[bang_pos..], after_bang, tokenizer, before_bang)
+    }
 
-                match next.kind {
-                    Kind::Space | Kind::Comment => {
-                        // Collect spaces and comments
-                        raw_parts.push(next.value.clone());
-                    }
-                    Kind::Word => {
-                        // Check if this word is "important" (case-insensitive)
-                        if next.value.eq_ignore_ascii_case("important") {
-                            raw_parts.push(next.value.clone());
-                            found = true;
-                            // Consume all the tokens we peeked
-                            for _ in 0..peek_count {
-                                tokenizer.next();
-                            }
-                            // Check for trailing space after "important"
-                            if let Some(trailing) = tokenizer.peek() {
-                                if trailing.kind == Kind::Space {
-                                    raw_parts.push(trailing.value.clone());
-                                    tokenizer.next(); // Consume the space
-                                }
-                            }
-                            break;
-                        } else {
-                            // Not important
-                            return (ImportantResult::NotImportant, String::new());
-                        }
-                    }
-                    _ => {
-                        // Hit a non-space/comment/word token, not important
-                        return (ImportantResult::NotImportant, String::new());
-                    }
+    /// Collect !important pattern that spans multiple tokens
+    fn collect_multitoken_important(
+        initial: &str,
+        after_bang: &str,
+        tokenizer: &mut Tokenizer,
+        before_bang: String,
+    ) -> (ImportantResult, String) {
+        let mut raw_parts = vec![initial.to_string()];
+        let mut peek_count = 0;
+
+        // Already complete if after_bang is "important"
+        if after_bang.eq_ignore_ascii_case("important") {
+            let raw = Self::build_important_raw(&raw_parts.join(""), tokenizer);
+            return (ImportantResult::Found(raw), before_bang);
+        }
+
+        loop {
+            peek_count += 1;
+            let Some(next) = tokenizer.peek_nth(peek_count) else {
+                return (ImportantResult::NotImportant, String::new());
+            };
+
+            match next.kind {
+                Kind::Space | Kind::Comment => {
+                    raw_parts.push(next.value.clone());
+                    continue;
                 }
-            }
+                Kind::Word if next.value.eq_ignore_ascii_case("important") => {
+                    raw_parts.push(next.value.clone());
 
-            if found {
-                return (ImportantResult::Found(raw_parts.join("")), before_bang);
+                    // Consume all peeked tokens
+                    for _ in 0..peek_count {
+                        tokenizer.next();
+                    }
+
+                    let raw = Self::build_important_raw(&raw_parts.join(""), tokenizer);
+                    return (ImportantResult::Found(raw), before_bang);
+                }
+                _ => return (ImportantResult::NotImportant, String::new()),
+            }
+        }
+    }
+
+    /// Build the final important raw string, including trailing space if present
+    fn build_important_raw(base: &str, tokenizer: &mut Tokenizer) -> String {
+        let mut raw = base.to_string();
+
+        if let Some(trailing) = tokenizer.peek() {
+            if trailing.kind == Kind::Space {
+                raw.push_str(&trailing.value);
+                tokenizer.next();
             }
         }
 
-        // Contains ! but not followed by important
-        (ImportantResult::NotImportant, String::new())
+        raw
     }
 
     /// Check if a string could be a prefix of "important" (case-insensitive)
