@@ -50,6 +50,41 @@ impl Statement {
     pub fn to_string_clean(&self) -> String {
         return self.values_clean.to_string();
     }
+
+    /// Collect and remove trailing space tokens, returning them as a string
+    pub fn collect_trailing_spaces(&mut self) -> String {
+        let mut spaces = Vec::new();
+
+        // Collect from values (raw) - in reverse order
+        while let Some(last) = self.values.last() {
+            if last.kind == Kind::Space {
+                spaces.push(self.values.pop().unwrap().value);
+            } else {
+                break;
+            }
+        }
+
+        // Also remove from values_clean
+        while let Some(last) = self.values_clean.last() {
+            if last.kind == Kind::Space {
+                self.values_clean.pop();
+            } else {
+                break;
+            }
+        }
+
+        // Reverse to get correct order and join
+        spaces.reverse();
+        spaces.join("")
+    }
+
+    /// Push a sliced portion of a token to both values and values_clean
+    /// Preserves accurate source positions from the original token
+    pub fn push_token_slice(&mut self, token: &Token, start: usize, end: usize) {
+        let sliced = token.slice(start, end);
+        self.values_clean.push(sliced.clone());
+        self.values.push(sliced);
+    }
 }
 
 impl Default for Statement {

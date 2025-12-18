@@ -228,7 +228,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_important() {
         let (ast, expected) = parse_and_read("important.css", "important.json");
         assert_eq!(ast, expected);
