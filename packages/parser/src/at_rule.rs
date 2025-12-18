@@ -65,8 +65,7 @@ impl AtRule {
 
                     // Nested at-rules
                     Kind::AtWord => {
-                        let (node, child_terminator) =
-                            AtRule::create(token, tokenizer, &spaces);
+                        let (node, child_terminator) = AtRule::create(token, tokenizer, &spaces);
                         builder.terminator(&child_terminator);
                         builder.append(node);
                         body_terminator = Some(child_terminator);
@@ -173,15 +172,9 @@ impl Params {
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
 
-        loop {
-            // Peek at the next token
-            let peeked_token = match tokenizer.peek() {
-                Some(t) => t,
-                None => break,
-            };
-
+        while let Some(token) = tokenizer.peek() {
             // Check if this token should end params without being consumed
-            match peeked_token.kind {
+            match token.kind {
                 Kind::OpenCurly if !statement.is_open() => {
                     terminator.set_ended_by(Kind::OpenCurly);
                     break;
