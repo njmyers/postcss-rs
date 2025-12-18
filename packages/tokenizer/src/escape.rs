@@ -29,14 +29,13 @@ impl HexEscape {
         }
 
         // Count consecutive hex digits (up to 6)
-        let mut hex_count = 0;
-        for i in 1..count.min(7) {
-            if letters[i].is_ascii_hexdigit() {
-                hex_count += 1;
-            } else {
-                break;
-            }
-        }
+        let hex_count = letters
+            .iter()
+            .take(count.min(7))
+            .skip(1)
+            .map(|letter| if letter.is_ascii_hexdigit() { 1 } else { 0 })
+            .reduce(|count, increment| count + increment)
+            .unwrap_or(0);
 
         // Check if followed by whitespace (which is part of the escape)
         let after_hex = 1 + hex_count;

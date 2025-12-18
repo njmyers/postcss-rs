@@ -1255,6 +1255,6 @@ mod tests {
     #[test]
     fn debug_escape_attribute_selector_tokens() {
         let tokens = tokenizer(r#"[foo=\"] { }"#);
-        assert!(tokens.len() > 0);
+        assert!(!tokens.is_empty());
     }
 }
