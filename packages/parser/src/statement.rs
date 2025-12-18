@@ -78,17 +78,12 @@ impl Statement {
         spaces.join("")
     }
 
-    /// Push a string value as a Word token to both values and values_clean
-    pub fn push_value(&mut self, value: &str) {
-        let token = Token {
-            kind: Kind::Word,
-            value: value.to_string(),
-            start: 0, // Position doesn't matter for synthetic tokens
-            end: 0,
-            column: 0,
-        };
-        self.values_clean.push(token.clone());
-        self.values.push(token);
+    /// Push a sliced portion of a token to both values and values_clean
+    /// Preserves accurate source positions from the original token
+    pub fn push_token_slice(&mut self, token: &Token, start: usize, end: usize) {
+        let sliced = token.slice(start, end);
+        self.values_clean.push(sliced.clone());
+        self.values.push(sliced);
     }
 }
 

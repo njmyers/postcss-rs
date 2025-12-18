@@ -72,6 +72,20 @@ impl fmt::Display for Token {
     }
 }
 
+impl Token {
+    /// Create a new token that represents a substring of this token
+    /// Preserves accurate source positions from the original token
+    pub fn slice(&self, start_offset: usize, end_offset: usize) -> Token {
+        Token {
+            kind: self.kind,
+            value: self.value[start_offset..end_offset].to_string(),
+            start: self.start + start_offset,
+            end: self.start + end_offset,
+            column: self.column + start_offset,
+        }
+    }
+}
+
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Tokens(Vec<Token>);
 
