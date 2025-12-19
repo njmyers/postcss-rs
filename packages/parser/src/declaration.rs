@@ -28,6 +28,39 @@ impl Declaration {
         let mut builder = NodeBuilder::new(&prop, tokenizer, spaces);
         builder.ensure_empty_before();
         builder.ensure_empty_between();
+
+        // Handle IE hack prefixes (* and _) by extracting them from property name
+        // and adding them to the 'before' raw field
+        let (actual_prop, ie_hack_prefix) = Self::extract_ie_hack_prefix(&prop.value);
+        if let Some(prefix) = ie_hack_prefix {
+            builder.append_to_before(&prefix);
+        }
+
+        // Phase 1: Process tokens before and including the colon
+        // All spaces and comments before the colon go to 'between'
+        loop {
+            let Some(token) = tokenizer.next() else {
+                // No colon found - treat as malformed, but continue
+                break;
+            };
+
+            match token.kind {
+                Kind::Colon => {
+                    builder.between(&token);
+                    break; // Move to value processing phase
+                }
+                Kind::Space | Kind::Comment => {
+                    builder.between(&token);
+                }
+                _ => {
+                    // Unexpected token before colon - this shouldn't happen in well-formed CSS
+                    // but we'll add it to between and continue
+                    builder.between(&token);
+                }
+            }
+        }
+
+        // Phase 2: Process the value tokens
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
         let mut pending_spaces: Vec<Token> = Vec::new(); // Track spaces between colon and first non-space token
@@ -88,9 +121,8 @@ impl Declaration {
                     terminator.set_ended_by(Kind::Semicolon);
                     break;
                 }
-                Kind::Colon if !statement.is_open() => builder.between(&token),
 
-                // Comment handling
+                // Comment handling in value
                 Kind::Comment => {
                     // Check if clean value is empty (ignore raw-only tokens)
                     if statement.values_clean.is_empty() && !statement.is_open() {
@@ -204,7 +236,7 @@ impl Declaration {
         // Use clean value (without comments) as the main value
         let clean_value = statement.to_string_clean();
         let important = important_raw.as_ref().map(|_| true);
-        let declaration = Self::new(&prop.value, &clean_value, important);
+        let declaration = Self::new(&actual_prop, &clean_value, important);
         builder.declaration(declaration);
 
         // If raw differs from clean (inline comments were stripped), store both in raws.value
@@ -328,6 +360,16 @@ impl Declaration {
             return true;
         }
         "important".to_lowercase().starts_with(&s.to_lowercase())
+    }
+
+    /// Extract IE hack prefix (* or _) from property name
+    /// Returns (actual_property_name, optional_ie_hack_prefix)
+    fn extract_ie_hack_prefix(prop: &str) -> (String, Option<String>) {
+        match prop.chars().next() {
+            Some('*') => (prop[1..].to_string(), Some("*".to_string())),
+            Some('_') => (prop[1..].to_string(), Some("_".to_string())),
+            _ => (prop.to_string(), None),
+        }
     }
 }
 

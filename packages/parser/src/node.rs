@@ -193,6 +193,10 @@ impl NodeBuilder {
         self.node.raws.before.push(token);
     }
 
+    pub fn append_to_before(&mut self, text: &str) {
+        self.node.raws.before.push_str(text);
+    }
+
     pub fn ensure_empty_between(&mut self) {
         self.node.raws.between.push_str("");
     }

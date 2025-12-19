@@ -246,7 +246,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_prop() {
         let (ast, expected) = parse_and_read("prop.css", "prop.json");
         assert_eq!(ast, expected);

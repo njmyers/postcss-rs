@@ -8,27 +8,44 @@ use postcss_rs_tokenizer::{Kind, Token, Tokenizer};
 pub struct RuleWord;
 
 impl RuleWord {
-    /// Collect consecutive Word tokens starting from the given token and combine them.
+    /// Collect consecutive Word and Brackets tokens before a colon to build property names.
     ///
-    /// If there's only one Word token, it's returned as-is.
-    /// If there are multiple consecutive Word tokens, they're combined into a single
+    /// This handles property names with escape sequences (e.g., `\62 olor` → `bolor`)
+    /// and special characters (e.g., `$(var)-size`).
+    ///
+    /// Collects tokens until hitting a colon (with optional spaces before it).
+    /// If there's only one Word token before the colon, it's returned as-is.
+    /// If there are multiple consecutive Word/Brackets tokens, they're combined into a single
     /// token with concatenated values and a span from the first to the last token.
     ///
     /// # Arguments
     /// * `first_token` - The first Word token (must be Kind::Word)
-    /// * `tokenizer` - The tokenizer to read additional Word tokens from
+    /// * `tokenizer` - The tokenizer to read additional tokens from
     ///
     /// # Returns
-    /// A combined Token representing all consecutive Word tokens
+    /// A combined Token representing the property name
     pub fn collect_and_combine(first_token: Token, tokenizer: &mut Tokenizer) -> Token {
         let mut tokens = vec![first_token];
 
-        // Collect all consecutive Word tokens
-        while let Some(next) = tokenizer.peek() {
-            if next.kind == Kind::Word {
-                tokens.push(tokenizer.next().unwrap());
-            } else {
+        // Collect tokens that are part of the property name (Word and Brackets)
+        // Stop when we encounter:
+        // 1. A space followed by a colon (space belongs to 'between')
+        // 2. A colon directly (no space)
+        // 3. Anything else (open brace, etc.)
+        loop {
+            let Some(next) = tokenizer.peek() else {
                 break;
+            };
+
+            match next.kind {
+                Kind::Word | Kind::Brackets => {
+                    // Part of property name - consume and add it
+                    tokens.push(tokenizer.next().unwrap());
+                }
+                _ => {
+                    // Not part of property name - stop collecting
+                    break;
+                }
             }
         }
 
