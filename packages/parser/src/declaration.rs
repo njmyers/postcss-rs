@@ -36,11 +36,35 @@ impl Declaration {
             builder.append_to_before(&prefix);
         }
 
+        // Phase 1: Process tokens before and including the colon
+        // All spaces and comments before the colon go to 'between'
+        loop {
+            let Some(token) = tokenizer.next() else {
+                // No colon found - treat as malformed, but continue
+                break;
+            };
+
+            match token.kind {
+                Kind::Colon => {
+                    builder.between(&token);
+                    break; // Move to value processing phase
+                }
+                Kind::Space | Kind::Comment => {
+                    builder.between(&token);
+                }
+                _ => {
+                    // Unexpected token before colon - this shouldn't happen in well-formed CSS
+                    // but we'll add it to between and continue
+                    builder.between(&token);
+                }
+            }
+        }
+
+        // Phase 2: Process the value tokens
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
         let mut pending_spaces: Vec<Token> = Vec::new(); // Track spaces between colon and first non-space token
         let mut important_raw: Option<String> = None;
-        let mut seen_colon = false; // Track whether we've encountered the colon
 
         loop {
             // Peek at next token to check for terminators
@@ -97,78 +121,54 @@ impl Declaration {
                     terminator.set_ended_by(Kind::Semicolon);
                     break;
                 }
-                Kind::Colon if !statement.is_open() => {
-                    seen_colon = true;
-                    builder.between(&token);
-                }
 
-                // Comment handling
+                // Comment handling in value
                 Kind::Comment => {
-                    // Comments before the colon should go to 'between'
-                    match seen_colon {
-                        false => {
-                            // Comment before colon - add to between
-                            builder.between(&token);
+                    // Check if clean value is empty (ignore raw-only tokens)
+                    if statement.values_clean.is_empty() && !statement.is_open() {
+                        // Comment before any real content - check if it's before a function call
+                        match tokenizer.peek() {
+                            Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
+                                // Comment before function - move pending to between, keep comment
+                                if !pending_spaces.is_empty() {
+                                    for space in pending_spaces.drain(..) {
+                                        builder.between(&space);
+                                    }
+                                }
+                                statement.push(token);
+                            }
+                            _ => {
+                                // Regular comment - strip it but keep token order correct
+                                // Add pending spaces to both raw and clean to maintain correct order
+                                for space in pending_spaces.drain(..) {
+                                    statement.push(space);
+                                }
+                                // Add comment to raw only (stripped from clean)
+                                statement.push_raw_only(token);
+                            }
                         }
-                        true => {
-                            // Comment after colon - handle as part of value
-                            // Check if clean value is empty (ignore raw-only tokens)
-                            if statement.values_clean.is_empty() && !statement.is_open() {
-                                // Comment before any real content - check if it's before a function call
-                                match tokenizer.peek() {
-                                    Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
-                                        // Comment before function - move pending to between, keep comment
-                                        if !pending_spaces.is_empty() {
-                                            for space in pending_spaces.drain(..) {
-                                                builder.between(&space);
-                                            }
-                                        }
-                                        statement.push(token);
-                                    }
-                                    _ => {
-                                        // Regular comment - strip it but keep token order correct
-                                        // Add pending spaces to both raw and clean to maintain correct order
-                                        for space in pending_spaces.drain(..) {
-                                            statement.push(space);
-                                        }
-                                        // Add comment to raw only (stripped from clean)
-                                        statement.push_raw_only(token);
-                                    }
-                                }
-                            } else {
-                                // Comment inside value - check if it's before an opening paren
-                                match tokenizer.peek() {
-                                    Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
-                                        statement.push(token);
-                                    }
-                                    _ => {
-                                        // Regular inline comment - only add to raw, not clean
-                                        statement.push_raw_only(token);
-                                    }
-                                }
+                    } else {
+                        // Comment inside value - check if it's before an opening paren
+                        match tokenizer.peek() {
+                            Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
+                                statement.push(token);
+                            }
+                            _ => {
+                                // Regular inline comment - only add to raw, not clean
+                                statement.push_raw_only(token);
                             }
                         }
                     }
                 }
 
                 Kind::Space => {
-                    // Spaces before the colon should go to 'between'
-                    match seen_colon {
-                        false => {
-                            // Space before colon - add to between
-                            builder.between(&token);
-                        }
-                        true => {
-                            // Space after colon - use pending logic
-                            // Check if clean value is empty (ignore raw-only tokens like stripped comments)
-                            if statement.values_clean.is_empty() && !statement.is_open() {
-                                // Space before any value content - hold in pending
-                                pending_spaces.push(token);
-                            } else {
-                                // Space within value - add to statement
-                                statement.push(token);
-                            }
-                        }
+                    // Check if clean value is empty (ignore raw-only tokens like stripped comments)
+                    if statement.values_clean.is_empty() && !statement.is_open() {
+                        // Space before any value content - hold in pending
+                        pending_spaces.push(token);
+                    } else {
+                        // Space within value - add to statement
+                        statement.push(token);
                     }
                 }
 
