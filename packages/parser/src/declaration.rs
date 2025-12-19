@@ -28,10 +28,19 @@ impl Declaration {
         let mut builder = NodeBuilder::new(&prop, tokenizer, spaces);
         builder.ensure_empty_before();
         builder.ensure_empty_between();
+
+        // Handle IE hack prefixes (* and _) by extracting them from property name
+        // and adding them to the 'before' raw field
+        let (actual_prop, ie_hack_prefix) = Self::extract_ie_hack_prefix(&prop.value);
+        if let Some(prefix) = ie_hack_prefix {
+            builder.append_to_before(&prefix);
+        }
+
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
         let mut pending_spaces: Vec<Token> = Vec::new(); // Track spaces between colon and first non-space token
         let mut important_raw: Option<String> = None;
+        let mut seen_colon = false; // Track whether we've encountered the colon
 
         loop {
             // Peek at next token to check for terminators
@@ -88,55 +97,78 @@ impl Declaration {
                     terminator.set_ended_by(Kind::Semicolon);
                     break;
                 }
-                Kind::Colon if !statement.is_open() => builder.between(&token),
+                Kind::Colon if !statement.is_open() => {
+                    seen_colon = true;
+                    builder.between(&token);
+                }
 
                 // Comment handling
                 Kind::Comment => {
-                    // Check if clean value is empty (ignore raw-only tokens)
-                    if statement.values_clean.is_empty() && !statement.is_open() {
-                        // Comment before any real content - check if it's before a function call
-                        match tokenizer.peek() {
-                            Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
-                                // Comment before function - move pending to between, keep comment
-                                if !pending_spaces.is_empty() {
-                                    for space in pending_spaces.drain(..) {
-                                        builder.between(&space);
+                    // Comments before the colon should go to 'between'
+                    match seen_colon {
+                        false => {
+                            // Comment before colon - add to between
+                            builder.between(&token);
+                        }
+                        true => {
+                            // Comment after colon - handle as part of value
+                            // Check if clean value is empty (ignore raw-only tokens)
+                            if statement.values_clean.is_empty() && !statement.is_open() {
+                                // Comment before any real content - check if it's before a function call
+                                match tokenizer.peek() {
+                                    Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
+                                        // Comment before function - move pending to between, keep comment
+                                        if !pending_spaces.is_empty() {
+                                            for space in pending_spaces.drain(..) {
+                                                builder.between(&space);
+                                            }
+                                        }
+                                        statement.push(token);
+                                    }
+                                    _ => {
+                                        // Regular comment - strip it but keep token order correct
+                                        // Add pending spaces to both raw and clean to maintain correct order
+                                        for space in pending_spaces.drain(..) {
+                                            statement.push(space);
+                                        }
+                                        // Add comment to raw only (stripped from clean)
+                                        statement.push_raw_only(token);
                                     }
                                 }
-                                statement.push(token);
-                            }
-                            _ => {
-                                // Regular comment - strip it but keep token order correct
-                                // Add pending spaces to both raw and clean to maintain correct order
-                                for space in pending_spaces.drain(..) {
-                                    statement.push(space);
+                            } else {
+                                // Comment inside value - check if it's before an opening paren
+                                match tokenizer.peek() {
+                                    Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
+                                        statement.push(token);
+                                    }
+                                    _ => {
+                                        // Regular inline comment - only add to raw, not clean
+                                        statement.push_raw_only(token);
+                                    }
                                 }
-                                // Add comment to raw only (stripped from clean)
-                                statement.push_raw_only(token);
-                            }
-                        }
-                    } else {
-                        // Comment inside value - check if it's before an opening paren
-                        match tokenizer.peek() {
-                            Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
-                                statement.push(token);
-                            }
-                            _ => {
-                                // Regular inline comment - only add to raw, not clean
-                                statement.push_raw_only(token);
                             }
                         }
                     }
                 }
 
                 Kind::Space => {
-                    // Check if clean value is empty (ignore raw-only tokens like stripped comments)
-                    if statement.values_clean.is_empty() && !statement.is_open() {
-                        // Space before any value content - hold in pending
-                        pending_spaces.push(token);
-                    } else {
-                        // Space within value - add to statement
-                        statement.push(token);
+                    // Spaces before the colon should go to 'between'
+                    match seen_colon {
+                        false => {
+                            // Space before colon - add to between
+                            builder.between(&token);
+                        }
+                        true => {
+                            // Space after colon - use pending logic
+                            // Check if clean value is empty (ignore raw-only tokens like stripped comments)
+                            if statement.values_clean.is_empty() && !statement.is_open() {
+                                // Space before any value content - hold in pending
+                                pending_spaces.push(token);
+                            } else {
+                                // Space within value - add to statement
+                                statement.push(token);
+                            }
+                        }
                     }
                 }
 
@@ -204,7 +236,7 @@ impl Declaration {
         // Use clean value (without comments) as the main value
         let clean_value = statement.to_string_clean();
         let important = important_raw.as_ref().map(|_| true);
-        let declaration = Self::new(&prop.value, &clean_value, important);
+        let declaration = Self::new(&actual_prop, &clean_value, important);
         builder.declaration(declaration);
 
         // If raw differs from clean (inline comments were stripped), store both in raws.value
@@ -328,6 +360,16 @@ impl Declaration {
             return true;
         }
         "important".to_lowercase().starts_with(&s.to_lowercase())
+    }
+
+    /// Extract IE hack prefix (* or _) from property name
+    /// Returns (actual_property_name, optional_ie_hack_prefix)
+    fn extract_ie_hack_prefix(prop: &str) -> (String, Option<String>) {
+        match prop.chars().next() {
+            Some('*') => (prop[1..].to_string(), Some("*".to_string())),
+            Some('_') => (prop[1..].to_string(), Some("_".to_string())),
+            _ => (prop.to_string(), None),
+        }
     }
 }
 
