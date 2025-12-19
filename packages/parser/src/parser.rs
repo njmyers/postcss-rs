@@ -13,6 +13,12 @@ use postcss_rs_tokenizer::Tokens;
 
 use unicode_bom::Bom;
 
+/// Type of statement at root level when we encounter a Word token
+enum RootStatementType {
+    Declaration,
+    Rule,
+}
+
 /// PostCSS parser implementation.
 ///
 /// This parser creates PostCSS compatible JSON representations however it does not create a PostCSS
@@ -47,26 +53,15 @@ impl<'a> Parser<'a> {
 
                 // Handle words - could be rules or root-level declarations
                 Kind::Word => {
-                    // Check if this is a declaration or a rule
-                    let is_declaration = match tokenizer.peek() {
-                        Some(next) if next.kind == Kind::Colon => {
-                            // Word followed by colon - need to look ahead
-                            // to distinguish between selector (a::before) and declaration (color: red)
-                            Self::is_declaration(&tokenizer)
-                        }
-                        _ => false, // No colon after word - must be a rule
-                    };
-
-                    match is_declaration {
-                        true => {
+                    match Self::classify_word_statement(&tokenizer) {
+                        RootStatementType::Declaration => {
                             let (node, terminator) =
                                 crate::Declaration::create(token, &mut tokenizer, &spaces);
                             root.terminator(&terminator);
                             root.append(node);
                             spaces.clear();
                         }
-                        false => {
-                            // Rule: selector followed by opening brace
+                        RootStatementType::Rule => {
                             let terminator = crate::StatementTerminator::new();
                             root.terminator(&terminator);
                             root.append(Rule::create(token, &mut tokenizer, &spaces));
@@ -101,29 +96,39 @@ impl<'a> Parser<'a> {
         return root.build_root(&spaces);
     }
 
-    /// Peek ahead to determine if we're looking at a declaration or a rule.
-    /// When we see Word followed by Colon, we need to distinguish:
-    /// - Declaration: `prop: value;` or `prop: value}` - ends with semicolon or close brace
-    /// - Rule: `selector::pseudo {` - ends with opening brace
-    fn is_declaration(tokenizer: &Tokenizer) -> bool {
-        let mut peek_index = 1; // Start after the colon we already peeked
-        let mut paren_depth = 0; // Track nesting in brackets like ()
-        let mut square_depth = 0; // Track nesting in brackets like []
+    /// Classify a Word token as either a declaration or rule by peeking ahead.
+    /// - Declaration: `prop: value;` - word + colon + value + semicolon
+    /// - Rule: `selector::pseudo {` - word + colon + more tokens + opening brace
+    fn classify_word_statement(tokenizer: &Tokenizer) -> RootStatementType {
+        // No colon after word means it's definitely a rule
+        let Some(next) = tokenizer.peek() else {
+            return RootStatementType::Rule;
+        };
+
+        match next.kind {
+            Kind::Colon => Self::scan_for_terminator(tokenizer),
+            _ => RootStatementType::Rule,
+        }
+    }
+
+    /// Scan ahead after a colon to find whether we hit `{` (rule) or `;` (declaration)
+    fn scan_for_terminator(tokenizer: &Tokenizer) -> RootStatementType {
+        let mut peek_index = 1;
+        let mut paren_depth = 0;
+        let mut square_depth = 0;
 
         loop {
             let Some(token) = tokenizer.peek_nth(peek_index) else {
-                // Reached end of input - assume declaration
-                return true;
+                return RootStatementType::Declaration;
             };
 
             match token.kind {
-                // Opening curly at top level (not nested) indicates a rule
-                Kind::OpenCurly if paren_depth == 0 && square_depth == 0 => return false,
-
-                // Semicolon at top level indicates a declaration
-                Kind::Semicolon if paren_depth == 0 && square_depth == 0 => return true,
-
-                // Track nesting depth for brackets
+                Kind::OpenCurly if paren_depth == 0 && square_depth == 0 => {
+                    return RootStatementType::Rule
+                }
+                Kind::Semicolon if paren_depth == 0 && square_depth == 0 => {
+                    return RootStatementType::Declaration
+                }
                 Kind::Brackets if token.value.starts_with('(') => paren_depth += 1,
                 Kind::Brackets if token.value.starts_with('[') => square_depth += 1,
                 Kind::Brackets if token.value.starts_with(')') && paren_depth > 0 => {
@@ -132,16 +137,14 @@ impl<'a> Parser<'a> {
                 Kind::Brackets if token.value.starts_with(']') && square_depth > 0 => {
                     square_depth -= 1
                 }
-
-                // All other tokens - continue scanning
                 _ => {}
             }
 
             peek_index += 1;
 
-            // Safety limit to prevent infinite loops
-            if peek_index > 1000 {
-                return true; // Default to declaration if we scan too far
+            match peek_index > 1000 {
+                true => return RootStatementType::Declaration,
+                false => continue,
             }
         }
     }
