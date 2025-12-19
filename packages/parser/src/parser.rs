@@ -47,21 +47,32 @@ impl<'a> Parser<'a> {
 
                 // Handle words - could be rules or root-level declarations
                 Kind::Word => {
-                    // Root-level declaration: word followed by colon
-                    if matches!(tokenizer.peek(), Some(next) if next.kind == Kind::Colon) {
-                        let (node, terminator) =
-                            crate::Declaration::create(token, &mut tokenizer, &spaces);
-                        root.terminator(&terminator);
-                        root.append(node);
-                        spaces.clear();
-                        continue;
-                    }
+                    // Check if this is a declaration or a rule
+                    let is_declaration = match tokenizer.peek() {
+                        Some(next) if next.kind == Kind::Colon => {
+                            // Word followed by colon - need to look ahead
+                            // to distinguish between selector (a::before) and declaration (color: red)
+                            Self::is_declaration(&tokenizer)
+                        }
+                        _ => false, // No colon after word - must be a rule
+                    };
 
-                    // Rule: word followed by anything else (or no next token)
-                    let terminator = crate::StatementTerminator::new();
-                    root.terminator(&terminator);
-                    root.append(Rule::create(token, &mut tokenizer, &spaces));
-                    spaces.clear();
+                    match is_declaration {
+                        true => {
+                            let (node, terminator) =
+                                crate::Declaration::create(token, &mut tokenizer, &spaces);
+                            root.terminator(&terminator);
+                            root.append(node);
+                            spaces.clear();
+                        }
+                        false => {
+                            // Rule: selector followed by opening brace
+                            let terminator = crate::StatementTerminator::new();
+                            root.terminator(&terminator);
+                            root.append(Rule::create(token, &mut tokenizer, &spaces));
+                            spaces.clear();
+                        }
+                    }
                 }
 
                 // Handle rules starting with brackets or braces
@@ -88,6 +99,51 @@ impl<'a> Parser<'a> {
         }
 
         return root.build_root(&spaces);
+    }
+
+    /// Peek ahead to determine if we're looking at a declaration or a rule.
+    /// When we see Word followed by Colon, we need to distinguish:
+    /// - Declaration: `prop: value;` or `prop: value}` - ends with semicolon or close brace
+    /// - Rule: `selector::pseudo {` - ends with opening brace
+    fn is_declaration(tokenizer: &Tokenizer) -> bool {
+        let mut peek_index = 1; // Start after the colon we already peeked
+        let mut paren_depth = 0; // Track nesting in brackets like ()
+        let mut square_depth = 0; // Track nesting in brackets like []
+
+        loop {
+            let Some(token) = tokenizer.peek_nth(peek_index) else {
+                // Reached end of input - assume declaration
+                return true;
+            };
+
+            match token.kind {
+                // Opening curly at top level (not nested) indicates a rule
+                Kind::OpenCurly if paren_depth == 0 && square_depth == 0 => return false,
+
+                // Semicolon at top level indicates a declaration
+                Kind::Semicolon if paren_depth == 0 && square_depth == 0 => return true,
+
+                // Track nesting depth for brackets
+                Kind::Brackets if token.value.starts_with('(') => paren_depth += 1,
+                Kind::Brackets if token.value.starts_with('[') => square_depth += 1,
+                Kind::Brackets if token.value.starts_with(')') && paren_depth > 0 => {
+                    paren_depth -= 1
+                }
+                Kind::Brackets if token.value.starts_with(']') && square_depth > 0 => {
+                    square_depth -= 1
+                }
+
+                // All other tokens - continue scanning
+                _ => {}
+            }
+
+            peek_index += 1;
+
+            // Safety limit to prevent infinite loops
+            if peek_index > 1000 {
+                return true; // Default to declaration if we scan too far
+            }
+        }
     }
 
     fn clean(css: &str) -> Result<&str, Utf8Error> {
@@ -252,7 +308,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_quotes() {
         let (ast, expected) = parse_and_read("quotes.css", "quotes.json");
         assert_eq!(ast, expected);

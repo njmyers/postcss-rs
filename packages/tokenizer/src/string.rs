@@ -1,8 +1,5 @@
 use crate::characters::*;
 use crate::escape::Escape;
-use crate::utils;
-
-use std::cmp;
 
 // Representation of a single string
 pub struct SingleString;
@@ -24,16 +21,32 @@ impl SingleString {
 
     /// Tokenize the string contained within single quotation marks like `'word'`.
     pub fn tokenize(letters: &[char]) -> usize {
-        let lookbehind: usize = 1;
         let count = letters.len();
-        let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
-        let result = letters_lookbehind.position(|(previous_letter, letter)| {
-            return matches!(letter, SINGLE_QUOTE if !Escape::test(previous_letter));
-        });
+        // Start from index 1 (after opening quote) and look for closing quote
+        let mut index = 1;
+        while index < count {
+            if letters[index] == *SINGLE_QUOTE {
+                // Found a quote - check if it's escaped by counting preceding backslashes
+                let mut backslash_count = 0;
+                let mut check_index = index;
+                while check_index > 0 && Escape::test(&letters[check_index - 1]) {
+                    backslash_count += 1;
+                    check_index -= 1;
+                }
 
-        let string_length = utils::unwrap_position(result, letters) + lookbehind;
-        return cmp::min(string_length, count - lookbehind);
+                // Even number of backslashes (including 0) means quote is NOT escaped
+                match backslash_count % 2 {
+                    0 => return index, // Found unescaped closing quote
+                    _ => index += 1,   // Quote is escaped, continue
+                }
+            } else {
+                index += 1;
+            }
+        }
+
+        // No closing quote found - return length minus 1 (the opening quote)
+        return count - 1;
     }
 }
 
@@ -45,18 +58,34 @@ impl DoubleString {
         return matches!(letter, DOUBLE_QUOTE);
     }
 
-    /// Tokenize the string contained within single quotation marks like `"word"`.
+    /// Tokenize the string contained within double quotation marks like `"word"`.
     pub fn tokenize(letters: &[char]) -> usize {
-        let lookbehind: usize = 1;
         let count = letters.len();
-        let mut letters_lookbehind = letters.iter().zip(letters.iter().skip(lookbehind));
 
-        let result = letters_lookbehind.position(|(previous_letter, letter)| {
-            return matches!(letter, DOUBLE_QUOTE if !Escape::test(previous_letter));
-        });
+        // Start from index 1 (after opening quote) and look for closing quote
+        let mut index = 1;
+        while index < count {
+            if letters[index] == *DOUBLE_QUOTE {
+                // Found a quote - check if it's escaped by counting preceding backslashes
+                let mut backslash_count = 0;
+                let mut check_index = index;
+                while check_index > 0 && Escape::test(&letters[check_index - 1]) {
+                    backslash_count += 1;
+                    check_index -= 1;
+                }
 
-        let string_length = utils::unwrap_position(result, letters) + lookbehind;
-        return cmp::min(string_length, count - lookbehind);
+                // Even number of backslashes (including 0) means quote is NOT escaped
+                match backslash_count % 2 {
+                    0 => return index, // Found unescaped closing quote
+                    _ => index += 1,   // Quote is escaped, continue
+                }
+            } else {
+                index += 1;
+            }
+        }
+
+        // No closing quote found - return length minus 1 (the opening quote)
+        return count - 1;
     }
 }
 
