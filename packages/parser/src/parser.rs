@@ -234,7 +234,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_inside() {
         let (ast, expected) = parse_and_read("inside.css", "inside.json");
         assert_eq!(ast, expected);

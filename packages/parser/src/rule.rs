@@ -63,6 +63,35 @@ impl Rule {
                     spaces.clear();
                 }
 
+                Kind::AtWord => {
+                    let (mut node, terminator) = crate::AtRule::create(token, tokenizer, &spaces);
+
+                    // For at-rules inside rules that end with CloseCurly, we need to:
+                    // 1. Set the end source position (before trailing spaces)
+                    // 2. Consume trailing spaces and add to 'between'
+                    if let Some(Kind::CloseCurly) = terminator.ended_by {
+                        if node.source.end.is_none() {
+                            // Save end position before consuming spaces
+                            node.source.end = Some(crate::Source::create_end(tokenizer));
+
+                            // Consume trailing spaces and add to 'between'
+                            while let Some(peeked) = tokenizer.peek() {
+                                match peeked.kind {
+                                    Kind::Space => {
+                                        let space_token = tokenizer.next().unwrap();
+                                        node.raws.between.push(&space_token);
+                                    }
+                                    _ => break,
+                                }
+                            }
+                        }
+                    }
+
+                    builder.terminator(&terminator);
+                    builder.append(node);
+                    spaces.clear();
+                }
+
                 Kind::Comment => {
                     let comment = Self::create_comment(token, &mut *tokenizer, &spaces);
                     builder.append(comment);

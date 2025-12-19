@@ -98,13 +98,12 @@ impl AtRule {
         builder.at_rule(at_rule);
 
         // Build the node based on terminator
+        // Don't set end when terminated by CloseCurly (will be handled by parent if needed)
         let node = match terminator.ended_by {
-            // Ended by CloseCurly (parent's closing brace) - don't set end
             Some(Kind::CloseCurly) => {
                 builder.node.raws.after.push_tokens(&spaces);
                 builder.node
             }
-            // All other cases - set end source
             _ => builder.build(tokenizer, &spaces),
         };
 
@@ -164,6 +163,24 @@ impl AtRuleDeclaration {
 struct Params;
 
 impl Params {
+    /// Peek ahead past spaces to see if there's a terminator (CloseCurly)
+    fn peek_for_terminator_after_space(tokenizer: &Tokenizer) -> bool {
+        let mut peek_index = 1;
+
+        // Skip past any spaces
+        loop {
+            let Some(token) = tokenizer.peek_nth(peek_index) else {
+                return false;
+            };
+
+            match token.kind {
+                Kind::Space => peek_index += 1,
+                Kind::CloseCurly => return true,
+                _ => return false,
+            }
+        }
+    }
+
     fn create(
         parent: &mut NodeBuilder,
         tokenizer: &mut Tokenizer,
@@ -186,6 +203,13 @@ impl Params {
                 Kind::AtWord => {
                     terminator.set_ended_by(Kind::AtWord);
                     break;
+                }
+                // If we see a space, peek ahead to check if it's followed by a terminator
+                Kind::Space if !statement.is_open() => {
+                    if Self::peek_for_terminator_after_space(tokenizer) {
+                        terminator.set_ended_by(Kind::CloseCurly);
+                        break;
+                    }
                 }
                 _ => {}
             };
