@@ -13,6 +13,12 @@ use postcss_rs_tokenizer::Tokens;
 
 use unicode_bom::Bom;
 
+/// Type of statement at root level when we encounter a Word token
+enum RootStatementType {
+    Declaration,
+    Rule,
+}
+
 /// PostCSS parser implementation.
 ///
 /// This parser creates PostCSS compatible JSON representations however it does not create a PostCSS
@@ -47,21 +53,21 @@ impl<'a> Parser<'a> {
 
                 // Handle words - could be rules or root-level declarations
                 Kind::Word => {
-                    // Root-level declaration: word followed by colon
-                    if matches!(tokenizer.peek(), Some(next) if next.kind == Kind::Colon) {
-                        let (node, terminator) =
-                            crate::Declaration::create(token, &mut tokenizer, &spaces);
-                        root.terminator(&terminator);
-                        root.append(node);
-                        spaces.clear();
-                        continue;
+                    match Self::classify(&tokenizer) {
+                        RootStatementType::Declaration => {
+                            let (node, terminator) =
+                                crate::Declaration::create(token, &mut tokenizer, &spaces);
+                            root.terminator(&terminator);
+                            root.append(node);
+                            spaces.clear();
+                        }
+                        RootStatementType::Rule => {
+                            let terminator = crate::StatementTerminator::new();
+                            root.terminator(&terminator);
+                            root.append(Rule::create(token, &mut tokenizer, &spaces));
+                            spaces.clear();
+                        }
                     }
-
-                    // Rule: word followed by anything else (or no next token)
-                    let terminator = crate::StatementTerminator::new();
-                    root.terminator(&terminator);
-                    root.append(Rule::create(token, &mut tokenizer, &spaces));
-                    spaces.clear();
                 }
 
                 // Handle rules starting with brackets or braces
@@ -88,6 +94,56 @@ impl<'a> Parser<'a> {
         }
 
         return root.build_root(&spaces);
+    }
+
+    /// Classify a Word token as either a declaration or rule by peeking ahead.
+    /// - Declaration: `prop: value;` - word + colon + value + semicolon
+    /// - Rule: `selector::pseudo {` - word + colon + more tokens + opening brace
+    fn classify(tokenizer: &Tokenizer) -> RootStatementType {
+        // No colon after word means it's definitely a rule
+        let Some(next) = tokenizer.peek() else {
+            return RootStatementType::Rule;
+        };
+
+        match next.kind {
+            Kind::Colon => Self::scan_for_terminator(tokenizer),
+            _ => RootStatementType::Rule,
+        }
+    }
+
+    /// Scan ahead after a colon to find whether we hit `{` (rule) or `;` (declaration)
+    fn scan_for_terminator(tokenizer: &Tokenizer) -> RootStatementType {
+        let mut peek_index = 1;
+        let mut paren_depth = 0;
+        let mut square_depth = 0;
+
+        while peek_index <= 1000 {
+            let Some(token) = tokenizer.peek_nth(peek_index) else {
+                return RootStatementType::Declaration;
+            };
+
+            match token.kind {
+                Kind::OpenCurly if paren_depth == 0 && square_depth == 0 => {
+                    return RootStatementType::Rule
+                }
+                Kind::Semicolon if paren_depth == 0 && square_depth == 0 => {
+                    return RootStatementType::Declaration
+                }
+                Kind::Brackets if token.value.starts_with('(') => paren_depth += 1,
+                Kind::Brackets if token.value.starts_with('[') => square_depth += 1,
+                Kind::Brackets if token.value.starts_with(')') && paren_depth > 0 => {
+                    paren_depth -= 1
+                }
+                Kind::Brackets if token.value.starts_with(']') && square_depth > 0 => {
+                    square_depth -= 1
+                }
+                _ => {}
+            }
+
+            peek_index += 1;
+        }
+
+        return RootStatementType::Declaration;
     }
 
     fn clean(css: &str) -> Result<&str, Utf8Error> {
@@ -252,7 +308,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_quotes() {
         let (ast, expected) = parse_and_read("quotes.css", "quotes.json");
         assert_eq!(ast, expected);
