@@ -314,7 +314,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_raw_decl() {
         let (ast, expected) = parse_and_read("raw-decl.css", "raw-decl.json");
         assert_eq!(ast, expected);
