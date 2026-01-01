@@ -233,14 +233,32 @@ impl Declaration {
             }
         }
 
+        // Get raw value first (preserves all spacing and comments)
+        let raw_value = statement.to_string();
+
         // Use clean value (without comments) as the main value
-        let clean_value = statement.to_string_clean();
+        let clean_value_base = statement.to_string_clean();
+
+        // Trim trailing whitespace only when:
+        // 1. Comments were removed (raw != clean)
+        // 2. Declaration ends with semicolon
+        // 3. The value has actual content (not just whitespace)
+        // This handles cases like "a/* comment */ b  " where removing the comment leaves trailing spaces
+        // But preserves whitespace-only values like "/**/ " which should become " "
+        let clean_value = if raw_value != clean_value_base
+            && terminator.ended_by == Some(Kind::Semicolon)
+            && !clean_value_base.trim().is_empty()
+        {
+            clean_value_base.trim_end().to_string()
+        } else {
+            clean_value_base
+        };
+
         let important = important_raw.as_ref().map(|_| true);
         let declaration = Self::new(&actual_prop, &clean_value, important);
         builder.declaration(declaration);
 
-        // If raw differs from clean (inline comments were stripped), store both in raws.value
-        let raw_value = statement.to_string();
+        // If raw differs from clean (inline comments were stripped or whitespace differs), store both in raws.value
         if raw_value != clean_value {
             builder.value_raw(&clean_value, &raw_value);
         }
