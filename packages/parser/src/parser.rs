@@ -320,7 +320,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_rule_at() {
         let (ast, expected) = parse_and_read("rule-at.css", "rule-at.json");
         assert_eq!(ast, expected);
