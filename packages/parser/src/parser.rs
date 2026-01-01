@@ -37,6 +37,7 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Node {
         let mut tokenizer = Tokenizer::new(self.css);
         let mut spaces = Tokens::new();
+        let mut is_first_node = true;
 
         let mut root = NodeBuilder::default();
         root.ensure_empty_after();
@@ -45,7 +46,16 @@ impl<'a> Parser<'a> {
             match token.kind {
                 // Handle at-rules (@media, @supports, etc.)
                 Kind::AtWord => {
-                    let (node, terminator) = AtRule::create(token, &mut tokenizer, &spaces);
+                    // Clear spaces before first node to ensure empty "before"
+                    let node_spaces = match is_first_node {
+                        true => {
+                            is_first_node = false;
+                            &Tokens::new()
+                        }
+                        false => &spaces,
+                    };
+
+                    let (node, terminator) = AtRule::create(token, &mut tokenizer, node_spaces);
                     root.terminator(&terminator);
                     root.append(node);
                     spaces.clear();
@@ -53,10 +63,19 @@ impl<'a> Parser<'a> {
 
                 // Handle words - could be rules or root-level declarations
                 Kind::Word => {
+                    // Clear spaces before first node to ensure empty "before"
+                    let node_spaces = match is_first_node {
+                        true => {
+                            is_first_node = false;
+                            &Tokens::new()
+                        }
+                        false => &spaces,
+                    };
+
                     match Self::classify(&tokenizer) {
                         RootStatementType::Declaration => {
                             let (node, terminator) =
-                                crate::Declaration::create(token, &mut tokenizer, &spaces);
+                                crate::Declaration::create(token, &mut tokenizer, node_spaces);
                             root.terminator(&terminator);
                             root.append(node);
                             spaces.clear();
@@ -64,7 +83,7 @@ impl<'a> Parser<'a> {
                         RootStatementType::Rule => {
                             let terminator = crate::StatementTerminator::new();
                             root.terminator(&terminator);
-                            root.append(Rule::create(token, &mut tokenizer, &spaces));
+                            root.append(Rule::create(token, &mut tokenizer, node_spaces));
                             spaces.clear();
                         }
                     }
@@ -72,16 +91,34 @@ impl<'a> Parser<'a> {
 
                 // Handle rules starting with brackets or braces
                 Kind::OpenCurly | Kind::OpenSquare => {
+                    // Clear spaces before first node to ensure empty "before"
+                    let node_spaces = match is_first_node {
+                        true => {
+                            is_first_node = false;
+                            &Tokens::new()
+                        }
+                        false => &spaces,
+                    };
+
                     // Rules don't end with semicolons, so reset the terminator
                     let terminator = crate::StatementTerminator::new();
                     root.terminator(&terminator);
-                    root.append(Rule::create(token, &mut tokenizer, &spaces));
+                    root.append(Rule::create(token, &mut tokenizer, node_spaces));
                     spaces.clear();
                 }
 
                 // Handle comments
                 Kind::Comment => {
-                    root.append(Comment::create(token, &mut tokenizer, &spaces));
+                    // Clear spaces before first node to ensure empty "before"
+                    let node_spaces = match is_first_node {
+                        true => {
+                            is_first_node = false;
+                            &Tokens::new()
+                        }
+                        false => &spaces,
+                    };
+
+                    root.append(Comment::create(token, &mut tokenizer, node_spaces));
                     spaces.clear();
                 }
 
@@ -332,7 +369,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_selector() {
         let (ast, expected) = parse_and_read("selector.css", "selector.json");
         assert_eq!(ast, expected);

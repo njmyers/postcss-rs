@@ -141,6 +141,32 @@ impl Selector {
     /// A string value representing an empty selector
     const EMPTY_SELECTOR: &'static str = "";
 
+    /// Check if there are selector tokens ahead, skipping over spaces
+    fn has_selector_tokens_ahead(tokenizer: &Tokenizer) -> bool {
+        let mut peek_index = 1;
+
+        loop {
+            let Some(token) = tokenizer.peek_nth(peek_index) else {
+                return false;
+            };
+
+            match token.kind {
+                Kind::Space => peek_index += 1,
+                Kind::Word
+                | Kind::Colon
+                | Kind::Brackets
+                | Kind::OpenSquare
+                | Kind::CloseSquare
+                | Kind::String
+                | Kind::Semicolon
+                | Kind::OpenCurvy
+                | Kind::CloseCurvy
+                | Kind::Comment => return true,
+                _ => return false,
+            }
+        }
+    }
+
     /// A builder struct used for creating a rule selector.
     pub fn create(token: Token, tokenizer: &mut Tokenizer, builder: &mut NodeBuilder) -> String {
         if token.kind == Kind::OpenCurly {
@@ -165,23 +191,34 @@ impl Selector {
                 Kind::OpenCurvy => statement.push(token),
                 Kind::CloseCurvy => statement.push(token),
                 Kind::Comment => {
-                    // Check if there are more selector tokens after the comment
-                    if let Some(next) = tokenizer.peek() {
-                        match next.kind {
-                            Kind::Word
-                            | Kind::Colon
-                            | Kind::Brackets
-                            | Kind::OpenSquare
-                            | Kind::CloseSquare
-                            | Kind::String
-                            | Kind::Semicolon
-                            | Kind::OpenCurvy
-                            | Kind::CloseCurvy
-                            | Kind::Comment => statement.push(token),
-                            _ => builder.between(&token),
+                    // Check if comment contains braces that would be significant
+                    let has_braces = token.value.contains('{') || token.value.contains('}');
+
+                    // Peek past spaces to check if there are more selector tokens
+                    let has_more_selector_tokens = Self::has_selector_tokens_ahead(tokenizer);
+
+                    match has_more_selector_tokens {
+                        true => {
+                            match has_braces {
+                                true => {
+                                    // Comment with braces: keep in raw only
+                                    statement.push_raw_only(token);
+
+                                    // Consume following spaces and push to both raw and clean
+                                    while let Some(next) = tokenizer.peek() {
+                                        match next.kind {
+                                            Kind::Space => {
+                                                let space = tokenizer.next().unwrap();
+                                                statement.push(space);
+                                            }
+                                            _ => break,
+                                        }
+                                    }
+                                }
+                                false => statement.push(token),
+                            }
                         }
-                    } else {
-                        builder.between(&token);
+                        false => builder.between(&token),
                     }
                 }
                 Kind::Space => builder.between(&token),
@@ -190,6 +227,14 @@ impl Selector {
             };
         }
 
-        return statement.to_string();
+        let raw_selector = statement.to_string();
+        let clean_selector = statement.to_string_clean();
+
+        // If raw and clean differ, set the raw selector in builder
+        if raw_selector != clean_selector {
+            builder.selector_raw(&clean_selector, &raw_selector);
+        }
+
+        return clean_selector;
     }
 }
