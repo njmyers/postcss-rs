@@ -84,6 +84,47 @@ impl Token {
             column: self.column + start_offset,
         }
     }
+
+    /// Split a token at the given byte index into two tokens with specified kinds
+    ///
+    /// # Arguments
+    /// * `split_index` - The byte index at which to split the token's value
+    /// * `first_kind` - The kind for the first token (left part)
+    /// * `second_kind` - The kind for the second token (right part)
+    ///
+    /// # Returns
+    /// A tuple of (first_token, Option<second_token>)
+    /// The second token is None if split_index >= value length
+    ///
+    /// # Example
+    /// ```
+    /// let token = Token { value: ":black".to_string(), ... };
+    /// let (colon, value) = token.split_at(1, Kind::Colon, Kind::Word);
+    /// // colon.value == ":"
+    /// // value.unwrap().value == "black"
+    /// ```
+    pub fn split_at(&self, split_index: usize, first_kind: Kind, second_kind: Kind) -> (Token, Option<Token>) {
+        let first_token = Token {
+            kind: first_kind,
+            value: self.value[..split_index].to_string(),
+            start: self.start,
+            end: self.start + split_index,
+            column: self.column,
+        };
+
+        let second_token = match self.value.len() {
+            len if len > split_index => Some(Token {
+                kind: second_kind,
+                value: self.value[split_index..].to_string(),
+                start: self.start + split_index,
+                end: self.end,
+                column: self.column + split_index,
+            }),
+            _ => None,
+        };
+
+        (first_token, second_token)
+    }
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]
