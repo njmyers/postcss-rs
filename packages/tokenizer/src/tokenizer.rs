@@ -97,11 +97,30 @@ impl Token {
     /// The second token is None if split_index >= value length
     ///
     /// # Example
-    /// ```ignore
-    /// let token = Token { value: ":black".to_string(), ... };
+    /// ```
+    /// use postcss_rs_tokenizer::{Token, Kind};
+    ///
+    /// let token = Token {
+    ///     kind: Kind::Word,
+    ///     value: ":black".to_string(),
+    ///     start: 5,
+    ///     end: 11,
+    ///     column: 6,
+    /// };
+    ///
     /// let (colon, value) = token.split(1, Kind::Colon, Kind::Word);
-    /// // colon.value == ":"
-    /// // value.unwrap().value == "black"
+    ///
+    /// assert_eq!(colon.kind, Kind::Colon);
+    /// assert_eq!(colon.value, ":");
+    /// assert_eq!(colon.start, 5);
+    /// assert_eq!(colon.end, 6);
+    ///
+    /// assert!(value.is_some());
+    /// let value_token = value.unwrap();
+    /// assert_eq!(value_token.kind, Kind::Word);
+    /// assert_eq!(value_token.value, "black");
+    /// assert_eq!(value_token.start, 6);
+    /// assert_eq!(value_token.end, 11);
     /// ```
     pub fn split(&self, split_index: usize, first_kind: Kind, second_kind: Kind) -> (Token, Option<Token>) {
         let first_token = Token {
