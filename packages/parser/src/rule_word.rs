@@ -29,16 +29,25 @@ impl RuleWord {
 
         // Collect tokens that are part of the property name (Word and Brackets)
         // Stop when we encounter:
-        // 1. A space followed by a colon (space belongs to 'between')
-        // 2. A colon directly (no space)
-        // 3. Anything else (open brace, etc.)
+        // 1. A Word token starting with ':' (declaration value, not property name)
+        // 2. A colon directly (Kind::Colon)
+        // 3. Anything else (space, open brace, etc.)
         loop {
             let Some(next) = tokenizer.peek() else {
                 break;
             };
 
             match next.kind {
-                Kind::Word | Kind::Brackets => {
+                Kind::Word => {
+                    // Check if this Word starts with ':' - if so, it's the start of the value
+                    // not part of the property name (e.g., ":black" in "color:black")
+                    if next.value.starts_with(':') {
+                        break;
+                    }
+                    // Part of property name - consume and add it
+                    tokens.push(tokenizer.next().unwrap());
+                }
+                Kind::Brackets => {
                     // Part of property name - consume and add it
                     tokens.push(tokenizer.next().unwrap());
                 }

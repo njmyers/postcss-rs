@@ -84,6 +84,66 @@ impl Token {
             column: self.column + start_offset,
         }
     }
+
+    /// Split a token at the given byte index into two tokens with specified kinds
+    ///
+    /// # Arguments
+    /// * `split_index` - The byte index at which to split the token's value
+    /// * `first_kind` - The kind for the first token (left part)
+    /// * `second_kind` - The kind for the second token (right part)
+    ///
+    /// # Returns
+    /// A tuple of (first_token, Option<second_token>)
+    /// The second token is None if split_index >= value length
+    ///
+    /// # Example
+    /// ```
+    /// use postcss_rs_tokenizer::{Token, Kind};
+    ///
+    /// let token = Token {
+    ///     kind: Kind::Word,
+    ///     value: ":black".to_string(),
+    ///     start: 5,
+    ///     end: 11,
+    ///     column: 6,
+    /// };
+    ///
+    /// let (colon, value) = token.split(1, Kind::Colon, Kind::Word);
+    ///
+    /// assert_eq!(colon.kind, Kind::Colon);
+    /// assert_eq!(colon.value, ":");
+    /// assert_eq!(colon.start, 5);
+    /// assert_eq!(colon.end, 6);
+    ///
+    /// assert!(value.is_some());
+    /// let value_token = value.unwrap();
+    /// assert_eq!(value_token.kind, Kind::Word);
+    /// assert_eq!(value_token.value, "black");
+    /// assert_eq!(value_token.start, 6);
+    /// assert_eq!(value_token.end, 11);
+    /// ```
+    pub fn split(&self, split_index: usize, first_kind: Kind, second_kind: Kind) -> (Token, Option<Token>) {
+        let first_token = Token {
+            kind: first_kind,
+            value: self.value[..split_index].to_string(),
+            start: self.start,
+            end: self.start + split_index,
+            column: self.column,
+        };
+
+        let second_token = match self.value.len() {
+            len if len > split_index => Some(Token {
+                kind: second_kind,
+                value: self.value[split_index..].to_string(),
+                start: self.start + split_index,
+                end: self.end,
+                column: self.column + split_index,
+            }),
+            _ => None,
+        };
+
+        (first_token, second_token)
+    }
 }
 
 #[derive(PartialEq, Eq, Debug, Clone)]

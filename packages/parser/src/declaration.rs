@@ -38,33 +38,49 @@ impl Declaration {
 
         // Phase 1: Process tokens before and including the colon
         // All spaces and comments before the colon go to 'between'
-        loop {
-            let Some(token) = tokenizer.next() else {
-                // No colon found - treat as malformed, but continue
-                break;
-            };
+        // Returns: Optional value token if we split a Word starting with ':'
+        let first_value_token: Option<Token> = {
+            loop {
+                let Some(token) = tokenizer.next() else {
+                    // No colon found - treat as malformed, but continue
+                    break None;
+                };
 
-            match token.kind {
-                Kind::Colon => {
-                    builder.between(&token);
-                    break; // Move to value processing phase
-                }
-                Kind::Space | Kind::Comment => {
-                    builder.between(&token);
-                }
-                _ => {
-                    // Unexpected token before colon - this shouldn't happen in well-formed CSS
-                    // but we'll add it to between and continue
-                    builder.between(&token);
+                match token.kind {
+                    Kind::Colon => {
+                        builder.between(&token);
+                        break None; // Move to value processing phase
+                    }
+                    Kind::Word if token.value.starts_with(':') => {
+                        // Word starting with ':' (e.g., ":black" in "color:black")
+                        // Split it: first char is the colon, rest is the value
+                        let (colon_token, value_token) = token.split(1, Kind::Colon, Kind::Word);
+                        builder.between(&colon_token);
+                        break value_token; // Move to value processing phase
+                    }
+                    Kind::Space | Kind::Comment => {
+                        builder.between(&token);
+                    }
+                    _ => {
+                        // Unexpected token before colon - this shouldn't happen in well-formed CSS
+                        // but we'll add it to between and continue
+                        builder.between(&token);
+                    }
                 }
             }
-        }
+        };
 
         // Phase 2: Process the value tokens
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
         let mut pending_spaces: Vec<Token> = Vec::new(); // Track spaces between colon and first non-space token
         let mut important_raw: Option<String> = None;
+
+        // If we have a first value token (from splitting a Word starting with ':'),
+        // add it to the statement first
+        if let Some(value_token) = first_value_token {
+            statement.push(value_token);
+        }
 
         loop {
             // Peek at next token to check for terminators

@@ -326,7 +326,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_rule_no_semicolon() {
         let (ast, expected) = parse_and_read("rule-no-semicolon.css", "rule-no-semicolon.json");
         assert_eq!(ast, expected);
