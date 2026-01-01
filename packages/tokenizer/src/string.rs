@@ -35,21 +35,22 @@ impl SingleString {
     /// Tokenize the string contained within single quotation marks like `'word'`.
     pub fn tokenize(letters: &[char]) -> usize {
         let count = letters.len();
-
-        // Start from index 1 (after opening quote) and look for closing quote
         let mut index = 1;
-        while index < count {
-            if letters[index] == *SINGLE_QUOTE {
-                // Found a quote - check if it's escaped by counting preceding backslashes
-                let backslash_count = count_preceding_backslashes(letters, index);
 
-                // Even number of backslashes (including 0) means quote is NOT escaped
-                match backslash_count % 2 {
-                    0 => return index, // Found unescaped closing quote
-                    _ => index += 1,   // Quote is escaped, continue
-                }
-            } else {
+        while index < count {
+            // Skip non-quote characters
+            if letters[index] != *SINGLE_QUOTE {
                 index += 1;
+                continue;
+            }
+
+            // Found a quote - check if it's escaped by counting preceding backslashes
+            let backslash_count = count_preceding_backslashes(letters, index);
+
+            // Even number of backslashes (including 0) means quote is NOT escaped
+            match backslash_count % 2 {
+                0 => return index, // Found unescaped closing quote
+                _ => index += 1,   // Quote is escaped, continue
             }
         }
 
@@ -69,21 +70,22 @@ impl DoubleString {
     /// Tokenize the string contained within double quotation marks like `"word"`.
     pub fn tokenize(letters: &[char]) -> usize {
         let count = letters.len();
-
-        // Start from index 1 (after opening quote) and look for closing quote
         let mut index = 1;
-        while index < count {
-            if letters[index] == *DOUBLE_QUOTE {
-                // Found a quote - check if it's escaped by counting preceding backslashes
-                let backslash_count = count_preceding_backslashes(letters, index);
 
-                // Even number of backslashes (including 0) means quote is NOT escaped
-                match backslash_count % 2 {
-                    0 => return index, // Found unescaped closing quote
-                    _ => index += 1,   // Quote is escaped, continue
-                }
-            } else {
+        while index < count {
+            // Skip non-quote characters
+            if letters[index] != *DOUBLE_QUOTE {
                 index += 1;
+                continue;
+            }
+
+            // Found a quote - check if it's escaped by counting preceding backslashes
+            let backslash_count = count_preceding_backslashes(letters, index);
+
+            // Even number of backslashes (including 0) means quote is NOT escaped
+            match backslash_count % 2 {
+                0 => return index, // Found unescaped closing quote
+                _ => index += 1,   // Quote is escaped, continue
             }
         }
 
