@@ -38,6 +38,10 @@ impl Declaration {
 
         // Phase 1: Process tokens before and including the colon
         // All spaces and comments before the colon go to 'between'
+        //
+        // Track if we need to prepend a value token (from splitting a Word that starts with ':')
+        let mut first_value_token: Option<Token> = None;
+
         loop {
             let Some(token) = tokenizer.next() else {
                 // No colon found - treat as malformed, but continue
@@ -47,6 +51,32 @@ impl Declaration {
             match token.kind {
                 Kind::Colon => {
                     builder.between(&token);
+                    break; // Move to value processing phase
+                }
+                Kind::Word if token.value.starts_with(':') => {
+                    // Word starting with ':' (e.g., ":black" in "color:black")
+                    // Split it: first char is the colon, rest is the value
+                    let colon_token = Token {
+                        kind: Kind::Colon,
+                        value: ":".to_string(),
+                        start: token.start,
+                        end: token.start + 1,
+                        column: token.column,
+                    };
+                    builder.between(&colon_token);
+
+                    // If there's content after the colon, create a token for it
+                    if token.value.len() > 1 {
+                        let value_part = &token.value[1..];
+                        let value_token = Token {
+                            kind: Kind::Word,
+                            value: value_part.to_string(),
+                            start: token.start + 1,
+                            end: token.end,
+                            column: token.column + 1,
+                        };
+                        first_value_token = Some(value_token);
+                    }
                     break; // Move to value processing phase
                 }
                 Kind::Space | Kind::Comment => {
@@ -65,6 +95,12 @@ impl Declaration {
         let mut terminator = StatementTerminator::new();
         let mut pending_spaces: Vec<Token> = Vec::new(); // Track spaces between colon and first non-space token
         let mut important_raw: Option<String> = None;
+
+        // If we have a first value token (from splitting a Word starting with ':'),
+        // add it to the statement first
+        if let Some(value_token) = first_value_token {
+            statement.push(value_token);
+        }
 
         loop {
             // Peek at next token to check for terminators
