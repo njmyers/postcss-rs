@@ -53,7 +53,7 @@ impl<'a> Parser<'a> {
 
                 // Handle words - could be rules or root-level declarations
                 Kind::Word => {
-                    match Self::classify_word_statement(&tokenizer) {
+                    match Self::classify(&tokenizer) {
                         RootStatementType::Declaration => {
                             let (node, terminator) =
                                 crate::Declaration::create(token, &mut tokenizer, &spaces);
@@ -99,7 +99,7 @@ impl<'a> Parser<'a> {
     /// Classify a Word token as either a declaration or rule by peeking ahead.
     /// - Declaration: `prop: value;` - word + colon + value + semicolon
     /// - Rule: `selector::pseudo {` - word + colon + more tokens + opening brace
-    fn classify_word_statement(tokenizer: &Tokenizer) -> RootStatementType {
+    fn classify(tokenizer: &Tokenizer) -> RootStatementType {
         // No colon after word means it's definitely a rule
         let Some(next) = tokenizer.peek() else {
             return RootStatementType::Rule;
@@ -117,7 +117,7 @@ impl<'a> Parser<'a> {
         let mut paren_depth = 0;
         let mut square_depth = 0;
 
-        loop {
+        while peek_index <= 1000 {
             let Some(token) = tokenizer.peek_nth(peek_index) else {
                 return RootStatementType::Declaration;
             };
@@ -141,12 +141,9 @@ impl<'a> Parser<'a> {
             }
 
             peek_index += 1;
-
-            match peek_index > 1000 {
-                true => return RootStatementType::Declaration,
-                false => continue,
-            }
         }
+
+        return RootStatementType::Declaration;
     }
 
     fn clean(css: &str) -> Result<&str, Utf8Error> {

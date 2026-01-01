@@ -1,6 +1,19 @@
 use crate::characters::*;
 use crate::escape::Escape;
 
+/// Count consecutive backslashes preceding a position
+fn count_preceding_backslashes(letters: &[char], position: usize) -> usize {
+    let mut count = 0;
+    let mut check_index = position;
+
+    while check_index > 0 && Escape::test(&letters[check_index - 1]) {
+        count += 1;
+        check_index -= 1;
+    }
+
+    count
+}
+
 // Representation of a single string
 pub struct SingleString;
 
@@ -28,12 +41,7 @@ impl SingleString {
         while index < count {
             if letters[index] == *SINGLE_QUOTE {
                 // Found a quote - check if it's escaped by counting preceding backslashes
-                let mut backslash_count = 0;
-                let mut check_index = index;
-                while check_index > 0 && Escape::test(&letters[check_index - 1]) {
-                    backslash_count += 1;
-                    check_index -= 1;
-                }
+                let backslash_count = count_preceding_backslashes(letters, index);
 
                 // Even number of backslashes (including 0) means quote is NOT escaped
                 match backslash_count % 2 {
@@ -67,12 +75,7 @@ impl DoubleString {
         while index < count {
             if letters[index] == *DOUBLE_QUOTE {
                 // Found a quote - check if it's escaped by counting preceding backslashes
-                let mut backslash_count = 0;
-                let mut check_index = index;
-                while check_index > 0 && Escape::test(&letters[check_index - 1]) {
-                    backslash_count += 1;
-                    check_index -= 1;
-                }
+                let backslash_count = count_preceding_backslashes(letters, index);
 
                 // Even number of backslashes (including 0) means quote is NOT escaped
                 match backslash_count % 2 {
