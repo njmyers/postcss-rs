@@ -97,7 +97,7 @@ impl Token {
     /// The second token is None if split_index >= value length
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// let token = Token { value: ":black".to_string(), ... };
     /// let (colon, value) = token.split(1, Kind::Colon, Kind::Word);
     /// // colon.value == ":"
