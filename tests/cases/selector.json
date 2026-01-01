@@ -9,13 +9,14 @@
       "raws": {
         "before": "",
         "between": " ",
+        "after": "",
         "selector": {
           "value": "a b",
           "raw": "a/* { } */ b"
-        },
-        "after": ""
+        }
       },
       "type": "rule",
+      "selector": "a b",
       "nodes": [],
       "source": {
         "start": {
@@ -24,12 +25,11 @@
           "column": 1
         },
         "end": {
-          "offset": 14,
-          "line": 1,
+          "offset": 15,
+          "line": 2,
           "column": 15
         }
-      },
-      "selector": "a b"
+      }
     },
     {
       "raws": {
@@ -38,20 +38,20 @@
         "after": ""
       },
       "type": "rule",
+      "selector": "a/* test */b",
       "nodes": [],
       "source": {
         "start": {
-          "offset": 17,
-          "line": 3,
+          "offset": 18,
+          "line": 4,
           "column": 1
         },
         "end": {
-          "offset": 31,
-          "line": 3,
+          "offset": 32,
+          "line": 4,
           "column": 15
         }
-      },
-      "selector": "a/* test */b"
+      }
     }
   ],
   "source": {

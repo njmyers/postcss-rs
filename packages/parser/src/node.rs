@@ -143,6 +143,25 @@ impl NodeBuilder {
         return Self { node };
     }
 
+    pub fn new_first_node(token: &Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Self {
+        let mut node = Node::default();
+
+        // For the first node, use offset from first space if present, but always start at line 1
+        node.source.start = match spaces.first() {
+            Some(first_space) => Source {
+                offset: first_space.start,
+                line: 1,
+                column: 1,
+            },
+            None => Source::create_start(token, tokenizer),
+        };
+
+        // Ensure empty "before" for first node
+        node.raws.before.push_str("");
+
+        return Self { node };
+    }
+
     pub fn append(&mut self, child: Node) {
         self.node.append(child);
     }

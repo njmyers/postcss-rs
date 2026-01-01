@@ -8,7 +8,18 @@ pub struct Comment;
 
 impl Comment {
     pub fn create(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
-        let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
+        Self::create_impl(token, tokenizer, spaces, false)
+    }
+
+    pub fn create_first(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
+        Self::create_impl(token, tokenizer, spaces, true)
+    }
+
+    fn create_impl(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token], is_first: bool) -> Node {
+        let mut builder = match is_first {
+            true => NodeBuilder::new_first_node(&token, tokenizer, spaces),
+            false => NodeBuilder::new(&token, tokenizer, spaces),
+        };
         builder.ensure_empty_before();
 
         // Extract comment text and left/right spacing from token value
