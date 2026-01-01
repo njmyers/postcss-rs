@@ -54,7 +54,7 @@ impl Declaration {
                     Kind::Word if token.value.starts_with(':') => {
                         // Word starting with ':' (e.g., ":black" in "color:black")
                         // Split it: first char is the colon, rest is the value
-                        let (colon_token, value_token) = token.split_at(1, Kind::Colon, Kind::Word);
+                        let (colon_token, value_token) = token.split(1, Kind::Colon, Kind::Word);
                         builder.between(&colon_token);
                         break value_token; // Move to value processing phase
                     }

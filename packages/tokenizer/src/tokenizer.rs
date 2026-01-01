@@ -99,11 +99,11 @@ impl Token {
     /// # Example
     /// ```
     /// let token = Token { value: ":black".to_string(), ... };
-    /// let (colon, value) = token.split_at(1, Kind::Colon, Kind::Word);
+    /// let (colon, value) = token.split(1, Kind::Colon, Kind::Word);
     /// // colon.value == ":"
     /// // value.unwrap().value == "black"
     /// ```
-    pub fn split_at(&self, split_index: usize, first_kind: Kind, second_kind: Kind) -> (Token, Option<Token>) {
+    pub fn split(&self, split_index: usize, first_kind: Kind, second_kind: Kind) -> (Token, Option<Token>) {
         let first_token = Token {
             kind: first_kind,
             value: self.value[..split_index].to_string(),
