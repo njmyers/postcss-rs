@@ -99,6 +99,7 @@ impl Rule {
                 }
 
                 Kind::Space => spaces.push(token),
+                Kind::Semicolon => spaces.push(token),
                 Kind::CloseCurly => break,
                 _ => break,
             };
