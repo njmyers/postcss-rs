@@ -121,15 +121,9 @@ impl<'a> Parser<'a> {
 
         let mut paren_depth = 0;
         let mut square_depth = 0;
-        let mut peek_count = 0;
 
-        // Peek through tokens looking for terminator
-        loop {
-            peek_count += 1;
-            if peek_count > 1000 {
-                return RootStatementType::Declaration;
-            }
-
+        // Peek through tokens looking for terminator (max 1000 tokens)
+        for _ in 0..1000 {
             let token = match peekable.peek() {
                 Some(t) => t.clone(),
                 None => return RootStatementType::Declaration,
@@ -153,6 +147,9 @@ impl<'a> Parser<'a> {
                 _ => {}
             }
         }
+
+        // If we scanned 1000 tokens without finding a terminator, assume declaration
+        RootStatementType::Declaration
     }
 
     fn clean(css: &str) -> Result<&str, Utf8Error> {
