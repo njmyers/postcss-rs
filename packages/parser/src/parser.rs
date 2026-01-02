@@ -100,8 +100,11 @@ impl<'a> Parser<'a> {
     /// - Declaration: `prop: value;` - word + colon + value + semicolon
     /// - Rule: `selector::pseudo {` - word + colon + more tokens + opening brace
     fn classify(tokenizer: &Tokenizer) -> RootStatementType {
+        // Create a peekable iterator for efficient next-token peeking
+        let mut peekable = tokenizer.clone().into_peekable();
+
         // No colon after word means it's definitely a rule
-        let Some(next) = tokenizer.peek() else {
+        let Some(next) = peekable.peek() else {
             return RootStatementType::Rule;
         };
 
@@ -113,21 +116,25 @@ impl<'a> Parser<'a> {
 
     /// Scan ahead after a colon to find whether we hit `{` (rule) or `;` (declaration)
     fn scan_for_terminator(tokenizer: &Tokenizer) -> RootStatementType {
-        let mut peek_index = 1;
+        // Create a multi-peek iterator for efficient lookahead
+        let mut peekable = tokenizer.clone().into_multipeek();
+
         let mut paren_depth = 0;
         let mut square_depth = 0;
 
-        while peek_index <= 1000 {
-            let Some(token) = tokenizer.peek_nth(peek_index) else {
-                return RootStatementType::Declaration;
+        // Peek through tokens looking for terminator (max 1000 tokens)
+        for _ in 0..1000 {
+            let token = match peekable.peek() {
+                Some(t) => t.clone(),
+                None => return RootStatementType::Declaration,
             };
 
             match token.kind {
                 Kind::OpenCurly if paren_depth == 0 && square_depth == 0 => {
-                    return RootStatementType::Rule
+                    return RootStatementType::Rule;
                 }
                 Kind::Semicolon if paren_depth == 0 && square_depth == 0 => {
-                    return RootStatementType::Declaration
+                    return RootStatementType::Declaration;
                 }
                 Kind::Brackets if token.value.starts_with('(') => paren_depth += 1,
                 Kind::Brackets if token.value.starts_with('[') => square_depth += 1,
@@ -139,11 +146,10 @@ impl<'a> Parser<'a> {
                 }
                 _ => {}
             }
-
-            peek_index += 1;
         }
 
-        return RootStatementType::Declaration;
+        // If we scanned 1000 tokens without finding a terminator, assume declaration
+        RootStatementType::Declaration
     }
 
     fn clean(css: &str) -> Result<&str, Utf8Error> {
