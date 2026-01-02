@@ -190,73 +190,71 @@ impl Params {
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
 
-        loop {
-            let mut peekable = tokenizer.clone().into_peekable();
+        // Create peekable once outside the loop for efficiency
+        let mut peekable = tokenizer.clone().into_peekable();
 
-            if let Some(token) = peekable.peek() {
-                // Check if this token should end params without being consumed
-                match token.kind {
-                    Kind::OpenCurly if !statement.is_open() => {
-                        terminator.set_ended_by(Kind::OpenCurly);
-                        break;
-                    }
-                    Kind::CloseCurly if !statement.is_open() => {
+        while let Some(token) = peekable.peek() {
+            // Check if this token should end params without being consumed
+            match token.kind {
+                Kind::OpenCurly if !statement.is_open() => {
+                    terminator.set_ended_by(Kind::OpenCurly);
+                    break;
+                }
+                Kind::CloseCurly if !statement.is_open() => {
+                    terminator.set_ended_by(Kind::CloseCurly);
+                    break;
+                }
+                Kind::AtWord => {
+                    terminator.set_ended_by(Kind::AtWord);
+                    break;
+                }
+                // If we see a space, peek ahead to check if it's followed by a terminator
+                Kind::Space if !statement.is_open() => {
+                    if Self::peek_for_terminator_after_space(tokenizer) {
                         terminator.set_ended_by(Kind::CloseCurly);
                         break;
                     }
-                    Kind::AtWord => {
-                        terminator.set_ended_by(Kind::AtWord);
-                        break;
-                    }
-                    // If we see a space, peek ahead to check if it's followed by a terminator
-                    Kind::Space if !statement.is_open() => {
-                        if Self::peek_for_terminator_after_space(tokenizer) {
-                            terminator.set_ended_by(Kind::CloseCurly);
-                            break;
-                        }
-                    }
-                    _ => {}
-                };
+                }
+                _ => {}
+            };
 
-                // Consume the token
-                let token = tokenizer.next().unwrap();
-                terminator.process(&token);
+            // Consume the token from both peekable and original tokenizer
+            peekable.next();
+            let token = tokenizer.next().unwrap();
+            terminator.process(&token);
 
-                match token.kind {
-                    // Handle spacing and comments before params start
-                    Kind::Space | Kind::Comment if statement.is_empty() => spaces.push(token),
-                    // Handle spacing and comments within params - add to statement when brackets are open
-                    Kind::Space | Kind::Comment if statement.is_open() => statement.push(token),
-                    // Handle spacing and comments after params - add to between
-                    Kind::Space | Kind::Comment => parent.between(&token),
+            match token.kind {
+                // Handle spacing and comments before params start
+                Kind::Space | Kind::Comment if statement.is_empty() => spaces.push(token),
+                // Handle spacing and comments within params - add to statement when brackets are open
+                Kind::Space | Kind::Comment if statement.is_open() => statement.push(token),
+                // Handle spacing and comments after params - add to between
+                Kind::Space | Kind::Comment => parent.between(&token),
 
-                    // Handle tokens that are part of params
-                    Kind::Word => statement.push(token),
-                    Kind::Brackets => statement.push(token),
-                    Kind::Colon => statement.push(token),
-                    Kind::String => statement.push(token),
-                    Kind::OpenSquare => statement.push(token),
-                    Kind::CloseSquare => statement.push(token),
-                    Kind::OpenCurvy => statement.push(token),
-                    Kind::CloseCurvy => statement.push(token),
+                // Handle tokens that are part of params
+                Kind::Word => statement.push(token),
+                Kind::Brackets => statement.push(token),
+                Kind::Colon => statement.push(token),
+                Kind::String => statement.push(token),
+                Kind::OpenSquare => statement.push(token),
+                Kind::CloseSquare => statement.push(token),
+                Kind::OpenCurvy => statement.push(token),
+                Kind::CloseCurvy => statement.push(token),
 
-                    // Handle curly braces - they can be part of params if nested
-                    Kind::OpenCurly if statement.is_open() => statement.push(token),
-                    Kind::CloseCurly if statement.is_open() => statement.push(token),
+                // Handle curly braces - they can be part of params if nested
+                Kind::OpenCurly if statement.is_open() => statement.push(token),
+                Kind::CloseCurly if statement.is_open() => statement.push(token),
 
-                    // Handle semicolon - ends params only if not nested
-                    Kind::Semicolon if statement.is_open() => statement.push(token),
-                    Kind::Semicolon => {
-                        terminator.set_ended_by(Kind::Semicolon);
-                        break;
-                    }
+                // Handle semicolon - ends params only if not nested
+                Kind::Semicolon if statement.is_open() => statement.push(token),
+                Kind::Semicolon => {
+                    terminator.set_ended_by(Kind::Semicolon);
+                    break;
+                }
 
-                    // These cases should not be reached due to peek check above
-                    Kind::OpenCurly | Kind::CloseCurly | Kind::AtWord => break,
-                };
-            } else {
-                break;
-            }
+                // These cases should not be reached due to peek check above
+                Kind::OpenCurly | Kind::CloseCurly | Kind::AtWord => break,
+            };
         }
 
         Self::spaces(&statement, parent, &spaces);
