@@ -341,7 +341,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_semicolons() {
         let (ast, expected) = parse_and_read("semicolons.css", "semicolons.json");
         assert_eq!(ast, expected);
