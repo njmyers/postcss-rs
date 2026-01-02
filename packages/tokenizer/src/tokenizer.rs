@@ -245,6 +245,35 @@ impl Tokenizer {
         return stack.last().cloned();
     }
 
+    /// Convert this tokenizer into a PeekableTokenizer for simple next-token peeking.
+    /// This is a convenience method equivalent to `PeekableTokenizer::new(tokenizer)`.
+    ///
+    /// # Example
+    /// ```
+    /// use postcss_rs_tokenizer::Tokenizer;
+    ///
+    /// let mut peekable = Tokenizer::new("a b c").into_peekable();
+    /// assert_eq!(peekable.peek().map(|t| &t.value), Some(&"a".to_string()));
+    /// ```
+    pub fn into_peekable(self) -> PeekableTokenizer {
+        PeekableTokenizer::new(self)
+    }
+
+    /// Convert this tokenizer into a MultiPeekTokenizer for multi-token lookahead.
+    /// This is a convenience method equivalent to `MultiPeekTokenizer::new(tokenizer)`.
+    ///
+    /// # Example
+    /// ```
+    /// use postcss_rs_tokenizer::Tokenizer;
+    ///
+    /// let mut multi = Tokenizer::new("a b c").into_multipeek();
+    /// assert_eq!(multi.peek().map(|t| &t.value), Some(&"a".to_string()));
+    /// assert_eq!(multi.peek().map(|t| &t.value), Some(&" ".to_string()));
+    /// ```
+    pub fn into_multipeek(self) -> MultiPeekTokenizer {
+        MultiPeekTokenizer::new(self)
+    }
+
     fn create(&mut self, length: usize, kind: Kind) -> Token {
         let column = self.lines.offset(self.index);
         let start = self.index;
@@ -1453,6 +1482,29 @@ mod tests {
     fn debug_escape_attribute_selector_tokens() {
         let tokens = tokenizer(r#"[foo=\"] { }"#);
         assert!(!tokens.is_empty());
+    }
+
+    #[test]
+    fn test_tokenizer_into_peekable() {
+        // Test the convenience method
+        let mut peekable = Tokenizer::new("a b c").into_peekable();
+
+        assert_eq!(peekable.peek().map(|t| &t.value), Some(&"a".to_string()));
+        assert_eq!(peekable.next().map(|t| t.value), Some("a".to_string()));
+    }
+
+    #[test]
+    fn test_tokenizer_into_multipeek() {
+        // Test the convenience method
+        let mut multi = Tokenizer::new("a b c").into_multipeek();
+
+        // Peek ahead multiple times
+        assert_eq!(multi.peek().map(|t| &t.value), Some(&"a".to_string()));
+        assert_eq!(multi.peek().map(|t| &t.value), Some(&" ".to_string()));
+        assert_eq!(multi.peek().map(|t| &t.value), Some(&"b".to_string()));
+
+        multi.reset_peek();
+        assert_eq!(multi.next().map(|t| t.value), Some("a".to_string()));
     }
 
     #[test]
