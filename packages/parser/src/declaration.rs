@@ -84,7 +84,8 @@ impl Declaration {
 
         loop {
             // Peek at next token to check for terminators
-            if let Some(peeked) = tokenizer.peek() {
+            let mut peekable = tokenizer.clone().into_peekable();
+            if let Some(peeked) = peekable.peek() {
                 match peeked.kind {
                     // CloseCurly ends declaration without being consumed (belongs to parent)
                     Kind::CloseCurly if !statement.is_open() => {
@@ -96,7 +97,9 @@ impl Declaration {
 
                     // Space with newline followed by comment or CloseCurly ends declaration
                     Kind::Space if peeked.value.starts_with(characters::NEWLINE) && !statement.is_open() => {
-                        match tokenizer.peek_nth(2) {
+                        let mut multi = tokenizer.clone().into_multipeek();
+                        multi.peek(); // peek first token
+                        match multi.peek() {
                             Some(next) if next.kind == Kind::Comment || next.kind == Kind::CloseCurly => break,
                             _ => {} // Not before terminator, continue
                         }
@@ -105,7 +108,9 @@ impl Declaration {
                     // Check for trailing spaces before CloseCurly
                     // Any space directly before CloseCurly (when not in open brackets) is trailing
                     Kind::Space if !statement.is_open() => {
-                        match tokenizer.peek_nth(2) {
+                        let mut multi = tokenizer.clone().into_multipeek();
+                        multi.peek(); // peek first token
+                        match multi.peek() {
                             Some(next) if next.kind == Kind::CloseCurly => {
                                 // Space followed by CloseCurly - this is a trailing space
                                 // We need to: 1) add it to value, 2) consume it, 3) use pre-consume position as end
@@ -143,7 +148,8 @@ impl Declaration {
                     // Check if clean value is empty (ignore raw-only tokens)
                     if statement.values_clean.is_empty() && !statement.is_open() {
                         // Comment before any real content - check if it's before a function call
-                        match tokenizer.peek() {
+                        let mut peekable = tokenizer.clone().into_peekable();
+                        match peekable.peek() {
                             Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
                                 // Comment before function - move pending to between, keep comment
                                 if !pending_spaces.is_empty() {
@@ -165,7 +171,8 @@ impl Declaration {
                         }
                     } else {
                         // Comment inside value - check if it's before an opening paren
-                        match tokenizer.peek() {
+                        let mut peekable = tokenizer.clone().into_peekable();
+                        match peekable.peek() {
                             Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
                                 statement.push(token);
                             }
@@ -233,10 +240,11 @@ impl Declaration {
         // Handle trailing space before CloseCurly
         // If we broke due to CloseCurly, there may be a trailing space to handle
         if terminator.ended_by == Some(Kind::CloseCurly) {
-            if let Some(space_token) = tokenizer.peek() {
+            let mut peekable = tokenizer.clone().into_peekable();
+            if let Some(space_token) = peekable.peek() {
                 if space_token.kind == Kind::Space {
                     // Add the trailing space to pending_spaces for the value
-                    pending_spaces.push(space_token);
+                    pending_spaces.push(space_token.clone());
                 }
             }
         }
@@ -288,7 +296,8 @@ impl Declaration {
 
         // Now consume the trailing space if present so the rule parser doesn't see it
         if terminator.ended_by == Some(Kind::CloseCurly) {
-            if let Some(space_token) = tokenizer.peek() {
+            let mut peekable = tokenizer.clone().into_peekable();
+            if let Some(space_token) = peekable.peek() {
                 if space_token.kind == Kind::Space {
                     tokenizer.next(); // Consume the space
                 }
@@ -349,7 +358,12 @@ impl Declaration {
 
         loop {
             peek_count += 1;
-            let Some(next) = tokenizer.peek_nth(peek_count) else {
+            let mut multi = tokenizer.clone().into_multipeek();
+            let mut next = None;
+            for _ in 0..peek_count {
+                next = multi.peek();
+            }
+            let Some(next) = next else {
                 return (ImportantResult::NotImportant, 0);
             };
 
@@ -378,7 +392,8 @@ impl Declaration {
     fn build_important_raw(base: &str, tokenizer: &mut Tokenizer) -> String {
         let mut raw = base.to_string();
 
-        if let Some(trailing) = tokenizer.peek() {
+        let mut peekable = tokenizer.clone().into_peekable();
+        if let Some(trailing) = peekable.peek() {
             if trailing.kind == Kind::Space {
                 raw.push_str(&trailing.value);
                 tokenizer.next();

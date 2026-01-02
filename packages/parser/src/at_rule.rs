@@ -165,20 +165,21 @@ struct Params;
 impl Params {
     /// Peek ahead past spaces to see if there's a terminator (CloseCurly)
     fn peek_for_terminator_after_space(tokenizer: &Tokenizer) -> bool {
-        let mut peek_index = 1;
+        let mut multi = tokenizer.clone().into_multipeek();
+
+        // Skip the first token (which we already peeked at as Space in the caller)
+        multi.peek();
 
         // Skip past any spaces
-        loop {
-            let Some(token) = tokenizer.peek_nth(peek_index) else {
-                return false;
-            };
-
+        while let Some(token) = multi.peek() {
             match token.kind {
-                Kind::Space => peek_index += 1,
+                Kind::Space => continue,
                 Kind::CloseCurly => return true,
                 _ => return false,
             }
         }
+
+        false
     }
 
     fn create(
@@ -189,7 +190,10 @@ impl Params {
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
 
-        while let Some(token) = tokenizer.peek() {
+        // Create peekable once outside the loop for efficiency
+        let mut peekable = tokenizer.clone().into_peekable();
+
+        while let Some(token) = peekable.peek() {
             // Check if this token should end params without being consumed
             match token.kind {
                 Kind::OpenCurly if !statement.is_open() => {
@@ -214,7 +218,8 @@ impl Params {
                 _ => {}
             };
 
-            // Consume the token
+            // Consume the token from both peekable and original tokenizer
+            peekable.next();
             let token = tokenizer.next().unwrap();
             terminator.process(&token);
 
