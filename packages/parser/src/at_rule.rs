@@ -25,24 +25,7 @@ impl AtRule {
         tokenizer: &mut Tokenizer,
         spaces: &[Token],
     ) -> (Node, StatementTerminator) {
-        let builder = NodeBuilder::new(&token, tokenizer, spaces);
-        Self::create_impl(token, tokenizer, builder)
-    }
-
-    pub fn create_first(
-        token: Token,
-        tokenizer: &mut Tokenizer,
-        spaces: &[Token],
-    ) -> (Node, StatementTerminator) {
-        let builder = NodeBuilder::new_first_node(&token, tokenizer, spaces);
-        Self::create_impl(token, tokenizer, builder)
-    }
-
-    fn create_impl(
-        token: Token,
-        tokenizer: &mut Tokenizer,
-        mut builder: NodeBuilder,
-    ) -> (Node, StatementTerminator) {
+        let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
         builder.ensure_empty_before();
         builder.ensure_empty_between();
         builder.ensure_empty_after_name();

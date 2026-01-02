@@ -37,7 +37,6 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> Node {
         let mut tokenizer = Tokenizer::new(self.css);
         let mut spaces = Tokens::new();
-        let mut is_first_node = true;
 
         let mut root = NodeBuilder::default();
         root.ensure_empty_after();
@@ -46,13 +45,7 @@ impl<'a> Parser<'a> {
             match token.kind {
                 // Handle at-rules (@media, @supports, etc.)
                 Kind::AtWord => {
-                    let (node, terminator) = match is_first_node {
-                        true => {
-                            is_first_node = false;
-                            AtRule::create_first(token, &mut tokenizer, &spaces)
-                        }
-                        false => AtRule::create(token, &mut tokenizer, &spaces),
-                    };
+                    let (node, terminator) = AtRule::create(token, &mut tokenizer, &spaces);
                     root.terminator(&terminator);
                     root.append(node);
                     spaces.clear();
@@ -62,13 +55,8 @@ impl<'a> Parser<'a> {
                 Kind::Word => {
                     match Self::classify(&tokenizer) {
                         RootStatementType::Declaration => {
-                            let (node, terminator) = match is_first_node {
-                                true => {
-                                    is_first_node = false;
-                                    crate::Declaration::create_first(token, &mut tokenizer, &spaces)
-                                }
-                                false => crate::Declaration::create(token, &mut tokenizer, &spaces),
-                            };
+                            let (node, terminator) =
+                                crate::Declaration::create(token, &mut tokenizer, &spaces);
                             root.terminator(&terminator);
                             root.append(node);
                             spaces.clear();
@@ -76,15 +64,7 @@ impl<'a> Parser<'a> {
                         RootStatementType::Rule => {
                             let terminator = crate::StatementTerminator::new();
                             root.terminator(&terminator);
-
-                            let node = match is_first_node {
-                                true => {
-                                    is_first_node = false;
-                                    Rule::create_first(token, &mut tokenizer, &spaces)
-                                }
-                                false => Rule::create(token, &mut tokenizer, &spaces),
-                            };
-                            root.append(node);
+                            root.append(Rule::create(token, &mut tokenizer, &spaces));
                             spaces.clear();
                         }
                     }
@@ -95,28 +75,13 @@ impl<'a> Parser<'a> {
                     // Rules don't end with semicolons, so reset the terminator
                     let terminator = crate::StatementTerminator::new();
                     root.terminator(&terminator);
-
-                    let node = match is_first_node {
-                        true => {
-                            is_first_node = false;
-                            Rule::create_first(token, &mut tokenizer, &spaces)
-                        }
-                        false => Rule::create(token, &mut tokenizer, &spaces),
-                    };
-                    root.append(node);
+                    root.append(Rule::create(token, &mut tokenizer, &spaces));
                     spaces.clear();
                 }
 
                 // Handle comments
                 Kind::Comment => {
-                    let node = match is_first_node {
-                        true => {
-                            is_first_node = false;
-                            Comment::create_first(token, &mut tokenizer, &spaces)
-                        }
-                        false => Comment::create(token, &mut tokenizer, &spaces),
-                    };
-                    root.append(node);
+                    root.append(Comment::create(token, &mut tokenizer, &spaces));
                     spaces.clear();
                 }
 
