@@ -410,11 +410,13 @@ impl Iterator for Tokenizer {
     }
 }
 
-/// A peekable tokenizer using itertools' MultiPeek for efficient peeking.
+/// A simple peekable tokenizer using std::iter::Peekable.
 ///
-/// This provides a more efficient alternative to the clone-based peek() methods
-/// on Tokenizer, using itertools' MultiPeek which maintains a small buffer of
-/// peeked items instead of cloning the entire iterator state.
+/// Use this when you only need to peek at the next token (most common case).
+/// For multi-token lookahead, use `MultiPeekTokenizer` instead.
+///
+/// This avoids cloning the entire tokenizer state by using Rust's standard
+/// Peekable iterator adapter.
 ///
 /// # Example
 /// ```
@@ -432,11 +434,66 @@ impl Iterator for Tokenizer {
 /// let token = peekable.next();
 /// ```
 pub struct PeekableTokenizer {
-    inner: MultiPeek<Tokenizer>,
+    inner: std::iter::Peekable<Tokenizer>,
 }
 
 impl PeekableTokenizer {
     /// Create a new PeekableTokenizer from a Tokenizer
+    pub fn new(tokenizer: Tokenizer) -> Self {
+        Self {
+            inner: tokenizer.peekable(),
+        }
+    }
+
+    /// Peek at the next token without consuming it.
+    /// Returns a reference to the next token, or None if the iterator is exhausted.
+    pub fn peek(&mut self) -> Option<&Token> {
+        self.inner.peek()
+    }
+}
+
+impl Iterator for PeekableTokenizer {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
+    }
+}
+
+/// A multi-peek tokenizer using itertools' MultiPeek for lookahead parsing.
+///
+/// Use this when you need to peek multiple tokens ahead (e.g., scanning for
+/// terminators, complex lookahead logic). For simple next-token peeking,
+/// use `PeekableTokenizer` instead.
+///
+/// This maintains a small buffer of peeked items instead of cloning the
+/// entire iterator state, making it much more efficient than the old
+/// clone-based peek() approach.
+///
+/// # Example
+/// ```
+/// use postcss_rs_tokenizer::{Tokenizer, MultiPeekTokenizer};
+///
+/// let tokenizer = Tokenizer::new("a : { color: red; }");
+/// let mut peekable = MultiPeekTokenizer::new(tokenizer);
+///
+/// // Peek ahead multiple positions
+/// let first = peekable.peek();   // "a"
+/// let second = peekable.peek();  // " "
+/// let third = peekable.peek();   // ":"
+/// let fourth = peekable.peek();  // " "
+/// let fifth = peekable.peek();   // "{"
+///
+/// // Reset and consume normally
+/// peekable.reset_peek();
+/// assert_eq!(peekable.next().unwrap().value, "a");
+/// ```
+pub struct MultiPeekTokenizer {
+    inner: MultiPeek<Tokenizer>,
+}
+
+impl MultiPeekTokenizer {
+    /// Create a new MultiPeekTokenizer from a Tokenizer
     pub fn new(tokenizer: Tokenizer) -> Self {
         Self {
             inner: multipeek(tokenizer),
@@ -458,7 +515,7 @@ impl PeekableTokenizer {
     }
 }
 
-impl Iterator for PeekableTokenizer {
+impl Iterator for MultiPeekTokenizer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -1403,11 +1460,32 @@ mod tests {
         let tokenizer = Tokenizer::new("a { color: red; }");
         let mut peekable = PeekableTokenizer::new(tokenizer);
 
+        // Peek at next token without consuming
+        let peeked = peekable.peek().map(|t| t.value.clone());
+        assert_eq!(peeked, Some("a".to_string()));
+
+        // Peek again should return the same token (not advance)
+        let peeked_again = peekable.peek().map(|t| t.value.clone());
+        assert_eq!(peeked_again, Some("a".to_string()));
+
+        // Now consume the token
+        let consumed = peekable.next().map(|t| t.value);
+        assert_eq!(consumed, Some("a".to_string()));
+
+        // Peek at the next token (space)
+        assert_eq!(peekable.peek().map(|t| t.value.as_str()), Some(" "));
+    }
+
+    #[test]
+    fn test_multi_peek_tokenizer_basic() {
+        let tokenizer = Tokenizer::new("a { color: red; }");
+        let mut peekable = MultiPeekTokenizer::new(tokenizer);
+
         // Peek at first token without consuming
         let peeked = peekable.peek().map(|t| t.value.clone());
         assert_eq!(peeked, Some("a".to_string()));
 
-        // Peek again should return the same token
+        // Peek again advances to next token
         let peeked_again = peekable.peek().map(|t| t.value.clone());
         assert_eq!(peeked_again, Some(" ".to_string()));
 
@@ -1423,9 +1501,9 @@ mod tests {
     }
 
     #[test]
-    fn test_peekable_tokenizer_multiple_peeks() {
+    fn test_multi_peek_tokenizer_lookahead() {
         let tokenizer = Tokenizer::new("a b c");
-        let mut peekable = PeekableTokenizer::new(tokenizer);
+        let mut peekable = MultiPeekTokenizer::new(tokenizer);
 
         // Peek ahead multiple times
         assert_eq!(peekable.peek().map(|t| t.value.as_str()), Some("a"));

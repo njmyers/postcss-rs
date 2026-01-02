@@ -8,6 +8,7 @@ use crate::NodeBuilder;
 use crate::Rule;
 
 use postcss_rs_tokenizer::Kind;
+use postcss_rs_tokenizer::MultiPeekTokenizer;
 use postcss_rs_tokenizer::PeekableTokenizer;
 use postcss_rs_tokenizer::Tokenizer;
 use postcss_rs_tokenizer::Tokens;
@@ -55,10 +56,11 @@ impl<'a> Parser<'a> {
                 // Handle words - could be rules or root-level declarations
                 Kind::Word => {
                     // NOTE: This currently uses the clone-based peek() approach.
-                    // For a more efficient approach, see classify_with_peekable() which
-                    // demonstrates using itertools' MultiPeek. Future refactoring could
-                    // convert the entire parse loop to use PeekableTokenizer instead of
-                    // cloning the tokenizer on every peek operation.
+                    // For more efficient approaches, see:
+                    // - classify_with_peekable() for simple next-token peeking (std::iter::Peekable)
+                    // - classify_with_multipeek() for lookahead parsing (itertools::MultiPeek)
+                    // Future refactoring could convert the entire parse loop to use these
+                    // instead of cloning the tokenizer on every peek operation.
                     match Self::classify(&tokenizer) {
                         RootStatementType::Declaration => {
                             let (node, terminator) =
@@ -117,10 +119,29 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// NEW: Classify using PeekableTokenizer (itertools-based approach)
-    /// This demonstrates the new pattern using itertools' MultiPeek for efficient peeking.
-    /// Unlike the clone-based approach, this maintains a small buffer of peeked tokens.
+    /// NEW: Classify using PeekableTokenizer (std::iter::Peekable approach)
+    /// This demonstrates simple next-token peeking using Rust's standard Peekable.
+    /// Use this for cases where you only need to look at the next token.
+    #[allow(dead_code)]
     fn classify_with_peekable(peekable: &mut PeekableTokenizer) -> RootStatementType {
+        // Peek at the next token
+        let next = match peekable.peek() {
+            Some(token) => token.clone(),
+            None => return RootStatementType::Rule,
+        };
+
+        match next.kind {
+            // For lookahead beyond next token, would need to consume and use MultiPeekTokenizer
+            Kind::Colon => RootStatementType::Rule, // Simplified - would need multipeek for full logic
+            _ => RootStatementType::Rule,
+        }
+    }
+
+    /// NEW: Classify using MultiPeekTokenizer (itertools approach)
+    /// This demonstrates multi-token lookahead using itertools' MultiPeek.
+    /// Use this for scanning ahead multiple tokens (like searching for terminators).
+    #[allow(dead_code)]
+    fn classify_with_multipeek(peekable: &mut MultiPeekTokenizer) -> RootStatementType {
         // Peek at the next token
         let next = match peekable.peek() {
             Some(token) => token.clone(),
@@ -133,13 +154,14 @@ impl<'a> Parser<'a> {
         peekable.reset_peek();
 
         match next.kind {
-            Kind::Colon => Self::scan_for_terminator_with_peekable(peekable),
+            Kind::Colon => Self::scan_for_terminator_with_multipeek(peekable),
             _ => RootStatementType::Rule,
         }
     }
 
-    /// NEW: Scan for terminator using PeekableTokenizer
-    fn scan_for_terminator_with_peekable(peekable: &mut PeekableTokenizer) -> RootStatementType {
+    /// NEW: Scan for terminator using MultiPeekTokenizer
+    #[allow(dead_code)]
+    fn scan_for_terminator_with_multipeek(peekable: &mut MultiPeekTokenizer) -> RootStatementType {
         let mut paren_depth = 0;
         let mut square_depth = 0;
         let mut peek_count = 0;
