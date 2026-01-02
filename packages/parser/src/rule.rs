@@ -200,34 +200,36 @@ impl Selector {
                 Kind::OpenCurvy => statement.push(token),
                 Kind::CloseCurvy => statement.push(token),
                 Kind::Comment => {
+                    // Check if there are more selector tokens after this comment
+                    let has_more_selector_tokens = Self::has_selector_tokens_ahead(tokenizer);
+
+                    // If no more selector tokens, this comment belongs in 'between'
+                    if !has_more_selector_tokens {
+                        builder.between(&token);
+                        continue;
+                    }
+
                     // Check if comment contains braces that would be significant
                     let has_braces = token.value.contains('{') || token.value.contains('}');
 
-                    // Peek past spaces to check if there are more selector tokens
-                    let has_more_selector_tokens = Self::has_selector_tokens_ahead(tokenizer);
+                    // Comments without braces are part of the selector as-is
+                    if !has_braces {
+                        statement.push(token);
+                        continue;
+                    }
 
-                    match has_more_selector_tokens {
-                        true => {
-                            match has_braces {
-                                true => {
-                                    // Comment with braces: keep in raw only
-                                    statement.push_raw_only(token);
+                    // Comment with braces: keep in raw only, add spaces to both
+                    statement.push_raw_only(token);
 
-                                    // Consume following spaces and push to both raw and clean
-                                    while let Some(next) = tokenizer.peek() {
-                                        match next.kind {
-                                            Kind::Space => {
-                                                let space = tokenizer.next().unwrap();
-                                                statement.push(space);
-                                            }
-                                            _ => break,
-                                        }
-                                    }
-                                }
-                                false => statement.push(token),
+                    // Consume following spaces and push to both raw and clean
+                    while let Some(next) = tokenizer.peek() {
+                        match next.kind {
+                            Kind::Space => {
+                                let space = tokenizer.next().unwrap();
+                                statement.push(space);
                             }
+                            _ => break,
                         }
-                        false => builder.between(&token),
                     }
                 }
                 Kind::Space => builder.between(&token),
