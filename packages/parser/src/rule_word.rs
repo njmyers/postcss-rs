@@ -37,11 +37,7 @@ impl RuleWord {
         // 1. A Word token starting with ':' (declaration value, not property name)
         // 2. A colon directly (Kind::Colon)
         // 3. Anything else (space, open brace, etc.)
-        loop {
-            let Some(next) = peekable.peek() else {
-                break;
-            };
-
+        while let Some(next) = peekable.peek() {
             match next.kind {
                 Kind::Word => {
                     // Check if this Word starts with ':' - if so, it's the start of the value

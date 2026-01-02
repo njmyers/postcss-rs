@@ -171,17 +171,15 @@ impl Params {
         multi.peek();
 
         // Skip past any spaces
-        loop {
-            let Some(token) = multi.peek() else {
-                return false;
-            };
-
+        while let Some(token) = multi.peek() {
             match token.kind {
                 Kind::Space => continue,
                 Kind::CloseCurly => return true,
                 _ => return false,
             }
         }
+
+        false
     }
 
     fn create(

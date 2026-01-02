@@ -123,11 +123,7 @@ impl Rule {
         let mut multi = tokenizer.clone().into_multipeek();
 
         // Skip spaces and look for the next significant token
-        loop {
-            let Some(token) = multi.peek() else {
-                return false; // No more tokens - it's a declaration
-            };
-
+        while let Some(token) = multi.peek() {
             match token.kind {
                 Kind::Space => continue, // Found space, keep looking
                 Kind::OpenCurly => return true, // Found opening brace - it's a nested rule
@@ -135,6 +131,8 @@ impl Rule {
                 _ => return false, // Found anything else - it's a declaration
             }
         }
+
+        false // No more tokens - it's a declaration
     }
 }
 
@@ -148,11 +146,7 @@ impl Selector {
     fn has_selector_tokens_ahead(tokenizer: &Tokenizer) -> bool {
         let mut multi = tokenizer.clone().into_multipeek();
 
-        loop {
-            let Some(token) = multi.peek() else {
-                return false;
-            };
-
+        while let Some(token) = multi.peek() {
             match token.kind {
                 Kind::Space => continue,
                 Kind::Word
@@ -168,6 +162,8 @@ impl Selector {
                 _ => return false,
             }
         }
+
+        false
     }
 
     /// A builder struct used for creating a rule selector.
