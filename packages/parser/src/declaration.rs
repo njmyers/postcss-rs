@@ -25,7 +25,8 @@ impl Declaration {
         tokenizer: &mut Tokenizer,
         spaces: &[Token],
     ) -> (Node, StatementTerminator) {
-        Self::create_impl(prop, tokenizer, spaces, false)
+        let builder = NodeBuilder::new(&prop, tokenizer, spaces);
+        Self::create_impl(prop, tokenizer, builder)
     }
 
     pub fn create_first(
@@ -33,19 +34,15 @@ impl Declaration {
         tokenizer: &mut Tokenizer,
         spaces: &[Token],
     ) -> (Node, StatementTerminator) {
-        Self::create_impl(prop, tokenizer, spaces, true)
+        let builder = NodeBuilder::new_first_node(&prop, tokenizer, spaces);
+        Self::create_impl(prop, tokenizer, builder)
     }
 
     fn create_impl(
         prop: Token,
         tokenizer: &mut Tokenizer,
-        spaces: &[Token],
-        is_first: bool,
+        mut builder: NodeBuilder,
     ) -> (Node, StatementTerminator) {
-        let mut builder = match is_first {
-            true => NodeBuilder::new_first_node(&prop, tokenizer, spaces),
-            false => NodeBuilder::new(&prop, tokenizer, spaces),
-        };
         builder.ensure_empty_before();
         builder.ensure_empty_between();
 
