@@ -181,6 +181,10 @@ impl NodeBuilder {
         self.node.raws.value = crate::ValueRaw::new(String::from(value), String::from(raw));
     }
 
+    pub fn selector_raw(&mut self, value: &str, raw: &str) {
+        self.node.raws.selector = crate::SelectorRaw::new(String::from(value), String::from(raw));
+    }
+
     pub fn important_raw(&mut self, value: &str) {
         self.node.raws.important = crate::Raw::new(value);
     }

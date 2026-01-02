@@ -28,6 +28,8 @@ pub struct Raws {
     pub important: Raw,
     #[serde(default, skip_serializing_if = "ValueRaw::skip")]
     pub value: ValueRaw,
+    #[serde(default, skip_serializing_if = "SelectorRaw::skip")]
+    pub selector: SelectorRaw,
 }
 
 impl Default for Raws {
@@ -42,6 +44,7 @@ impl Default for Raws {
             right: Raw::default(),
             important: Raw::default(),
             value: ValueRaw::default(),
+            selector: SelectorRaw::default(),
         };
     }
 }
@@ -242,6 +245,37 @@ impl ValueRaw {
 }
 
 impl Default for ValueRaw {
+    fn default() -> Self {
+        return Self {
+            value: None,
+            raw: None,
+        };
+    }
+}
+
+/// A struct representing selector raws with both the value (clean selector) and raw (with comments) versions
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
+pub struct SelectorRaw {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub raw: Option<String>,
+}
+
+impl SelectorRaw {
+    pub fn new(value: String, raw: String) -> Self {
+        return Self {
+            value: Some(value),
+            raw: Some(raw),
+        };
+    }
+
+    pub fn skip(&self) -> bool {
+        return self.value.is_none() && self.raw.is_none();
+    }
+}
+
+impl Default for SelectorRaw {
     fn default() -> Self {
         return Self {
             value: None,

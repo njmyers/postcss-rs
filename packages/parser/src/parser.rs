@@ -150,10 +150,13 @@ impl<'a> Parser<'a> {
         let bytes = css.as_bytes();
         let bom = Bom::from(bytes);
 
-        return match bom {
-            Bom::Null => Ok(css),
-            _ => return str::from_utf8(&bytes[bom.len()..]),
+        let css_without_bom = match bom {
+            Bom::Null => css,
+            _ => str::from_utf8(&bytes[bom.len()..])?,
         };
+
+        // Strip leading newline if present (to match PostCSS behavior)
+        return Ok(css_without_bom.strip_prefix('\n').unwrap_or(css_without_bom));
     }
 }
 
@@ -332,7 +335,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore]
     fn it_parses_selector() {
         let (ast, expected) = parse_and_read("selector.css", "selector.json");
         assert_eq!(ast, expected);
