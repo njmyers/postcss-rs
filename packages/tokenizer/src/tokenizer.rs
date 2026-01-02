@@ -220,24 +220,41 @@ impl Tokenizer {
         };
     }
 
+    /// Peek at the next token without consuming it.
+    ///
+    /// This method clones the tokenizer and uses PeekableTokenizer internally.
+    /// For multiple peek operations, consider using `into_peekable()` or
+    /// `into_multipeek()` directly to avoid repeated cloning.
     pub fn peek(&self) -> Option<Token> {
-        return self.clone().next();
+        let mut peekable = self.clone().into_peekable();
+        peekable.peek().cloned()
     }
 
-    /// Peek ahead n tokens without consuming them
+    /// Peek ahead n tokens without consuming them.
     ///
     /// peek_nth(1) is equivalent to peek()
     /// peek_nth(2) returns the token after the next token
+    ///
+    /// This method clones the tokenizer and uses MultiPeekTokenizer internally.
+    /// For multiple peek operations, consider using `into_multipeek()` directly
+    /// to avoid repeated cloning.
     pub fn peek_nth(&self, n: usize) -> Option<Token> {
-        let mut lookahead = self.clone();
-
-        // Advance n-1 times
-        for _ in 1..n {
-            lookahead.next()?;
+        if n == 0 {
+            return None;
         }
 
-        // Return the nth token
-        return lookahead.next();
+        let mut peekable = self.clone().into_multipeek();
+
+        // Peek n times - the last peek gives us the nth token
+        let mut result = None;
+        for _ in 0..n {
+            result = peekable.peek().cloned();
+            if result.is_none() {
+                return None;
+            }
+        }
+
+        result
     }
 
     pub fn prev(&self) -> Option<Token> {
