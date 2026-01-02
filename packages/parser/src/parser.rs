@@ -8,6 +8,7 @@ use crate::NodeBuilder;
 use crate::Rule;
 
 use postcss_rs_tokenizer::Kind;
+use postcss_rs_tokenizer::PeekableTokenizer;
 use postcss_rs_tokenizer::Tokenizer;
 use postcss_rs_tokenizer::Tokens;
 
@@ -53,6 +54,11 @@ impl<'a> Parser<'a> {
 
                 // Handle words - could be rules or root-level declarations
                 Kind::Word => {
+                    // NOTE: This currently uses the clone-based peek() approach.
+                    // For a more efficient approach, see classify_with_peekable() which
+                    // demonstrates using itertools' MultiPeek. Future refactoring could
+                    // convert the entire parse loop to use PeekableTokenizer instead of
+                    // cloning the tokenizer on every peek operation.
                     match Self::classify(&tokenizer) {
                         RootStatementType::Declaration => {
                             let (node, terminator) =
@@ -108,6 +114,71 @@ impl<'a> Parser<'a> {
         match next.kind {
             Kind::Colon => Self::scan_for_terminator(tokenizer),
             _ => RootStatementType::Rule,
+        }
+    }
+
+    /// NEW: Classify using PeekableTokenizer (itertools-based approach)
+    /// This demonstrates the new pattern using itertools' MultiPeek for efficient peeking.
+    /// Unlike the clone-based approach, this maintains a small buffer of peeked tokens.
+    fn classify_with_peekable(peekable: &mut PeekableTokenizer) -> RootStatementType {
+        // Peek at the next token
+        let next = match peekable.peek() {
+            Some(token) => token.clone(),
+            None => {
+                peekable.reset_peek();
+                return RootStatementType::Rule;
+            }
+        };
+
+        peekable.reset_peek();
+
+        match next.kind {
+            Kind::Colon => Self::scan_for_terminator_with_peekable(peekable),
+            _ => RootStatementType::Rule,
+        }
+    }
+
+    /// NEW: Scan for terminator using PeekableTokenizer
+    fn scan_for_terminator_with_peekable(peekable: &mut PeekableTokenizer) -> RootStatementType {
+        let mut paren_depth = 0;
+        let mut square_depth = 0;
+        let mut peek_count = 0;
+
+        // Peek through tokens looking for terminator
+        loop {
+            peek_count += 1;
+            if peek_count > 1000 {
+                peekable.reset_peek();
+                return RootStatementType::Declaration;
+            }
+
+            let token = match peekable.peek() {
+                Some(t) => t.clone(),
+                None => {
+                    peekable.reset_peek();
+                    return RootStatementType::Declaration;
+                }
+            };
+
+            match token.kind {
+                Kind::OpenCurly if paren_depth == 0 && square_depth == 0 => {
+                    peekable.reset_peek();
+                    return RootStatementType::Rule;
+                }
+                Kind::Semicolon if paren_depth == 0 && square_depth == 0 => {
+                    peekable.reset_peek();
+                    return RootStatementType::Declaration;
+                }
+                Kind::Brackets if token.value.starts_with('(') => paren_depth += 1,
+                Kind::Brackets if token.value.starts_with('[') => square_depth += 1,
+                Kind::Brackets if token.value.starts_with(')') && paren_depth > 0 => {
+                    paren_depth -= 1
+                }
+                Kind::Brackets if token.value.starts_with(']') && square_depth > 0 => {
+                    square_depth -= 1
+                }
+                _ => {}
+            }
         }
     }
 

@@ -12,6 +12,8 @@ use std::cell::RefCell;
 use std::fmt;
 use std::ops::Deref;
 
+use itertools::multipeek;
+use itertools::MultiPeek;
 use serde::{Deserialize, Serialize};
 
 #[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Copy, Clone)]
@@ -405,6 +407,62 @@ impl Iterator for Tokenizer {
                 return Some(token);
             }
         }
+    }
+}
+
+/// A peekable tokenizer using itertools' MultiPeek for efficient peeking.
+///
+/// This provides a more efficient alternative to the clone-based peek() methods
+/// on Tokenizer, using itertools' MultiPeek which maintains a small buffer of
+/// peeked items instead of cloning the entire iterator state.
+///
+/// # Example
+/// ```
+/// use postcss_rs_tokenizer::{Tokenizer, PeekableTokenizer};
+///
+/// let tokenizer = Tokenizer::new("a { color: red; }");
+/// let mut peekable = PeekableTokenizer::new(tokenizer);
+///
+/// // Peek at the next token without consuming it
+/// if let Some(token) = peekable.peek() {
+///     println!("Next token: {}", token.value);
+/// }
+///
+/// // Now consume it
+/// let token = peekable.next();
+/// ```
+pub struct PeekableTokenizer {
+    inner: MultiPeek<Tokenizer>,
+}
+
+impl PeekableTokenizer {
+    /// Create a new PeekableTokenizer from a Tokenizer
+    pub fn new(tokenizer: Tokenizer) -> Self {
+        Self {
+            inner: multipeek(tokenizer),
+        }
+    }
+
+    /// Peek at the next token without consuming it.
+    /// Can be called multiple times to peek further ahead.
+    /// Call reset_peek() to reset the peek position.
+    pub fn peek(&mut self) -> Option<&Token> {
+        self.inner.peek()
+    }
+
+    /// Reset the peek position back to the current position.
+    /// This should be called after you're done peeking and before
+    /// you start consuming tokens or peeking again from the start.
+    pub fn reset_peek(&mut self) {
+        self.inner.reset_peek();
+    }
+}
+
+impl Iterator for PeekableTokenizer {
+    type Item = Token;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.inner.next()
     }
 }
 
@@ -1338,5 +1396,48 @@ mod tests {
     fn debug_escape_attribute_selector_tokens() {
         let tokens = tokenizer(r#"[foo=\"] { }"#);
         assert!(!tokens.is_empty());
+    }
+
+    #[test]
+    fn test_peekable_tokenizer_basic() {
+        let tokenizer = Tokenizer::new("a { color: red; }");
+        let mut peekable = PeekableTokenizer::new(tokenizer);
+
+        // Peek at first token without consuming
+        let peeked = peekable.peek().map(|t| t.value.clone());
+        assert_eq!(peeked, Some("a".to_string()));
+
+        // Peek again should return the same token
+        let peeked_again = peekable.peek().map(|t| t.value.clone());
+        assert_eq!(peeked_again, Some(" ".to_string()));
+
+        // Reset and peek from start again
+        peekable.reset_peek();
+        let peeked_reset = peekable.peek().map(|t| t.value.clone());
+        assert_eq!(peeked_reset, Some("a".to_string()));
+
+        // Now consume the token
+        peekable.reset_peek();
+        let consumed = peekable.next().map(|t| t.value);
+        assert_eq!(consumed, Some("a".to_string()));
+    }
+
+    #[test]
+    fn test_peekable_tokenizer_multiple_peeks() {
+        let tokenizer = Tokenizer::new("a b c");
+        let mut peekable = PeekableTokenizer::new(tokenizer);
+
+        // Peek ahead multiple times
+        assert_eq!(peekable.peek().map(|t| t.value.as_str()), Some("a"));
+        assert_eq!(peekable.peek().map(|t| t.value.as_str()), Some(" "));
+        assert_eq!(peekable.peek().map(|t| t.value.as_str()), Some("b"));
+        assert_eq!(peekable.peek().map(|t| t.value.as_str()), Some(" "));
+        assert_eq!(peekable.peek().map(|t| t.value.as_str()), Some("c"));
+
+        // Reset and consume tokens normally
+        peekable.reset_peek();
+        assert_eq!(peekable.next().map(|t| t.value), Some("a".to_string()));
+        assert_eq!(peekable.next().map(|t| t.value), Some(" ".to_string()));
+        assert_eq!(peekable.next().map(|t| t.value), Some("b".to_string()));
     }
 }

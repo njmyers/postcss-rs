@@ -4,6 +4,9 @@ license = "MIT"
 name = "postcss-rs-tokenizer"
 version = "0.1.0"
 
+[dependencies]
+itertools = "0.13"
+
 [dependencies.serde]
 features = ["derive"]
 version = "1.0"
