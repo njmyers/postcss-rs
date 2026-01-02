@@ -27,13 +27,18 @@ impl RuleWord {
     pub fn collect_and_combine(first_token: Token, tokenizer: &mut Tokenizer) -> Token {
         let mut tokens = vec![first_token];
 
+        // Create a peekable view to check upcoming tokens
+        // We'll peek to decide whether to consume
+        let temp = tokenizer.clone();
+        let mut peekable = temp.into_peekable();
+
         // Collect tokens that are part of the property name (Word and Brackets)
         // Stop when we encounter:
         // 1. A Word token starting with ':' (declaration value, not property name)
         // 2. A colon directly (Kind::Colon)
         // 3. Anything else (space, open brace, etc.)
         loop {
-            let Some(next) = tokenizer.peek() else {
+            let Some(next) = peekable.peek() else {
                 break;
             };
 
@@ -44,11 +49,13 @@ impl RuleWord {
                     if next.value.starts_with(':') {
                         break;
                     }
-                    // Part of property name - consume and add it
+                    // Part of property name - consume from both peekable and original tokenizer
+                    peekable.next();
                     tokens.push(tokenizer.next().unwrap());
                 }
                 Kind::Brackets => {
-                    // Part of property name - consume and add it
+                    // Part of property name - consume from both peekable and original tokenizer
+                    peekable.next();
                     tokens.push(tokenizer.next().unwrap());
                 }
                 _ => {

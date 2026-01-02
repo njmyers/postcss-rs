@@ -75,9 +75,11 @@ impl Rule {
                             node.source.end = Some(crate::Source::create_end(tokenizer));
 
                             // Consume trailing spaces and add to 'between'
-                            while let Some(peeked) = tokenizer.peek() {
+                            let mut peekable = tokenizer.clone().into_peekable();
+                            while let Some(peeked) = peekable.peek() {
                                 match peeked.kind {
                                     Kind::Space => {
+                                        peekable.next(); // Advance peekable
                                         let space_token = tokenizer.next().unwrap();
                                         node.raws.between.push(&space_token);
                                     }
@@ -118,16 +120,16 @@ impl Rule {
 
     /// Peek ahead to determine if the next non-space token indicates a nested rule
     fn peek_for_nested_rule(tokenizer: &Tokenizer) -> bool {
-        let mut peek_index = 1;
+        let mut multi = tokenizer.clone().into_multipeek();
 
         // Skip spaces and look for the next significant token
         loop {
-            let Some(token) = tokenizer.peek_nth(peek_index) else {
+            let Some(token) = multi.peek() else {
                 return false; // No more tokens - it's a declaration
             };
 
             match token.kind {
-                Kind::Space => peek_index += 1, // Found space, keep looking
+                Kind::Space => continue, // Found space, keep looking
                 Kind::OpenCurly => return true, // Found opening brace - it's a nested rule
                 Kind::Brackets if token.value.starts_with('{') => return true, // Brackets starting with '{'
                 _ => return false, // Found anything else - it's a declaration
@@ -144,15 +146,15 @@ impl Selector {
 
     /// Check if there are selector tokens ahead, skipping over spaces
     fn has_selector_tokens_ahead(tokenizer: &Tokenizer) -> bool {
-        let mut peek_index = 1;
+        let mut multi = tokenizer.clone().into_multipeek();
 
         loop {
-            let Some(token) = tokenizer.peek_nth(peek_index) else {
+            let Some(token) = multi.peek() else {
                 return false;
             };
 
             match token.kind {
-                Kind::Space => peek_index += 1,
+                Kind::Space => continue,
                 Kind::Word
                 | Kind::Colon
                 | Kind::Brackets
@@ -214,9 +216,11 @@ impl Selector {
                     statement.push_raw_only(token);
 
                     // Consume following spaces and push to both raw and clean
-                    while let Some(next) = tokenizer.peek() {
+                    let mut peekable = tokenizer.clone().into_peekable();
+                    while let Some(next) = peekable.peek() {
                         match next.kind {
                             Kind::Space => {
+                                peekable.next(); // Advance peekable
                                 let space = tokenizer.next().unwrap();
                                 statement.push(space);
                             }

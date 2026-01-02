@@ -39,7 +39,8 @@ impl JsTokenizer {
 
     #[napi]
     pub fn end_of_file(&mut self) -> bool {
-        return self.tokenizer.peek().is_none();
+        let mut peekable = self.tokenizer.clone().into_peekable();
+        return peekable.peek().is_none();
     }
 }
 
