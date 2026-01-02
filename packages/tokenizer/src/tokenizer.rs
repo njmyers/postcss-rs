@@ -455,12 +455,14 @@ impl Iterator for Tokenizer {
 /// let mut peekable = PeekableTokenizer::new(tokenizer);
 ///
 /// // Peek at the next token without consuming it
-/// if let Some(token) = peekable.peek() {
-///     println!("Next token: {}", token.value);
-/// }
+/// assert_eq!(peekable.peek().map(|t| &t.value), Some(&"a".to_string()));
+/// // Peek again returns the same token
+/// assert_eq!(peekable.peek().map(|t| &t.value), Some(&"a".to_string()));
 ///
 /// // Now consume it
-/// let token = peekable.next();
+/// assert_eq!(peekable.next().map(|t| t.value), Some("a".to_string()));
+/// // Next token is a space
+/// assert_eq!(peekable.peek().map(|t| &t.value), Some(&" ".to_string()));
 /// ```
 pub struct PeekableTokenizer {
     inner: std::iter::Peekable<Tokenizer>,
