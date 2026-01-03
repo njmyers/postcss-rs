@@ -40,23 +40,20 @@ impl Declaration {
         // All spaces and comments before the colon go to 'between'
         // Returns: Optional value token if we split a Word starting with ':'
         let first_value_token: Option<Token> = {
-            loop {
-                let Some(token) = tokenizer.next() else {
-                    // No colon found - treat as malformed, but continue
-                    break None;
-                };
-
+            let mut result = None;
+            while let Some(token) = tokenizer.next() {
                 match token.kind {
                     Kind::Colon => {
                         builder.between(&token);
-                        break None; // Move to value processing phase
+                        break; // Move to value processing phase
                     }
                     Kind::Word if token.value.starts_with(':') => {
                         // Word starting with ':' (e.g., ":black" in "color:black")
                         // Split it: first char is the colon, rest is the value
                         let (colon_token, value_token) = token.split(1, Kind::Colon, Kind::Word);
                         builder.between(&colon_token);
-                        break value_token; // Move to value processing phase
+                        result = value_token; // Move to value processing phase
+                        break;
                     }
                     Kind::Space | Kind::Comment => {
                         builder.between(&token);
@@ -68,6 +65,7 @@ impl Declaration {
                     }
                 }
             }
+            result
         };
 
         // Phase 2: Process the value tokens
@@ -82,54 +80,52 @@ impl Declaration {
             statement.push(value_token);
         }
 
-        loop {
-            // Peek at next token to check for terminators
-            let mut peekable = tokenizer.clone().into_peekable();
-            if let Some(peeked) = peekable.peek() {
-                match peeked.kind {
-                    // CloseCurly ends declaration without being consumed (belongs to parent)
-                    Kind::CloseCurly if !statement.is_open() => {
-                        terminator.set_ended_by(Kind::CloseCurly);
-                        break;
-                    }
-                    // Space with newline ends declaration when not open
-                    Kind::Space if peeked.value == characters::NEWLINE && !statement.is_open() => break,
+        // Create peekable once outside the loop for efficiency
+        let mut peekable = tokenizer.clone().into_peekable();
 
-                    // Space with newline followed by comment or CloseCurly ends declaration
-                    Kind::Space if peeked.value.starts_with(characters::NEWLINE) && !statement.is_open() => {
-                        let mut multi = tokenizer.clone().into_multipeek();
-                        multi.peek(); // peek first token
-                        match multi.peek() {
-                            Some(next) if next.kind == Kind::Comment || next.kind == Kind::CloseCurly => break,
-                            _ => {} // Not before terminator, continue
-                        }
-                    }
-
-                    // Check for trailing spaces before CloseCurly
-                    // Any space directly before CloseCurly (when not in open brackets) is trailing
-                    Kind::Space if !statement.is_open() => {
-                        let mut multi = tokenizer.clone().into_multipeek();
-                        multi.peek(); // peek first token
-                        match multi.peek() {
-                            Some(next) if next.kind == Kind::CloseCurly => {
-                                // Space followed by CloseCurly - this is a trailing space
-                                // We need to: 1) add it to value, 2) consume it, 3) use pre-consume position as end
-                                // Break here to avoid consuming - will handle in post-loop
-                                terminator.set_ended_by(Kind::CloseCurly);
-                                break;
-                            }
-                            _ => {} // Not trailing, will be consumed normally
-                        }
-                    }
-                    _ => {}
+        while let Some(peeked) = peekable.peek() {
+            // Check if this token should end value processing without being consumed
+            match peeked.kind {
+                // CloseCurly ends declaration without being consumed (belongs to parent)
+                Kind::CloseCurly if !statement.is_open() => {
+                    terminator.set_ended_by(Kind::CloseCurly);
+                    break;
                 }
-            }
+                // Space with newline ends declaration when not open
+                Kind::Space if peeked.value == characters::NEWLINE && !statement.is_open() => break,
 
-            // Consume the token
-            let token = match tokenizer.next() {
-                Some(t) => t,
-                None => break,
+                // Space with newline followed by comment or CloseCurly ends declaration
+                Kind::Space if peeked.value.starts_with(characters::NEWLINE) && !statement.is_open() => {
+                    let mut multi = tokenizer.clone().into_multipeek();
+                    multi.peek(); // peek first token
+                    match multi.peek() {
+                        Some(next) if next.kind == Kind::Comment || next.kind == Kind::CloseCurly => break,
+                        _ => {} // Not before terminator, continue
+                    }
+                }
+
+                // Check for trailing spaces before CloseCurly
+                // Any space directly before CloseCurly (when not in open brackets) is trailing
+                Kind::Space if !statement.is_open() => {
+                    let mut multi = tokenizer.clone().into_multipeek();
+                    multi.peek(); // peek first token
+                    match multi.peek() {
+                        Some(next) if next.kind == Kind::CloseCurly => {
+                            // Space followed by CloseCurly - this is a trailing space
+                            // We need to: 1) add it to value, 2) consume it, 3) use pre-consume position as end
+                            // Break here to avoid consuming - will handle in post-loop
+                            terminator.set_ended_by(Kind::CloseCurly);
+                            break;
+                        }
+                        _ => {} // Not trailing, will be consumed normally
+                    }
+                }
+                _ => {}
             };
+
+            // Consume the token from both peekable and original tokenizer
+            peekable.next();
+            let token = tokenizer.next().unwrap();
 
             terminator.process(&token);
 
@@ -356,16 +352,11 @@ impl Declaration {
             return (ImportantResult::Found(raw), bang_pos);
         }
 
-        loop {
+        // Create multipeek once and reuse it for efficiency
+        let mut multi = tokenizer.clone().into_multipeek();
+
+        while let Some(next) = multi.peek() {
             peek_count += 1;
-            let mut multi = tokenizer.clone().into_multipeek();
-            let mut next = None;
-            for _ in 0..peek_count {
-                next = multi.peek();
-            }
-            let Some(next) = next else {
-                return (ImportantResult::NotImportant, 0);
-            };
 
             match next.kind {
                 Kind::Space | Kind::Comment => {
@@ -386,6 +377,8 @@ impl Declaration {
                 _ => return (ImportantResult::NotImportant, 0),
             }
         }
+
+        (ImportantResult::NotImportant, 0)
     }
 
     /// Build the final important raw string, including trailing space if present
