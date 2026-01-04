@@ -8,8 +8,7 @@ use napi::Env;
 use napi::Result;
 use napi::Task;
 
-use postcss_rs_parser::Parser;
-use postcss_rs_parser::node::Node;
+use postcss_rs_parser::{Parser, Node};
 
 mod stringify;
 

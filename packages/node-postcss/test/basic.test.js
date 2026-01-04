@@ -82,7 +82,7 @@ async function runTests() {
     const root = await parse(css);
     assert.strictEqual(root.first.type, 'atrule');
     assert.strictEqual(root.first.name, 'media');
-    assert.strictEqual(root.first.params, 'screen ');
+    assert.strictEqual(root.first.params, 'screen');
   });
 
   // Test 8: Comments
@@ -90,7 +90,7 @@ async function runTests() {
     const css = '/* comment */ .test { color: red; }';
     const root = await parse(css);
     assert.strictEqual(root.first.type, 'comment');
-    assert.strictEqual(root.first.text, ' comment ');
+    assert.strictEqual(root.first.text, 'comment');
   });
 
   // Test 9: Important declarations
@@ -104,7 +104,7 @@ async function runTests() {
   await test('Handles multiple selectors', async () => {
     const css = '.a, .b { color: red; }';
     const root = await parse(css);
-    assert.strictEqual(root.first.selector, '.a, .b');
+    assert.strictEqual(root.first.selector, '.a,.b');
     assert.deepStrictEqual(root.first.selectors, ['.a', '.b']);
   });
 

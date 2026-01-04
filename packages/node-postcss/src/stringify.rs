@@ -5,7 +5,7 @@
  * preserving all original formatting information stored in the `raws` fields.
  */
 
-use postcss_rs_parser::{AtRule, CommentData, Data, Declaration, Node, Rule, Semicolon};
+use postcss_rs_parser::{AtRule, CommentData, Data, Declaration, Node, Rule};
 
 /// Options for stringification
 #[derive(Debug, Default)]
@@ -70,7 +70,9 @@ impl Stringifier {
     /// Stringify a rule node
     fn visit_rule(&mut self, node: &Node, rule: &Rule) {
         // Add before whitespace
-        self.output.push_str(&node.raws.before.get_value());
+        if let Some(before) = node.raws.before.as_ref() {
+            self.output.push_str(before);
+        }
 
         // Add selector
         if let Some(raw_selector) = &node.raws.selector.raw {
@@ -81,7 +83,9 @@ impl Stringifier {
         }
 
         // Add between whitespace (between selector and {)
-        self.output.push_str(&node.raws.between.get_value());
+        if let Some(between) = node.raws.between.as_ref() {
+            self.output.push_str(between);
+        }
 
         // Opening brace
         self.output.push('{');
@@ -98,7 +102,9 @@ impl Stringifier {
         self.indent_level -= 1;
 
         // Add after whitespace (before closing brace)
-        self.output.push_str(&node.raws.after.get_value());
+        if let Some(after) = node.raws.after.as_ref() {
+            self.output.push_str(after);
+        }
 
         // Closing brace
         self.output.push('}');
@@ -107,13 +113,17 @@ impl Stringifier {
     /// Stringify a declaration node
     fn visit_declaration(&mut self, node: &Node, decl: &Declaration) {
         // Add before whitespace
-        self.output.push_str(&node.raws.before.get_value());
+        if let Some(before) = node.raws.before.as_ref() {
+            self.output.push_str(before);
+        }
 
         // Add property
         self.output.push_str(&decl.prop);
 
         // Add between whitespace (between prop and value, typically ": ")
-        self.output.push_str(&node.raws.between.get_value());
+        if let Some(between) = node.raws.between.as_ref() {
+            self.output.push_str(between);
+        }
 
         // Add value
         if let Some(raw_value) = &node.raws.value.raw {
@@ -125,7 +135,7 @@ impl Stringifier {
 
         // Add !important if present
         if decl.important.unwrap_or(false) {
-            if let Some(important_raw) = &node.raws.important.get_value() {
+            if let Some(important_raw) = node.raws.important.as_ref() {
                 if !important_raw.is_empty() {
                     self.output.push_str(important_raw);
                 }
@@ -135,24 +145,28 @@ impl Stringifier {
         }
 
         // Add semicolon if needed
-        match node.raws.semicolon {
-            Semicolon::True => self.output.push(';'),
-            Semicolon::False => {} // No semicolon
-            Semicolon::None => {}  // Default: no semicolon
+        match node.raws.semicolon.as_ref() {
+            Some(true) => self.output.push(';'),
+            Some(false) => {} // No semicolon
+            None => {}  // Default: no semicolon
         }
     }
 
     /// Stringify an at-rule node
     fn visit_atrule(&mut self, node: &Node, atrule: &AtRule) {
         // Add before whitespace
-        self.output.push_str(&node.raws.before.get_value());
+        if let Some(before) = node.raws.before.as_ref() {
+            self.output.push_str(before);
+        }
 
         // Add @ symbol and name
         self.output.push('@');
         self.output.push_str(&atrule.name);
 
         // Add after-name whitespace
-        self.output.push_str(&node.raws.after_name.get_value());
+        if let Some(after_name) = node.raws.after_name.as_ref() {
+            self.output.push_str(after_name);
+        }
 
         // Add params if present
         if let Some(params) = &atrule.params {
@@ -164,7 +178,9 @@ impl Stringifier {
         // Check if this at-rule has children
         if !node.nodes.is_empty() {
             // Has children - use block syntax
-            self.output.push_str(&node.raws.between.get_value());
+            if let Some(between) = node.raws.between.as_ref() {
+                self.output.push_str(between);
+            }
             self.output.push('{');
 
             self.indent_level += 1;
@@ -176,14 +192,16 @@ impl Stringifier {
 
             self.indent_level -= 1;
 
-            self.output.push_str(&node.raws.after.get_value());
+            if let Some(after) = node.raws.after.as_ref() {
+                self.output.push_str(after);
+            }
             self.output.push('}');
         } else {
             // No children - use statement syntax with semicolon
-            match node.raws.semicolon {
-                Semicolon::True => self.output.push(';'),
-                Semicolon::False => {} // No semicolon
-                Semicolon::None => self.output.push(';'), // Default: semicolon for at-rules
+            match node.raws.semicolon.as_ref() {
+                Some(true) => self.output.push(';'),
+                Some(false) => {} // No semicolon
+                None => self.output.push(';'), // Default: semicolon for at-rules
             }
         }
     }
@@ -191,17 +209,23 @@ impl Stringifier {
     /// Stringify a comment node
     fn visit_comment(&mut self, node: &Node, comment: &CommentData) {
         // Add before whitespace
-        self.output.push_str(&node.raws.before.get_value());
+        if let Some(before) = node.raws.before.as_ref() {
+            self.output.push_str(before);
+        }
 
         // Add left whitespace inside comment
         self.output.push_str("/*");
-        self.output.push_str(&node.raws.left.get_value());
+        if let Some(left) = node.raws.left.as_ref() {
+            self.output.push_str(left);
+        }
 
         // Add comment text
         self.output.push_str(&comment.text);
 
         // Add right whitespace inside comment
-        self.output.push_str(&node.raws.right.get_value());
+        if let Some(right) = node.raws.right.as_ref() {
+            self.output.push_str(right);
+        }
         self.output.push_str("*/");
     }
 }

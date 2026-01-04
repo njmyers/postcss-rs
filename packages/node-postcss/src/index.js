@@ -17,9 +17,11 @@
 const postcss = require('postcss');
 const { loadBinding } = require('@node-rs/helper');
 const { adaptRustJSONToPostCSS } = require('./adapter');
+const path = require('path');
 
 // Load Rust native bindings
-const bindings = loadBinding(__dirname, 'postcss', '@postcss-rs/postcss');
+// __dirname is src/, but .node file is in parent directory
+const bindings = loadBinding(path.join(__dirname, '..'), 'postcss', '@postcss-rs/postcss');
 
 /**
  * Parse CSS into a PostCSS AST
