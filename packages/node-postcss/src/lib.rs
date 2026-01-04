@@ -9,6 +9,9 @@ use napi::Result;
 use napi::Task;
 
 use postcss_rs_parser::Parser;
+use postcss_rs_parser::node::Node;
+
+mod stringify;
 
 /// A JavaScript compatible and PostCSS compatible AST.
 #[napi(js_name = "Node")]
@@ -56,5 +59,24 @@ pub mod postcss {
     #[napi]
     pub fn parse(css: String) -> AsyncTask<AsyncParseTask> {
         return AsyncTask::new(AsyncParseTask { css });
+    }
+
+    /// Stringify a PostCSS AST back to CSS
+    ///
+    /// Takes JSON representation of AST and converts it back to CSS string,
+    /// preserving all original formatting from the `raws` fields.
+    ///
+    /// @param json - JSON string representation of PostCSS AST
+    /// @returns CSS string
+    #[napi]
+    pub fn stringify(json: String) -> Result<String> {
+        // Deserialize JSON to Node
+        let node: Node = serde_json::from_str(&json)
+            .map_err(|e| napi::Error::from_reason(format!("Failed to parse JSON: {}", e)))?;
+
+        // Stringify the node
+        let css = stringify::Stringifier::stringify(&node, stringify::StringifyOptions::default());
+
+        return Ok(css);
     }
 }

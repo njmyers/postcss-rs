@@ -1,6 +1,9 @@
 {
   "name": "@postcss-rs/node-postcss",
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "High-performance PostCSS-compatible parser powered by Rust",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
   "napi": {
     "name": "postcss",
     "triples": {
@@ -12,11 +15,24 @@
     }
   },
   "license": "MIT",
+  "keywords": [
+    "postcss",
+    "css",
+    "parser",
+    "rust",
+    "performance",
+    "napi"
+  ],
   "dependencies": {
-    "@node-rs/helper": "^1.2.1"
+    "@node-rs/helper": "^1.2.1",
+    "postcss": "^8.4.0"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^1.2.1"
+    "@napi-rs/cli": "^1.2.1",
+    "@types/node": "^20.0.0"
+  },
+  "peerDependencies": {
+    "postcss": "^8.0.0"
   },
   "engines": {
     "node": ">= 10"
@@ -26,6 +42,7 @@
     "build": "napi build --platform --release",
     "build:debug": "napi build --platform",
     "prepublishOnly": "napi prepublish -t npm",
-    "version": "napi version"
+    "version": "napi version",
+    "test": "node test/basic.test.js"
   }
 }
