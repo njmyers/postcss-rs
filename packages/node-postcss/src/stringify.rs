@@ -11,13 +11,16 @@ use postcss_rs_parser::{AtRule, CommentData, Data, Declaration, Node, Rule};
 #[derive(Debug, Default)]
 pub struct StringifyOptions {
     /// Indent string (default: no indentation)
+    #[allow(dead_code)]
     pub indent: String,
 }
 
 /// Stringifier - Converts AST to CSS string
 pub struct Stringifier {
     output: String,
+    #[allow(dead_code)]
     indent_level: usize,
+    #[allow(dead_code)]
     options: StringifyOptions,
 }
 
