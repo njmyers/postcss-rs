@@ -14,14 +14,30 @@
  * 4. Return fully-functional PostCSS Root object
  */
 
-const postcss = require('postcss');
-const { loadBinding } = require('@node-rs/helper');
-const { adaptRustJSONToPostCSS } = require('./adapter');
-const path = require('path');
+import * as postcss from 'postcss';
+import type { Root, Plugin, Processor, ProcessOptions } from 'postcss';
+import { loadBinding } from '@node-rs/helper';
+import { adaptRustJSONToPostCSS } from './adapter';
+import * as path from 'path';
+
+interface PostcssRsBindings {
+  postcss: {
+    parse: (css: string) => Promise<{ json: string }>;
+  };
+}
 
 // Load Rust native bindings
 // __dirname is src/, but .node file is in parent directory
-const bindings = loadBinding(path.join(__dirname, '..'), 'postcss', '@postcss-rs/postcss');
+const bindings = loadBinding(
+  path.join(__dirname, '..'),
+  'postcss',
+  '@postcss-rs/postcss'
+) as PostcssRsBindings;
+
+export interface ParseOptions {
+  from?: string;
+  map?: any;
+}
 
 /**
  * Parse CSS into a PostCSS AST
@@ -30,20 +46,20 @@ const bindings = loadBinding(path.join(__dirname, '..'), 'postcss', '@postcss-rs
  * then hydrates the result into actual PostCSS class instances
  * for full API compatibility.
  *
- * @param {string} css - CSS source code to parse
- * @param {object} [opts] - Parse options
- * @param {string} [opts.from] - Source file path (for source maps)
- * @param {object} [opts.map] - Source map options (passed through)
- * @returns {Promise<Root>} PostCSS Root instance
+ * @param css - CSS source code to parse
+ * @param opts - Parse options
+ * @returns PostCSS Root instance
  *
  * @example
+ * ```typescript
  * const { parse } = require('@postcss-rs/node-postcss');
  *
  * const root = await parse('.test { color: red; }', { from: 'test.css' });
  * console.log(root.first.selector); // '.test'
  * console.log(root.first.first.prop); // 'color'
+ * ```
  */
-async function parse(css, opts = {}) {
+export async function parse(css: string, opts: ParseOptions = {}): Promise<Root> {
   // Parse with Rust (fast!)
   const rustResult = await bindings.postcss.parse(css);
   const rustJSON = JSON.parse(rustResult.json);
@@ -53,7 +69,7 @@ async function parse(css, opts = {}) {
 
   // Hydrate into PostCSS classes
   // This creates real Root, Rule, Declaration, etc. instances
-  const root = postcss.fromJSON(postcssJSON);
+  const root = postcss.default.fromJSON(postcssJSON) as Root;
 
   return root;
 }
@@ -64,11 +80,11 @@ async function parse(css, opts = {}) {
  * Note: For large files, prefer the async parse() function.
  * This blocks the event loop during parsing.
  *
- * @param {string} css - CSS source code to parse
- * @param {object} [opts] - Parse options
- * @returns {Root} PostCSS Root instance
+ * @param css - CSS source code to parse
+ * @param opts - Parse options
+ * @returns PostCSS Root instance
  */
-function parseSync(css, opts = {}) {
+export function parseSync(css: string, opts: ParseOptions = {}): Root {
   // TODO: Implement sync version when Rust binding supports it
   // For now, throw an error
   throw new Error(
@@ -83,30 +99,36 @@ function parseSync(css, opts = {}) {
  * This returns a standard PostCSS Processor, but with our fast
  * Rust parser used instead of the default PostCSS parser.
  *
- * @param {Array<Plugin>} [plugins=[]] - PostCSS plugins
- * @returns {Processor} PostCSS Processor instance
+ * @param plugins - PostCSS plugins
+ * @returns PostCSS Processor instance
  *
  * @example
+ * ```typescript
  * const postcssRs = require('@postcss-rs/node-postcss');
  * const autoprefixer = require('autoprefixer');
  *
  * const processor = postcssRs([autoprefixer]);
  * const result = await processor.process(css, { from: 'input.css' });
+ * ```
  */
-function postcssRs(plugins = []) {
-  const processor = postcss(plugins);
+export function postcssRs(plugins: Plugin[] = []): Processor {
+  const processor = postcss.default(plugins);
 
   // Override the parser option to use our Rust parser
   const originalProcess = processor.process.bind(processor);
 
-  processor.process = function(css, opts = {}) {
+  processor.process = function(css: string | Root, opts: ProcessOptions = {}): any {
     // Use our Rust parser
-    opts.parser = {
-      parse: (css, opts) => {
-        // Return a promise that resolves to the parsed Root
-        return parse(css, opts);
-      }
-    };
+    if (typeof css === 'string') {
+      opts.parser = {
+        parse: (cssStr: string | { toString(): string }, parseOpts?: any) => {
+          const cssString = typeof cssStr === 'string' ? cssStr : cssStr.toString();
+          // Return a promise that resolves to the parsed Root
+          // Note: This will work because PostCSS handles async parsers
+          return parse(cssString, parseOpts || {}) as any;
+        }
+      };
+    }
 
     return originalProcess(css, opts);
   };
@@ -114,20 +136,30 @@ function postcssRs(plugins = []) {
   return processor;
 }
 
-// Main export: function to create processor
-module.exports = postcssRs;
+// Default export
+export default postcssRs;
 
-// Named exports
-module.exports.parse = parse;
-module.exports.parseSync = parseSync;
-module.exports.postcss = postcss; // Re-export PostCSS for convenience
-module.exports.default = postcssRs;
+// Re-export PostCSS for convenience
+export { postcss };
 
 // Re-export PostCSS classes for convenience
-module.exports.Root = postcss.Root;
-module.exports.Rule = postcss.Rule;
-module.exports.AtRule = postcss.AtRule;
-module.exports.Declaration = postcss.Declaration;
-module.exports.Comment = postcss.Comment;
-module.exports.Container = postcss.Container;
-module.exports.Node = postcss.Node;
+export const PostCSSRoot = postcss.Root;
+export const PostCSSRule = postcss.Rule;
+export const PostCSSAtRule = postcss.AtRule;
+export const PostCSSDeclaration = postcss.Declaration;
+export const PostCSSComment = postcss.Comment;
+export const PostCSSContainer = postcss.Container;
+export const PostCSSNode = postcss.Node;
+
+// Re-export PostCSS types
+export type {
+  Root,
+  Rule,
+  AtRule,
+  Declaration,
+  Comment,
+  Container,
+  Node,
+  Plugin,
+  Processor
+} from 'postcss';

@@ -7,6 +7,35 @@
  * Performance: ~0.1ms for typical CSS files (negligible overhead)
  */
 
+interface SourcePosition {
+  line: number;
+  column: number;
+  offset?: number;
+}
+
+interface Source {
+  start?: SourcePosition;
+  end?: SourcePosition;
+  inputId?: number;
+}
+
+interface Input {
+  hasBOM: boolean;
+  css: string;
+  file?: string;
+}
+
+interface ASTNode {
+  type: string;
+  source?: Source;
+  nodes?: ASTNode[];
+}
+
+interface RootNode extends ASTNode {
+  type: 'root';
+  inputs?: Input[];
+}
+
 /**
  * Adapts postcss-rs JSON output to PostCSS-compatible format
  *
@@ -16,14 +45,18 @@
  * 3. Remove `nodes: []` from leaf nodes (decl, comment)
  * 4. Ensure root has `source.end`
  *
- * @param {object} rustJSON - JSON output from postcss-rs parser
- * @param {string} css - Original CSS source text
- * @param {string} [from] - Source file path
- * @returns {object} PostCSS-compatible JSON
+ * @param rustJSON - JSON output from postcss-rs parser
+ * @param css - Original CSS source text
+ * @param from - Source file path
+ * @returns PostCSS-compatible JSON
  */
-function adaptRustJSONToPostCSS(rustJSON, css, from) {
+export function adaptRustJSONToPostCSS(
+  rustJSON: RootNode,
+  css: string,
+  from?: string
+): RootNode {
   // Deep clone to avoid modifying the original
-  const adapted = JSON.parse(JSON.stringify(rustJSON));
+  const adapted: RootNode = JSON.parse(JSON.stringify(rustJSON));
 
   // Add inputs array (PostCSS uses this for source map generation)
   adapted.inputs = [{
@@ -36,7 +69,7 @@ function adaptRustJSONToPostCSS(rustJSON, css, from) {
    * Recursively process nodes to add inputId references
    * and clean up structure
    */
-  function processNode(node) {
+  function processNode(node: ASTNode): void {
     // Add inputId reference to source (points to inputs array)
     if (node.source) {
       node.source.inputId = 0; // Index into inputs array
@@ -66,7 +99,3 @@ function adaptRustJSONToPostCSS(rustJSON, css, from) {
 
   return adapted;
 }
-
-module.exports = {
-  adaptRustJSONToPostCSS
-};

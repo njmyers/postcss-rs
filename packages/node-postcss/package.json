@@ -2,8 +2,8 @@
   "name": "@postcss-rs/node-postcss",
   "version": "0.1.0",
   "description": "High-performance PostCSS-compatible parser powered by Rust",
-  "main": "src/index.js",
-  "types": "src/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "napi": {
     "name": "postcss",
     "triples": {
@@ -30,7 +30,10 @@
   "devDependencies": {
     "@napi-rs/cli": "^1.2.1",
     "@types/node": "^20.0.0",
+    "@types/postcss": "^8.0.0",
     "jest": "^29.0.0",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0",
     "autoprefixer": "^10.0.0"
   },
   "peerDependencies": {
@@ -41,10 +44,12 @@
   },
   "scripts": {
     "artifacts": "napi artifacts",
-    "build": "napi build --platform --release",
+    "build": "npm run build:ts && napi build --platform --release",
+    "build:ts": "tsc",
     "build:debug": "napi build --platform",
     "prepublishOnly": "napi prepublish -t npm",
     "version": "napi version",
-    "test": "jest"
+    "test": "jest",
+    "clean": "rm -rf dist"
   }
 }
