@@ -295,9 +295,7 @@ mod tests {
                 Token::StructEnd,
                 Token::Str("type"),
                 Token::Str("root"),
-                Token::Str("nodes"),
-                Token::Seq { len: Some(0) },
-                Token::SeqEnd,
+                // nodes field is skipped when empty (PostCSS compatibility)
                 Token::Str("source"),
                 Token::Struct {
                     name: "Sources",
