@@ -29,6 +29,7 @@ impl JsNode {
 /// Async compute task for parsing css.
 pub struct AsyncParseTask {
     css: String,
+    from: Option<String>,
 }
 
 impl Task for AsyncParseTask {
@@ -37,7 +38,14 @@ impl Task for AsyncParseTask {
 
     fn compute(&mut self) -> Result<Self::Output> {
         let mut parser = Parser::new(&self.css).unwrap();
-        let node = parser.parse();
+        let mut node = parser.parse();
+
+        // Add inputs array to root node (PostCSS compatibility)
+        node.inputs = Some(vec![postcss_rs_parser::Input {
+            has_bom: false,
+            css: self.css.clone(),
+            file: self.from.clone(),
+        }]);
 
         return Ok(JsNode {
             json: node.to_json().unwrap(),
@@ -56,8 +64,8 @@ pub mod postcss {
     pub use super::*;
 
     #[napi]
-    pub fn parse(css: String) -> AsyncTask<AsyncParseTask> {
-        return AsyncTask::new(AsyncParseTask { css });
+    pub fn parse(css: String, from: Option<String>) -> AsyncTask<AsyncParseTask> {
+        return AsyncTask::new(AsyncParseTask { css, from });
     }
 
     /// Stringify a PostCSS AST back to CSS

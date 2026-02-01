@@ -48,6 +48,15 @@ impl Source {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Input {
+    #[serde(rename = "hasBOM")]
+    pub has_bom: bool,
+    pub css: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Sources {
     pub start: Source,
     #[serde(skip_serializing_if = "Sources::skip")]
@@ -106,6 +115,8 @@ pub struct Node {
     #[serde(default, skip_serializing_if = "Node::should_skip_nodes")]
     pub nodes: Vec<Node>,
     pub source: Sources,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inputs: Option<Vec<Input>>,
 }
 
 impl Node {
@@ -115,6 +126,7 @@ impl Node {
             nodes: Vec::new(),
             source: Sources::default(),
             data,
+            inputs: None,
         };
     }
 

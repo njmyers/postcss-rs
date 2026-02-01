@@ -22,7 +22,7 @@ import * as path from 'path';
 
 interface PostcssRsBindings {
   postcss: {
-    parse: (css: string) => Promise<{ json: string }>;
+    parse: (css: string, from?: string) => Promise<{ json: string }>;
   };
 }
 
@@ -61,7 +61,8 @@ export interface ParseOptions {
  */
 export async function parse(css: string, opts: ParseOptions = {}): Promise<Root> {
   // Parse with Rust (fast!)
-  const rustResult = await bindings.postcss.parse(css);
+  // Pass the from parameter to Rust so it can include it in the inputs array
+  const rustResult = await bindings.postcss.parse(css, opts.from);
   const rustJSON = JSON.parse(rustResult.json);
 
   // Adapt format to PostCSS-compatible JSON

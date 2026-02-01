@@ -39,41 +39,30 @@ interface RootNode extends ASTNode {
 /**
  * Adapts postcss-rs JSON output to PostCSS-compatible format
  *
- * Changes made:
- * 1. Add `inputs` array at root with source file metadata
- * 2. Ensure root has `source.end`
- *
  * Note: The Rust parser now automatically:
  * - Skips the `nodes` field for leaf nodes (declarations, comments)
  * - Includes `inputId: 0` in all `source` objects
+ * - Includes `inputs` array at root with source file metadata
+ *
+ * This function now only ensures root has `source.end` if missing.
  *
  * @param rustJSON - JSON output from postcss-rs parser
- * @param css - Original CSS source text
- * @param from - Source file path
+ * @param _css - Original CSS source text (no longer needed, kept for compatibility)
+ * @param _from - Source file path (no longer needed, kept for compatibility)
  * @returns PostCSS-compatible JSON
  */
 export function adaptRustJSONToPostCSS(
   rustJSON: RootNode,
-  css: string,
-  from?: string
+  _css: string,
+  _from?: string
 ): RootNode {
-  // Deep clone to avoid modifying the original
-  const adapted: RootNode = JSON.parse(JSON.stringify(rustJSON));
-
-  // Add inputs array (PostCSS uses this for source map generation)
-  adapted.inputs = [{
-    hasBOM: false,
-    css: css,
-    file: from || undefined
-  }];
-
   // Ensure root has end source position
-  if (adapted.source && !adapted.source.end && adapted.nodes && adapted.nodes.length > 0) {
-    const lastNode = adapted.nodes[adapted.nodes.length - 1];
+  if (rustJSON.source && !rustJSON.source.end && rustJSON.nodes && rustJSON.nodes.length > 0) {
+    const lastNode = rustJSON.nodes[rustJSON.nodes.length - 1];
     if (lastNode.source && lastNode.source.end) {
-      adapted.source.end = { ...lastNode.source.end };
+      rustJSON.source.end = { ...lastNode.source.end };
     }
   }
 
-  return adapted;
+  return rustJSON;
 }
