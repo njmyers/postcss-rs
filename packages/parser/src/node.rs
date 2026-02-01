@@ -52,6 +52,8 @@ pub struct Sources {
     pub start: Source,
     #[serde(skip_serializing_if = "Sources::skip")]
     pub end: Option<Source>,
+    #[serde(rename = "inputId", default)]
+    pub input_id: usize,
 }
 
 impl Sources {
@@ -65,6 +67,7 @@ impl Default for Sources {
         return Self {
             start: Source::default(),
             end: None,
+            input_id: 0,
         };
     }
 }
@@ -299,7 +302,7 @@ mod tests {
                 Token::Str("source"),
                 Token::Struct {
                     name: "Sources",
-                    len: 1,
+                    len: 2,
                 },
                 Token::Str("start"),
                 Token::Struct {
@@ -313,6 +316,8 @@ mod tests {
                 Token::Str("column"),
                 Token::U64(1),
                 Token::StructEnd,
+                Token::Str("inputId"),
+                Token::U64(0),
                 Token::StructEnd,
                 Token::MapEnd,
             ],
