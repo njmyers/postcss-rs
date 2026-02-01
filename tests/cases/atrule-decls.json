@@ -15,18 +15,6 @@
       },
       "type": "atrule",
       "name": "page",
-      "source": {
-        "start": {
-          "offset": 0,
-          "line": 1,
-          "column": 1
-        },
-        "end": {
-          "offset": 36,
-          "line": 3,
-          "column": 1
-        }
-      },
       "params": ":left",
       "nodes": [
         {
@@ -35,6 +23,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "background",
+          "value": "black",
           "source": {
             "start": {
               "offset": 18,
@@ -45,12 +35,24 @@
               "offset": 34,
               "line": 2,
               "column": 21
-            }
-          },
-          "prop": "background",
-          "value": "black"
+            },
+            "inputId": 0
+          }
         }
-      ]
+      ],
+      "source": {
+        "start": {
+          "offset": 0,
+          "line": 1,
+          "column": 1
+        },
+        "end": {
+          "offset": 36,
+          "line": 3,
+          "column": 1
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -62,18 +64,6 @@
       },
       "type": "atrule",
       "name": "media",
-      "source": {
-        "start": {
-          "offset": 39,
-          "line": 5,
-          "column": 1
-        },
-        "end": {
-          "offset": 84,
-          "line": 7,
-          "column": 1
-        }
-      },
       "params": "(min-width: 0)",
       "nodes": [
         {
@@ -82,6 +72,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "background",
+          "value": "white",
           "source": {
             "start": {
               "offset": 66,
@@ -92,12 +84,24 @@
               "offset": 82,
               "line": 6,
               "column": 21
-            }
-          },
-          "prop": "background",
-          "value": "white"
+            },
+            "inputId": 0
+          }
         }
-      ]
+      ],
+      "source": {
+        "start": {
+          "offset": 39,
+          "line": 5,
+          "column": 1
+        },
+        "end": {
+          "offset": 84,
+          "line": 7,
+          "column": 1
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -109,18 +113,6 @@
       },
       "type": "atrule",
       "name": "font-face",
-      "source": {
-        "start": {
-          "offset": 87,
-          "line": 9,
-          "column": 1
-        },
-        "end": {
-          "offset": 129,
-          "line": 11,
-          "column": 1
-        }
-      },
       "params": "",
       "nodes": [
         {
@@ -129,6 +121,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "family-name",
+          "value": "\"A;' /**/\"",
           "source": {
             "start": {
               "offset": 104,
@@ -139,12 +133,24 @@
               "offset": 127,
               "line": 10,
               "column": 28
-            }
-          },
-          "prop": "family-name",
-          "value": "\"A;' /**/\""
+            },
+            "inputId": 0
+          }
         }
-      ]
+      ],
+      "source": {
+        "start": {
+          "offset": 87,
+          "line": 9,
+          "column": 1
+        },
+        "end": {
+          "offset": 129,
+          "line": 11,
+          "column": 1
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -156,18 +162,6 @@
       },
       "type": "atrule",
       "name": "viewport",
-      "source": {
-        "start": {
-          "offset": 132,
-          "line": 13,
-          "column": 1
-        },
-        "end": {
-          "offset": 162,
-          "line": 15,
-          "column": 1
-        }
-      },
       "params": "",
       "nodes": [
         {
@@ -176,6 +170,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "width",
+          "value": "110px",
           "source": {
             "start": {
               "offset": 148,
@@ -186,12 +182,24 @@
               "offset": 160,
               "line": 14,
               "column": 17
-            }
-          },
-          "prop": "width",
-          "value": "110px"
+            },
+            "inputId": 0
+          }
         }
-      ]
+      ],
+      "source": {
+        "start": {
+          "offset": 132,
+          "line": 13,
+          "column": 1
+        },
+        "end": {
+          "offset": 162,
+          "line": 15,
+          "column": 1
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -203,18 +211,6 @@
       },
       "type": "atrule",
       "name": "-ms-viewport",
-      "source": {
-        "start": {
-          "offset": 165,
-          "line": 17,
-          "column": 1
-        },
-        "end": {
-          "offset": 199,
-          "line": 19,
-          "column": 1
-        }
-      },
       "params": "",
       "nodes": [
         {
@@ -223,6 +219,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "width",
+          "value": "100px",
           "source": {
             "start": {
               "offset": 185,
@@ -233,12 +231,24 @@
               "offset": 197,
               "line": 18,
               "column": 17
-            }
-          },
-          "prop": "width",
-          "value": "100px"
+            },
+            "inputId": 0
+          }
         }
-      ]
+      ],
+      "source": {
+        "start": {
+          "offset": 165,
+          "line": 17,
+          "column": 1
+        },
+        "end": {
+          "offset": 199,
+          "line": 19,
+          "column": 1
+        },
+        "inputId": 0
+      }
     }
   ],
   "source": {
@@ -246,6 +256,12 @@
       "offset": 0,
       "line": 1,
       "column": 1
-    }
+    },
+    "end": {
+      "offset": 199,
+      "line": 19,
+      "column": 1
+    },
+    "inputId": 0
   }
 }

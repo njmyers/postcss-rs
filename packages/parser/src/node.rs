@@ -276,6 +276,15 @@ impl NodeBuilder {
 
         self.node.raws.after.push_tokens(after);
 
+        // Set source.end from last child node if not already set (PostCSS compatibility)
+        if self.node.source.end.is_none() && !self.node.nodes.is_empty() {
+            if let Some(last_node) = self.node.nodes.last() {
+                if let Some(ref end) = last_node.source.end {
+                    self.node.source.end = Some(end.clone());
+                }
+            }
+        }
+
         return self.node;
     }
 }

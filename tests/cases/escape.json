@@ -13,6 +13,7 @@
         "after": "\n"
       },
       "type": "rule",
+      "selector": "a",
       "nodes": [
         {
           "raws": {
@@ -20,6 +21,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "background",
+          "value": "url(\"a).png\")",
           "source": {
             "start": {
               "offset": 8,
@@ -30,10 +33,9 @@
               "offset": 33,
               "line": 2,
               "column": 30
-            }
-          },
-          "prop": "background",
-          "value": "url(\"a).png\")"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -41,6 +43,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "background",
+          "value": "url(a;a)",
           "source": {
             "start": {
               "offset": 39,
@@ -51,10 +55,9 @@
               "offset": 59,
               "line": 3,
               "column": 25
-            }
-          },
-          "prop": "background",
-          "value": "url(a;a)"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -62,6 +65,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "background",
+          "value": "url(a/*)",
           "source": {
             "start": {
               "offset": 65,
@@ -72,10 +77,9 @@
               "offset": 85,
               "line": 4,
               "column": 25
-            }
-          },
-          "prop": "background",
-          "value": "url(a/*)"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -83,6 +87,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "background",
+          "value": "\\;a",
           "source": {
             "start": {
               "offset": 91,
@@ -93,10 +99,9 @@
               "offset": 106,
               "line": 5,
               "column": 20
-            }
-          },
-          "prop": "background",
-          "value": "\\;a"
+            },
+            "inputId": 0
+          }
         }
       ],
       "source": {
@@ -109,9 +114,9 @@
           "offset": 108,
           "line": 6,
           "column": 1
-        }
-      },
-      "selector": "a"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -120,7 +125,7 @@
         "after": " "
       },
       "type": "rule",
-      "nodes": [],
+      "selector": ":not([foo=\")\"])",
       "source": {
         "start": {
           "offset": 111,
@@ -131,9 +136,9 @@
           "offset": 129,
           "line": 8,
           "column": 19
-        }
-      },
-      "selector": ":not([foo=\")\"])"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -142,7 +147,7 @@
         "after": " "
       },
       "type": "rule",
-      "nodes": [],
+      "selector": ":not(div/*)*/)",
       "source": {
         "start": {
           "offset": 131,
@@ -153,9 +158,9 @@
           "offset": 148,
           "line": 9,
           "column": 18
-        }
-      },
-      "selector": ":not(div/*)*/)"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -164,7 +169,7 @@
         "after": " "
       },
       "type": "rule",
-      "nodes": [],
+      "selector": ":not(:nth-child(2n of [foo=\")\"]))",
       "source": {
         "start": {
           "offset": 150,
@@ -175,9 +180,9 @@
           "offset": 186,
           "line": 10,
           "column": 37
-        }
-      },
-      "selector": ":not(:nth-child(2n of [foo=\")\"]))"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -186,7 +191,7 @@
         "after": " "
       },
       "type": "rule",
-      "nodes": [],
+      "selector": "[foo=\\\"]",
       "source": {
         "start": {
           "offset": 188,
@@ -197,9 +202,9 @@
           "offset": 199,
           "line": 11,
           "column": 12
-        }
-      },
-      "selector": "[foo=\\\"]"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -208,7 +213,7 @@
         "after": " "
       },
       "type": "rule",
-      "nodes": [],
+      "selector": "[foo=\\{]",
       "source": {
         "start": {
           "offset": 201,
@@ -219,9 +224,9 @@
           "offset": 212,
           "line": 12,
           "column": 12
-        }
-      },
-      "selector": "[foo=\\{]"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -230,7 +235,7 @@
         "after": " "
       },
       "type": "rule",
-      "nodes": [],
+      "selector": "[foo=\\(]",
       "source": {
         "start": {
           "offset": 214,
@@ -241,9 +246,9 @@
           "offset": 225,
           "line": 13,
           "column": 12
-        }
-      },
-      "selector": "[foo=\\(]"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -252,7 +257,7 @@
         "after": " "
       },
       "type": "rule",
-      "nodes": [],
+      "selector": "[foo=yes\\:\\(it\\'s\\ work\\)]",
       "source": {
         "start": {
           "offset": 227,
@@ -263,9 +268,9 @@
           "offset": 256,
           "line": 14,
           "column": 30
-        }
-      },
-      "selector": "[foo=yes\\:\\(it\\'s\\ work\\)]"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -274,7 +279,7 @@
         "after": " "
       },
       "type": "rule",
-      "nodes": [],
+      "selector": "\\@noat",
       "source": {
         "start": {
           "offset": 259,
@@ -285,9 +290,9 @@
           "offset": 268,
           "line": 16,
           "column": 10
-        }
-      },
-      "selector": "\\@noat"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -297,6 +302,7 @@
         "after": "\n"
       },
       "type": "rule",
+      "selector": "h1\\\\",
       "nodes": [
         {
           "raws": {
@@ -304,6 +310,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "color",
+          "value": "\\\\",
           "source": {
             "start": {
               "offset": 281,
@@ -314,10 +322,9 @@
               "offset": 290,
               "line": 19,
               "column": 14
-            }
-          },
-          "prop": "color",
-          "value": "\\\\"
+            },
+            "inputId": 0
+          }
         }
       ],
       "source": {
@@ -330,9 +337,9 @@
           "offset": 292,
           "line": 20,
           "column": 1
-        }
-      },
-      "selector": "h1\\\\"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -341,7 +348,7 @@
         "after": " "
       },
       "type": "rule",
-      "nodes": [],
+      "selector": "[attr=;]",
       "source": {
         "start": {
           "offset": 295,
@@ -352,9 +359,9 @@
           "offset": 306,
           "line": 22,
           "column": 12
-        }
-      },
-      "selector": "[attr=;]"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -364,6 +371,7 @@
         "after": "\n"
       },
       "type": "rule",
+      "selector": ".prop",
       "nodes": [
         {
           "raws": {
@@ -371,6 +379,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "\\62 olor",
+          "value": "red",
           "source": {
             "start": {
               "offset": 321,
@@ -381,10 +391,9 @@
               "offset": 333,
               "line": 25,
               "column": 17
-            }
-          },
-          "prop": "\\62 olor",
-          "value": "red"
+            },
+            "inputId": 0
+          }
         }
       ],
       "source": {
@@ -397,9 +406,9 @@
           "offset": 335,
           "line": 26,
           "column": 1
-        }
-      },
-      "selector": ".prop"
+        },
+        "inputId": 0
+      }
     }
   ],
   "source": {
@@ -407,6 +416,12 @@
       "offset": 0,
       "line": 1,
       "column": 1
-    }
+    },
+    "end": {
+      "offset": 335,
+      "line": 26,
+      "column": 1
+    },
+    "inputId": 0
   }
 }

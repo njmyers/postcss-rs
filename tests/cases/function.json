@@ -13,6 +13,7 @@
         "after": "\n"
       },
       "type": "rule",
+      "selector": "a",
       "nodes": [
         {
           "raws": {
@@ -20,6 +21,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "background-image",
+          "value": "url(data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7)",
           "source": {
             "start": {
               "offset": 8,
@@ -30,10 +33,9 @@
               "offset": 109,
               "line": 2,
               "column": 106
-            }
-          },
-          "prop": "background-image",
-          "value": "url(data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7)"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -41,6 +43,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "background-image",
+          "value": "url(\"./image (1).jpg\")",
           "source": {
             "start": {
               "offset": 115,
@@ -51,10 +55,9 @@
               "offset": 155,
               "line": 3,
               "column": 45
-            }
-          },
-          "prop": "background-image",
-          "value": "url(\"./image (1).jpg\")"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -62,6 +65,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "background-image",
+          "value": "url( './image (1).jpg' )",
           "source": {
             "start": {
               "offset": 161,
@@ -72,10 +77,9 @@
               "offset": 203,
               "line": 4,
               "column": 47
-            }
-          },
-          "prop": "background-image",
-          "value": "url( './image (1).jpg' )"
+            },
+            "inputId": 0
+          }
         }
       ],
       "source": {
@@ -88,9 +92,9 @@
           "offset": 205,
           "line": 5,
           "column": 1
-        }
-      },
-      "selector": "a"
+        },
+        "inputId": 0
+      }
     }
   ],
   "source": {
@@ -98,6 +102,12 @@
       "offset": 0,
       "line": 1,
       "column": 1
-    }
+    },
+    "end": {
+      "offset": 205,
+      "line": 5,
+      "column": 1
+    },
+    "inputId": 0
   }
 }

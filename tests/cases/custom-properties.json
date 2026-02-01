@@ -13,6 +13,7 @@
         "after": "\n"
       },
       "type": "rule",
+      "selector": ":root",
       "nodes": [
         {
           "raws": {
@@ -20,6 +21,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--number",
+          "value": "1",
           "source": {
             "start": {
               "offset": 10,
@@ -30,10 +33,9 @@
               "offset": 21,
               "line": 2,
               "column": 14
-            }
-          },
-          "prop": "--number",
-          "value": "1"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -41,6 +43,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--unit",
+          "value": "100vw",
           "source": {
             "start": {
               "offset": 25,
@@ -51,10 +55,9 @@
               "offset": 38,
               "line": 3,
               "column": 16
-            }
-          },
-          "prop": "--unit",
-          "value": "100vw"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -62,6 +65,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--color",
+          "value": "#06c",
           "source": {
             "start": {
               "offset": 42,
@@ -72,10 +77,9 @@
               "offset": 55,
               "line": 4,
               "column": 16
-            }
-          },
-          "prop": "--color",
-          "value": "#06c"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -83,6 +87,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--function",
+          "value": "calc(1 + 1)",
           "source": {
             "start": {
               "offset": 60,
@@ -93,10 +99,9 @@
               "offset": 83,
               "line": 6,
               "column": 26
-            }
-          },
-          "prop": "--function",
-          "value": "calc(1 + 1)"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -104,6 +109,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--variable",
+          "value": "var(--unit)",
           "source": {
             "start": {
               "offset": 87,
@@ -114,10 +121,9 @@
               "offset": 110,
               "line": 7,
               "column": 26
-            }
-          },
-          "prop": "--variable",
-          "value": "var(--unit)"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -125,6 +131,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--string",
+          "value": "'single quoted string'",
           "source": {
             "start": {
               "offset": 115,
@@ -135,10 +143,9 @@
               "offset": 147,
               "line": 9,
               "column": 35
-            }
-          },
-          "prop": "--string",
-          "value": "'single quoted string'"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -146,6 +153,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--string",
+          "value": "\"double quoted string\"",
           "source": {
             "start": {
               "offset": 151,
@@ -156,10 +165,9 @@
               "offset": 183,
               "line": 10,
               "column": 35
-            }
-          },
-          "prop": "--string",
-          "value": "\"double quoted string\""
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -167,6 +175,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--square-block",
+          "value": "[1, 2, 3]",
           "source": {
             "start": {
               "offset": 188,
@@ -177,10 +187,9 @@
               "offset": 213,
               "line": 12,
               "column": 28
-            }
-          },
-          "prop": "--square-block",
-          "value": "[1, 2, 3]"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -188,6 +197,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--round-block",
+          "value": "(1, 2, 3)",
           "source": {
             "start": {
               "offset": 217,
@@ -198,10 +209,9 @@
               "offset": 241,
               "line": 13,
               "column": 27
-            }
-          },
-          "prop": "--round-block",
-          "value": "(1, 2, 3)"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -209,6 +219,8 @@
             "between": ":"
           },
           "type": "decl",
+          "prop": "--empty1",
+          "value": " ",
           "source": {
             "start": {
               "offset": 246,
@@ -219,10 +231,9 @@
               "offset": 256,
               "line": 15,
               "column": 13
-            }
-          },
-          "prop": "--empty1",
-          "value": " "
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -234,6 +245,8 @@
             }
           },
           "type": "decl",
+          "prop": "--empty2",
+          "value": " ",
           "source": {
             "start": {
               "offset": 260,
@@ -244,10 +257,9 @@
               "offset": 274,
               "line": 16,
               "column": 17
-            }
-          },
-          "prop": "--empty2",
-          "value": " "
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -256,6 +268,9 @@
             "important": "!important"
           },
           "type": "decl",
+          "prop": "--empty3",
+          "important": true,
+          "value": " ",
           "source": {
             "start": {
               "offset": 278,
@@ -266,11 +281,9 @@
               "offset": 298,
               "line": 17,
               "column": 23
-            }
-          },
-          "prop": "--empty3",
-          "important": true,
-          "value": " "
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -283,6 +296,9 @@
             }
           },
           "type": "decl",
+          "prop": "--empty4",
+          "important": true,
+          "value": " ",
           "source": {
             "start": {
               "offset": 302,
@@ -293,11 +309,9 @@
               "offset": 326,
               "line": 18,
               "column": 27
-            }
-          },
-          "prop": "--empty4",
-          "important": true,
-          "value": " "
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -309,6 +323,8 @@
             }
           },
           "type": "decl",
+          "prop": "--empty5",
+          "value": " ",
           "source": {
             "start": {
               "offset": 330,
@@ -319,10 +335,9 @@
               "offset": 344,
               "line": 19,
               "column": 17
-            }
-          },
-          "prop": "--empty5",
-          "value": " "
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -330,6 +345,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--bracket-block",
+          "value": "{1, 2, 3}",
           "source": {
             "start": {
               "offset": 349,
@@ -340,10 +357,9 @@
               "offset": 375,
               "line": 21,
               "column": 29
-            }
-          },
-          "prop": "--bracket-block",
-          "value": "{1, 2, 3}"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -351,6 +367,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--JSON",
+          "value": "[1, \"2\", {\"three\": {\"a\":1}}, [4]]",
           "source": {
             "start": {
               "offset": 379,
@@ -361,10 +379,9 @@
               "offset": 420,
               "line": 22,
               "column": 44
-            }
-          },
-          "prop": "--JSON",
-          "value": "[1, \"2\", {\"three\": {\"a\":1}}, [4]]"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -372,6 +389,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--javascript",
+          "value": "function(rule) { console.log(rule) }",
           "source": {
             "start": {
               "offset": 424,
@@ -382,10 +401,9 @@
               "offset": 474,
               "line": 23,
               "column": 53
-            }
-          },
-          "prop": "--javascript",
-          "value": "function(rule) { console.log(rule) }"
+            },
+            "inputId": 0
+          }
         }
       ],
       "source": {
@@ -398,9 +416,9 @@
           "offset": 476,
           "line": 24,
           "column": 1
-        }
-      },
-      "selector": ":root"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -410,6 +428,7 @@
         "after": ""
       },
       "type": "rule",
+      "selector": ":root",
       "nodes": [
         {
           "raws": {
@@ -417,6 +436,8 @@
             "between": ":"
           },
           "type": "decl",
+          "prop": "--a",
+          "value": "1",
           "source": {
             "start": {
               "offset": 485,
@@ -427,10 +448,9 @@
               "offset": 489,
               "line": 26,
               "column": 11
-            }
-          },
-          "prop": "--a",
-          "value": "1"
+            },
+            "inputId": 0
+          }
         }
       ],
       "source": {
@@ -443,9 +463,9 @@
           "offset": 490,
           "line": 26,
           "column": 12
-        }
-      },
-      "selector": ":root"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -455,6 +475,7 @@
         "after": ""
       },
       "type": "rule",
+      "selector": ".semicolon-less",
       "nodes": [
         {
           "raws": {
@@ -466,6 +487,8 @@
             }
           },
           "type": "decl",
+          "prop": "--empty-end",
+          "value": " ",
           "source": {
             "start": {
               "offset": 510,
@@ -476,10 +499,9 @@
               "offset": 525,
               "line": 28,
               "column": 33
-            }
-          },
-          "prop": "--empty-end",
-          "value": " "
+            },
+            "inputId": 0
+          }
         }
       ],
       "source": {
@@ -492,9 +514,9 @@
           "offset": 527,
           "line": 28,
           "column": 35
-        }
-      },
-      "selector": ".semicolon-less"
+        },
+        "inputId": 0
+      }
     },
     {
       "raws": {
@@ -504,6 +526,7 @@
         "after": ""
       },
       "type": "rule",
+      "selector": ".empty",
       "nodes": [
         {
           "raws": {
@@ -511,6 +534,8 @@
             "between": ":"
           },
           "type": "decl",
+          "prop": "--a",
+          "value": " ",
           "source": {
             "start": {
               "offset": 537,
@@ -521,10 +546,9 @@
               "offset": 540,
               "line": 30,
               "column": 11
-            }
-          },
-          "prop": "--a",
-          "value": " "
+            },
+            "inputId": 0
+          }
         }
       ],
       "source": {
@@ -537,9 +561,9 @@
           "offset": 542,
           "line": 30,
           "column": 13
-        }
-      },
-      "selector": ".empty"
+        },
+        "inputId": 0
+      }
     }
   ],
   "source": {
@@ -547,6 +571,12 @@
       "offset": 0,
       "line": 1,
       "column": 1
-    }
+    },
+    "end": {
+      "offset": 542,
+      "line": 30,
+      "column": 13
+    },
+    "inputId": 0
   }
 }

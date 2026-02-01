@@ -13,6 +13,7 @@
         "after": "\n"
       },
       "type": "rule",
+      "selector": ":root",
       "nodes": [
         {
           "raws": {
@@ -20,6 +21,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--zero-size",
+          "value": "{\n    width: 0;\n    height: 0;\n  }",
           "source": {
             "start": {
               "offset": 10,
@@ -30,10 +33,9 @@
               "offset": 57,
               "line": 5,
               "column": 4
-            }
-          },
-          "prop": "--zero-size",
-          "value": "{\n    width: 0;\n    height: 0;\n  }"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -41,6 +43,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "--small-icon",
+          "value": "{\n    width: 16px;\n    height: 16px;\n  }\n  ",
           "source": {
             "start": {
               "offset": 61,
@@ -51,10 +55,9 @@
               "offset": 118,
               "line": 10,
               "column": 3
-            }
-          },
-          "prop": "--small-icon",
-          "value": "{\n    width: 16px;\n    height: 16px;\n  }\n  "
+            },
+            "inputId": 0
+          }
         }
       ],
       "source": {
@@ -67,9 +70,9 @@
           "offset": 120,
           "line": 11,
           "column": 1
-        }
-      },
-      "selector": ":root"
+        },
+        "inputId": 0
+      }
     }
   ],
   "source": {
@@ -77,6 +80,12 @@
       "offset": 0,
       "line": 1,
       "column": 1
-    }
+    },
+    "end": {
+      "offset": 120,
+      "line": 11,
+      "column": 1
+    },
+    "inputId": 0
   }
 }

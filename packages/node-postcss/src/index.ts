@@ -17,7 +17,6 @@
 import * as postcss from 'postcss';
 import type { Root, Plugin, Processor, ProcessOptions } from 'postcss';
 import { loadBinding } from '@node-rs/helper';
-import { adaptRustJSONToPostCSS } from './adapter';
 import * as path from 'path';
 
 interface PostcssRsBindings {
@@ -61,16 +60,13 @@ export interface ParseOptions {
  */
 export async function parse(css: string, opts: ParseOptions = {}): Promise<Root> {
   // Parse with Rust (fast!)
-  // Pass the from parameter to Rust so it can include it in the inputs array
+  // Rust now outputs 100% PostCSS-compatible JSON, no adapter needed!
   const rustResult = await bindings.postcss.parse(css, opts.from);
   const rustJSON = JSON.parse(rustResult.json);
 
-  // Adapt format to PostCSS-compatible JSON
-  const postcssJSON = adaptRustJSONToPostCSS(rustJSON, css, opts.from);
-
   // Hydrate into PostCSS classes
   // This creates real Root, Rule, Declaration, etc. instances
-  const root = postcss.default.fromJSON(postcssJSON) as Root;
+  const root = postcss.default.fromJSON(rustJSON) as Root;
 
   return root;
 }
