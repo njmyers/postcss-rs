@@ -42,8 +42,10 @@ interface RootNode extends ASTNode {
  * Changes made:
  * 1. Add `inputs` array at root with source file metadata
  * 2. Add `inputId` reference to all `source` objects (for deduplication)
- * 3. Remove `nodes: []` from leaf nodes (decl, comment)
- * 4. Ensure root has `source.end`
+ * 3. Ensure root has `source.end`
+ *
+ * Note: The Rust parser now automatically skips the `nodes` field for leaf nodes,
+ * so we no longer need to delete it here.
  *
  * @param rustJSON - JSON output from postcss-rs parser
  * @param css - Original CSS source text
@@ -66,8 +68,7 @@ export function adaptRustJSONToPostCSS(
   }];
 
   /**
-   * Recursively process nodes to add inputId references
-   * and clean up structure
+   * Recursively add inputId to all source objects
    */
   function processNode(node: ASTNode): void {
     // Add inputId reference to source (points to inputs array)
@@ -75,15 +76,9 @@ export function adaptRustJSONToPostCSS(
       node.source.inputId = 0; // Index into inputs array
     }
 
+    // Recursively process children
     if (node.nodes) {
-      // Remove nodes array from leaf nodes (declarations and comments)
-      // These don't have children, so the array should not exist
-      if (node.type === 'decl' || node.type === 'comment') {
-        delete node.nodes;
-      } else {
-        // Recursively process container children
-        node.nodes.forEach(processNode);
-      }
+      node.nodes.forEach(processNode);
     }
   }
 

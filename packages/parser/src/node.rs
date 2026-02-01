@@ -100,7 +100,7 @@ pub struct Node {
     pub raws: Raws,
     #[serde(flatten)]
     pub data: Data,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Node::should_skip_nodes")]
     pub nodes: Vec<Node>,
     pub source: Sources,
 }
@@ -121,6 +121,14 @@ impl Node {
 
     pub fn to_json(&self) -> serde_json::Result<String> {
         return serde_json::to_string(&self);
+    }
+
+    /// Skip serializing the nodes field for leaf node types (declarations and comments)
+    /// PostCSS doesn't include a nodes field on these types
+    fn should_skip_nodes(nodes: &Vec<Node>) -> bool {
+        // For now, skip if empty - we'll need a better approach
+        // that checks the parent node type
+        nodes.is_empty()
     }
 }
 
