@@ -93,7 +93,7 @@ impl<'a> Parser<'a> {
             };
         }
 
-        return root.build_root(&spaces);
+        return root.build_root(&tokenizer, &spaces);
     }
 
     /// Classify a Word token as either a declaration or rule by peeking ahead.

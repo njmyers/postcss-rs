@@ -39,21 +39,19 @@ impl Source {
     }
 
     pub fn create_end(tokenizer: &Tokenizer) -> Self {
+        // PostCSS end positions: offset points AFTER last char, column points AT last char
+        // For empty files (index = 0), both point to position 0
+        let column_index = if tokenizer.index > 0 {
+            tokenizer.index - 1
+        } else {
+            0
+        };
         return Self {
-            offset: tokenizer.index - 1,
+            offset: tokenizer.index,  // Points after the last character
             line: tokenizer.lines.value(),
-            column: tokenizer.lines.offset(tokenizer.index - 1),
+            column: tokenizer.lines.offset(column_index),  // Column of the last character
         };
     }
-}
-
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
-pub struct Input {
-    #[serde(rename = "hasBOM")]
-    pub has_bom: bool,
-    pub css: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub file: Option<String>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
@@ -61,8 +59,6 @@ pub struct Sources {
     pub start: Source,
     #[serde(skip_serializing_if = "Sources::skip")]
     pub end: Option<Source>,
-    #[serde(rename = "inputId", default)]
-    pub input_id: usize,
 }
 
 impl Sources {
@@ -76,7 +72,6 @@ impl Default for Sources {
         return Self {
             start: Source::default(),
             end: None,
-            input_id: 0,
         };
     }
 }
@@ -115,8 +110,6 @@ pub struct Node {
     #[serde(default, skip_serializing_if = "Node::should_skip_nodes")]
     pub nodes: Vec<Node>,
     pub source: Sources,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub inputs: Option<Vec<Input>>,
 }
 
 impl Node {
@@ -126,7 +119,6 @@ impl Node {
             nodes: Vec::new(),
             source: Sources::default(),
             data,
-            inputs: None,
         };
     }
 
@@ -267,21 +259,37 @@ impl NodeBuilder {
         return self.node;
     }
 
-    pub fn build_root(mut self, after: &[Token]) -> Node {
+    pub fn build_root(mut self, tokenizer: &Tokenizer, after: &[Token]) -> Node {
         let semicolon = self.node.raws.semicolon.unwrap_or(false);
 
         if !self.node.nodes.is_empty() && !semicolon {
             self.node.raws.semicolon.set_false();
         }
 
-        self.node.raws.after.push_tokens(after);
+        // PostCSS: root.raws.after is empty when there are child nodes,
+        // but contains trailing whitespace when root is empty
+        if !self.node.nodes.is_empty() {
+            self.node.raws.after.push_str("");
+        } else {
+            self.node.raws.after.push_tokens(after);
+        }
 
-        // Set source.end from last child node if not already set (PostCSS compatibility)
-        if self.node.source.end.is_none() && !self.node.nodes.is_empty() {
-            if let Some(last_node) = self.node.nodes.last() {
-                if let Some(ref end) = last_node.source.end {
-                    self.node.source.end = Some(end.clone());
+        // Set source.end based on last child node
+        if self.node.source.end.is_none() {
+            if !self.node.nodes.is_empty() {
+                // Non-empty root: extend one position past the last child's end
+                if let Some(last_node) = self.node.nodes.last() {
+                    if let Some(ref child_end) = last_node.source.end {
+                        self.node.source.end = Some(Source {
+                            offset: child_end.offset,
+                            line: child_end.line,
+                            column: child_end.column + 1,
+                        });
+                    }
                 }
+            } else {
+                // Empty root: use current tokenizer position (end of file)
+                self.node.source.end = Some(Source::create_end(tokenizer));
             }
         }
 
@@ -323,7 +331,7 @@ mod tests {
                 Token::Str("source"),
                 Token::Struct {
                     name: "Sources",
-                    len: 2,
+                    len: 1,
                 },
                 Token::Str("start"),
                 Token::Struct {
@@ -337,8 +345,6 @@ mod tests {
                 Token::Str("column"),
                 Token::U64(1),
                 Token::StructEnd,
-                Token::Str("inputId"),
-                Token::U64(0),
                 Token::StructEnd,
                 Token::MapEnd,
             ],

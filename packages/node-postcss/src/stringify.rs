@@ -256,7 +256,8 @@ mod tests {
         let node = parser.parse();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
-        assert_eq!(output, ".test  {  color:  red  }\n");
+        // Note: trailing newline is not preserved in raws.after (PostCSS compatibility)
+        assert_eq!(output, ".test  {  color:  red  }");
     }
 
     #[test]

@@ -38,14 +38,7 @@ impl Task for AsyncParseTask {
 
     fn compute(&mut self) -> Result<Self::Output> {
         let mut parser = Parser::new(&self.css).unwrap();
-        let mut node = parser.parse();
-
-        // Add inputs array to root node (PostCSS compatibility)
-        node.inputs = Some(vec![postcss_rs_parser::Input {
-            has_bom: false,
-            css: self.css.clone(),
-            file: self.from.clone(),
-        }]);
+        let node = parser.parse();
 
         return Ok(JsNode {
             json: node.to_json().unwrap(),
