@@ -5,6 +5,9 @@ node_modules/
 target/
 **/target
 
+dist/
+**/dist
+
 *.node
 
 output/*

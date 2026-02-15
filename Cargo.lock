@@ -314,6 +314,7 @@ dependencies = [
  "napi-build",
  "napi-derive",
  "postcss-rs-parser",
+ "serde_json",
 ]
 
 [[package]]

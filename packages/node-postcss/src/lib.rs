@@ -8,7 +8,9 @@ use napi::Env;
 use napi::Result;
 use napi::Task;
 
-use postcss_rs_parser::Parser;
+use postcss_rs_parser::{Parser, Node};
+
+mod stringify;
 
 /// A JavaScript compatible and PostCSS compatible AST.
 #[napi(js_name = "Node")]
@@ -27,6 +29,7 @@ impl JsNode {
 /// Async compute task for parsing css.
 pub struct AsyncParseTask {
     css: String,
+    from: Option<String>,
 }
 
 impl Task for AsyncParseTask {
@@ -35,7 +38,14 @@ impl Task for AsyncParseTask {
 
     fn compute(&mut self) -> Result<Self::Output> {
         let mut parser = Parser::new(&self.css).unwrap();
-        let node = parser.parse();
+        let mut node = parser.parse();
+
+        // Add inputs array to root node (PostCSS compatibility)
+        node.inputs = Some(vec![postcss_rs_parser::Input {
+            has_bom: false,
+            css: self.css.clone(),
+            file: self.from.clone(),
+        }]);
 
         return Ok(JsNode {
             json: node.to_json().unwrap(),
@@ -54,7 +64,26 @@ pub mod postcss {
     pub use super::*;
 
     #[napi]
-    pub fn parse(css: String) -> AsyncTask<AsyncParseTask> {
-        return AsyncTask::new(AsyncParseTask { css });
+    pub fn parse(css: String, from: Option<String>) -> AsyncTask<AsyncParseTask> {
+        return AsyncTask::new(AsyncParseTask { css, from });
+    }
+
+    /// Stringify a PostCSS AST back to CSS
+    ///
+    /// Takes JSON representation of AST and converts it back to CSS string,
+    /// preserving all original formatting from the `raws` fields.
+    ///
+    /// @param json - JSON string representation of PostCSS AST
+    /// @returns CSS string
+    #[napi]
+    pub fn stringify(json: String) -> Result<String> {
+        // Deserialize JSON to Node
+        let node: Node = serde_json::from_str(&json)
+            .map_err(|e| napi::Error::from_reason(format!("Failed to parse JSON: {}", e)))?;
+
+        // Stringify the node
+        let css = stringify::Stringifier::stringify(&node, stringify::StringifyOptions::default());
+
+        return Ok(css);
     }
 }

@@ -13,6 +13,7 @@
         "after": " "
       },
       "type": "rule",
+      "selector": "a",
       "nodes": [
         {
           "raws": {
@@ -24,6 +25,8 @@
             }
           },
           "type": "decl",
+          "prop": "color",
+          "value": "a b",
           "source": {
             "start": {
               "offset": 4,
@@ -34,10 +37,9 @@
               "offset": 23,
               "line": 1,
               "column": 24
-            }
-          },
-          "prop": "color",
-          "value": "a b"
+            },
+            "inputId": 0
+          }
         }
       ],
       "source": {
@@ -50,9 +52,9 @@
           "offset": 25,
           "line": 1,
           "column": 26
-        }
-      },
-      "selector": "a"
+        },
+        "inputId": 0
+      }
     }
   ],
   "source": {
@@ -60,6 +62,12 @@
       "offset": 0,
       "line": 1,
       "column": 1
-    }
+    },
+    "end": {
+      "offset": 25,
+      "line": 1,
+      "column": 26
+    },
+    "inputId": 0
   }
 }

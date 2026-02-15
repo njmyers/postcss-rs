@@ -13,6 +13,7 @@
         "after": ""
       },
       "type": "rule",
+      "selector": "a",
       "nodes": [
         {
           "raws": {
@@ -22,6 +23,7 @@
           },
           "type": "atrule",
           "name": "import",
+          "params": "\"a.css\"",
           "source": {
             "start": {
               "offset": 4,
@@ -32,9 +34,9 @@
               "offset": 18,
               "line": 1,
               "column": 19
-            }
-          },
-          "params": "\"a.css\""
+            },
+            "inputId": 0
+          }
         }
       ],
       "source": {
@@ -47,9 +49,9 @@
           "offset": 20,
           "line": 1,
           "column": 21
-        }
-      },
-      "selector": "a"
+        },
+        "inputId": 0
+      }
     }
   ],
   "source": {
@@ -57,6 +59,12 @@
       "offset": 0,
       "line": 1,
       "column": 1
-    }
+    },
+    "end": {
+      "offset": 20,
+      "line": 1,
+      "column": 21
+    },
+    "inputId": 0
   }
 }

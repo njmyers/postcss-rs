@@ -48,10 +48,21 @@ impl Source {
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Input {
+    #[serde(rename = "hasBOM")]
+    pub has_bom: bool,
+    pub css: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub file: Option<String>,
+}
+
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Sources {
     pub start: Source,
     #[serde(skip_serializing_if = "Sources::skip")]
     pub end: Option<Source>,
+    #[serde(rename = "inputId", default)]
+    pub input_id: usize,
 }
 
 impl Sources {
@@ -65,6 +76,7 @@ impl Default for Sources {
         return Self {
             start: Source::default(),
             end: None,
+            input_id: 0,
         };
     }
 }
@@ -100,9 +112,11 @@ pub struct Node {
     pub raws: Raws,
     #[serde(flatten)]
     pub data: Data,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Node::should_skip_nodes")]
     pub nodes: Vec<Node>,
     pub source: Sources,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inputs: Option<Vec<Input>>,
 }
 
 impl Node {
@@ -112,6 +126,7 @@ impl Node {
             nodes: Vec::new(),
             source: Sources::default(),
             data,
+            inputs: None,
         };
     }
 
@@ -121,6 +136,14 @@ impl Node {
 
     pub fn to_json(&self) -> serde_json::Result<String> {
         return serde_json::to_string(&self);
+    }
+
+    /// Skip serializing the nodes field for leaf node types (declarations and comments)
+    /// PostCSS doesn't include a nodes field on these types
+    fn should_skip_nodes(nodes: &Vec<Node>) -> bool {
+        // For now, skip if empty - we'll need a better approach
+        // that checks the parent node type
+        nodes.is_empty()
     }
 }
 
@@ -253,6 +276,15 @@ impl NodeBuilder {
 
         self.node.raws.after.push_tokens(after);
 
+        // Set source.end from last child node if not already set (PostCSS compatibility)
+        if self.node.source.end.is_none() && !self.node.nodes.is_empty() {
+            if let Some(last_node) = self.node.nodes.last() {
+                if let Some(ref end) = last_node.source.end {
+                    self.node.source.end = Some(end.clone());
+                }
+            }
+        }
+
         return self.node;
     }
 }
@@ -287,13 +319,11 @@ mod tests {
                 Token::StructEnd,
                 Token::Str("type"),
                 Token::Str("root"),
-                Token::Str("nodes"),
-                Token::Seq { len: Some(0) },
-                Token::SeqEnd,
+                // nodes field is skipped when empty (PostCSS compatibility)
                 Token::Str("source"),
                 Token::Struct {
                     name: "Sources",
-                    len: 1,
+                    len: 2,
                 },
                 Token::Str("start"),
                 Token::Struct {
@@ -307,6 +337,8 @@ mod tests {
                 Token::Str("column"),
                 Token::U64(1),
                 Token::StructEnd,
+                Token::Str("inputId"),
+                Token::U64(0),
                 Token::StructEnd,
                 Token::MapEnd,
             ],

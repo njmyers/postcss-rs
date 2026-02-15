@@ -13,6 +13,7 @@
       },
       "type": "atrule",
       "name": "import",
+      "params": "\"test.css\"",
       "source": {
         "start": {
           "offset": 0,
@@ -23,9 +24,9 @@
           "offset": 16,
           "line": 1,
           "column": 17
-        }
-      },
-      "params": "\"test.css\""
+        },
+        "inputId": 0
+      }
     }
   ],
   "source": {
@@ -33,6 +34,12 @@
       "offset": 0,
       "line": 1,
       "column": 1
-    }
+    },
+    "end": {
+      "offset": 16,
+      "line": 1,
+      "column": 17
+    },
+    "inputId": 0
   }
 }

@@ -13,6 +13,7 @@
         "after": "\n"
       },
       "type": "rule",
+      "selector": "a",
       "nodes": [
         {
           "raws": {
@@ -20,6 +21,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "color",
+          "value": "black",
           "source": {
             "start": {
               "offset": 8,
@@ -30,10 +33,9 @@
               "offset": 20,
               "line": 2,
               "column": 17
-            }
-          },
-          "prop": "color",
-          "value": "black"
+            },
+            "inputId": 0
+          }
         },
         {
           "raws": {
@@ -41,6 +43,8 @@
             "between": ": "
           },
           "type": "decl",
+          "prop": "background",
+          "value": "white",
           "source": {
             "start": {
               "offset": 26,
@@ -51,10 +55,9 @@
               "offset": 43,
               "line": 3,
               "column": 22
-            }
-          },
-          "prop": "background",
-          "value": "white"
+            },
+            "inputId": 0
+          }
         }
       ],
       "source": {
@@ -67,9 +70,9 @@
           "offset": 45,
           "line": 4,
           "column": 1
-        }
-      },
-      "selector": "a"
+        },
+        "inputId": 0
+      }
     }
   ],
   "source": {
@@ -77,6 +80,12 @@
       "offset": 0,
       "line": 1,
       "column": 1
-    }
+    },
+    "end": {
+      "offset": 45,
+      "line": 4,
+      "column": 1
+    },
+    "inputId": 0
   }
 }
