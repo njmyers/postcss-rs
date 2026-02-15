@@ -40,16 +40,17 @@ impl Source {
 
     pub fn create_end(tokenizer: &Tokenizer) -> Self {
         // PostCSS end positions: offset points AFTER last char, column points AT last char
-        // For empty files (index = 0), both point to position 0
+        // PostCSS uses 1-indexed columns (minimum is 1)
         let column_index = if tokenizer.index > 0 {
             tokenizer.index - 1
         } else {
             0
         };
+        let raw_column = tokenizer.lines.offset(column_index);
         return Self {
             offset: tokenizer.index,  // Points after the last character
             line: tokenizer.lines.value(),
-            column: tokenizer.lines.offset(column_index),  // Column of the last character
+            column: cmp::max(1, raw_column),  // Ensure column is at least 1
         };
     }
 }
@@ -255,6 +256,19 @@ impl NodeBuilder {
     pub fn build(mut self, tokenizer: &mut Tokenizer, after: &[Token]) -> Node {
         self.node.raws.after.push_tokens(after);
         self.node.source.end = Some(Source::create_end(tokenizer));
+
+        return self.node;
+    }
+
+    pub fn build_with_end_index(mut self, tokenizer: &Tokenizer, after: &[Token], end_index: usize) -> Node {
+        self.node.raws.after.push_tokens(after);
+        // Create end position at the specified index instead of current tokenizer position
+        let column_index = if end_index > 0 { end_index - 1 } else { 0 };
+        self.node.source.end = Some(Source {
+            offset: end_index,
+            line: tokenizer.lines.value(),
+            column: cmp::max(1, tokenizer.lines.offset(column_index)),
+        });
 
         return self.node;
     }

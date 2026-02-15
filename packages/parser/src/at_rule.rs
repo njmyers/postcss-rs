@@ -31,7 +31,7 @@ impl AtRule {
         builder.ensure_empty_after_name();
 
         let mut at_rule = Self::new(&token.value[1..]);
-        let (params, terminator) = Params::create(&mut builder, tokenizer);
+        let (params, terminator, params_end_index) = Params::create(&mut builder, tokenizer);
 
         at_rule.set_params(params);
 
@@ -98,13 +98,25 @@ impl AtRule {
         builder.at_rule(at_rule);
 
         // Build the node based on terminator
-        // Don't set end when terminated by CloseCurly (will be handled by parent if needed)
         let node = match terminator.ended_by {
             Some(Kind::CloseCurly) => {
+                // Parent will handle setting end position
                 builder.node.raws.after.push_tokens(&spaces);
                 builder.node
             }
-            _ => builder.build(tokenizer, &spaces),
+            Some(Kind::OpenCurly) => {
+                // At-rule with body: use current tokenizer position
+                builder.build(tokenizer, &spaces)
+            }
+            Some(Kind::Semicolon) => {
+                // At-rule terminated by semicolon: consume it and use its end position
+                tokenizer.next(); // Consume the semicolon
+                builder.build(tokenizer, &spaces)
+            }
+            _ => {
+                // At-rule without semicolon or body: use params_end_index for accurate end position
+                builder.build_with_end_index(tokenizer, &spaces, params_end_index)
+            }
         };
 
         return (node, terminator);
@@ -185,10 +197,12 @@ impl Params {
     fn create(
         parent: &mut NodeBuilder,
         tokenizer: &mut Tokenizer,
-    ) -> (String, StatementTerminator) {
+    ) -> (String, StatementTerminator, usize) {
         let mut spaces = Tokens::new();
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
+        let mut between_buffer = Tokens::new(); // Buffer for potential 'between' spaces
+        let mut params_end_index = tokenizer.index; // Track where params actually end
 
         // Create peekable once outside the loop for efficiency
         let mut peekable = tokenizer.clone().into_peekable();
@@ -227,26 +241,35 @@ impl Params {
                 // Handle spacing and comments before params start
                 Kind::Space | Kind::Comment if statement.is_empty() => spaces.push(token),
                 // Handle spacing and comments within params - add to statement when brackets are open
-                Kind::Space | Kind::Comment if statement.is_open() => statement.push(token),
-                // Handle spacing and comments after params - add to between
-                Kind::Space | Kind::Comment => parent.between(&token),
+                Kind::Space | Kind::Comment if statement.is_open() => {
+                    statement.push(token);
+                    params_end_index = tokenizer.index; // Update end position
+                }
+                // Handle spacing and comments after params - buffer them for now
+                Kind::Space | Kind::Comment => between_buffer.push(token),
 
-                // Handle tokens that are part of params
-                Kind::Word => statement.push(token),
-                Kind::Brackets => statement.push(token),
-                Kind::Colon => statement.push(token),
-                Kind::String => statement.push(token),
-                Kind::OpenSquare => statement.push(token),
-                Kind::CloseSquare => statement.push(token),
-                Kind::OpenCurvy => statement.push(token),
-                Kind::CloseCurvy => statement.push(token),
+                // Handle tokens that are part of params - update end position after each
+                Kind::Word | Kind::Brackets | Kind::Colon | Kind::String |
+                Kind::OpenSquare | Kind::CloseSquare | Kind::OpenCurvy | Kind::CloseCurvy => {
+                    statement.push(token);
+                    params_end_index = tokenizer.index; // Update end position
+                }
 
                 // Handle curly braces - they can be part of params if nested
-                Kind::OpenCurly if statement.is_open() => statement.push(token),
-                Kind::CloseCurly if statement.is_open() => statement.push(token),
+                Kind::OpenCurly if statement.is_open() => {
+                    statement.push(token);
+                    params_end_index = tokenizer.index;
+                }
+                Kind::CloseCurly if statement.is_open() => {
+                    statement.push(token);
+                    params_end_index = tokenizer.index;
+                }
 
                 // Handle semicolon - ends params only if not nested
-                Kind::Semicolon if statement.is_open() => statement.push(token),
+                Kind::Semicolon if statement.is_open() => {
+                    statement.push(token);
+                    params_end_index = tokenizer.index;
+                }
                 Kind::Semicolon => {
                     terminator.set_ended_by(Kind::Semicolon);
                     break;
@@ -259,7 +282,15 @@ impl Params {
 
         Self::spaces(&statement, parent, &spaces);
 
-        return (statement.to_string(), terminator);
+        // Only add buffered spaces to 'between' if there's a body (OpenCurly terminator)
+        if matches!(terminator.ended_by, Some(Kind::OpenCurly) | Some(Kind::CloseCurly)) {
+            for token in between_buffer.iter() {
+                parent.between(token);
+            }
+        }
+        // Otherwise, buffered spaces are trailing and should not be part of the at-rule
+
+        return (statement.to_string(), terminator, params_end_index);
     }
 
     /// Set the spaces for the parent node builder depending on whether the param exists or not.
