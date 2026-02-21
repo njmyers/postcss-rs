@@ -29,7 +29,7 @@ impl JsNode {
 /// Async compute task for parsing css.
 pub struct AsyncParseTask {
     css: String,
-    from: Option<String>,
+    _from: Option<String>,
 }
 
 impl Task for AsyncParseTask {
@@ -58,7 +58,7 @@ pub mod postcss {
 
     #[napi]
     pub fn parse(css: String, from: Option<String>) -> AsyncTask<AsyncParseTask> {
-        return AsyncTask::new(AsyncParseTask { css, from });
+        return AsyncTask::new(AsyncParseTask { css, _from: from });
     }
 
     /// Stringify a PostCSS AST back to CSS
