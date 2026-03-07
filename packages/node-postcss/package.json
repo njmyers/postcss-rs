@@ -30,7 +30,6 @@
   "devDependencies": {
     "@napi-rs/cli": "^1.2.1",
     "@types/node": "^20.0.0",
-    "@types/postcss": "^8.0.0",
     "jest": "^29.0.0",
     "ts-jest": "^29.0.0",
     "typescript": "^5.0.0",
