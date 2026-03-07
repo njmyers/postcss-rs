@@ -39,8 +39,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Build native addon
-        run: cd packages/node && pnpm run build
+      - name: Build native addons
+        run: |
+          cd packages/node && pnpm run build
+          cd ../node-postcss && pnpm run build
 
       - name: Test Node
         run: pnpm test
