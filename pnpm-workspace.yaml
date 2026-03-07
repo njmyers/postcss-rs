@@ -4,4 +4,4 @@ packages:
   - "packages/postcss"
   - "packages/node-tokenizer"
   - "tests"
-  - "docs"
+  - "packages/docs"
