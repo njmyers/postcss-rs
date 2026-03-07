@@ -143,7 +143,7 @@ impl Rule {
         // Consume any spaces before semicolon
         while let Some(token) = peekable.peek() {
             match token.kind {
-                Kind::Space if token.value != "\n" && token.value != "\r\n" => {
+                Kind::Space if !Self::is_newline(token) => {
                     has_space_before = true;
                     peekable.next();
                     tokens_to_consume += 1;
@@ -152,13 +152,27 @@ impl Rule {
             }
         }
 
-        // Check for semicolon
+        // Check for semicolon and extract its column
         let semicolon_col = match peekable.peek() {
             Some(token) if token.kind == Kind::Semicolon => {
+                // Columns are 1-indexed in PostCSS
+                let column = std::cmp::max(1, token.column);
+                peekable.next(); // Advance past semicolon
                 tokens_to_consume += 1;
-                std::cmp::max(1, token.column)
+                column
             }
             _ => return None, // No trailing semicolon found
+        };
+
+        // Check if next token is newline (peek, don't consume)
+        let newline_len = if has_space_before {
+            peekable
+                .peek()
+                .filter(|t| Self::is_newline(t))
+                .map(|t| t.value.len())
+                .unwrap_or(0)
+        } else {
+            0
         };
 
         // Consume the spaces and semicolon from the actual tokenizer
@@ -166,26 +180,16 @@ impl Rule {
             tokenizer.next();
         }
 
-        let line = tokenizer.lines.value();
-        let offset = if has_space_before {
-            // If there's a space before semicolon, calculate offset after the newline
-            // but don't consume it (it belongs to the next node's 'before')
-            tokenizer
-                .clone()
-                .into_peekable()
-                .peek()
-                .filter(|t| t.kind == Kind::Space && (t.value == "\n" || t.value == "\r\n"))
-                .map(|t| tokenizer.index + t.value.len())
-                .unwrap_or(tokenizer.index)
-        } else {
-            tokenizer.index
-        };
-
         return Some(crate::Source {
-            offset,
-            line,
+            offset: tokenizer.index + newline_len,
+            line: tokenizer.lines.value(),
             column: semicolon_col,
         });
+    }
+
+    /// Check if a token is a newline character
+    fn is_newline(token: &Token) -> bool {
+        token.kind == Kind::Space && (token.value == "\n" || token.value == "\r\n")
     }
 
     /// Peek ahead to determine if the next non-space token indicates a nested rule
