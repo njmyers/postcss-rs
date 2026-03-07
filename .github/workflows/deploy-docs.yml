@@ -1,0 +1,45 @@
+on:
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+name: Deploy Docs
+
+jobs:
+  deploy:
+    name: Deploy to Cloudflare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v5
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: packages/docs/pnpm-lock.yaml
+
+      - name: Install Dependencies
+        run: pnpm install
+        working-directory: packages/docs
+
+      - name: Build Docs
+        run: pnpm build
+        working-directory: packages/docs
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy .vitepress/dist --project-name=postcss-rs-docs
+          workingDirectory: packages/docs
