@@ -107,82 +107,13 @@ impl Rule {
             };
         }
 
-        // After the rule body ends, check for trailing semicolons (ownSemicolon in PostCSS)
-        // This handles cases like: a{b:c}; or a{b:c} ;
-        // Column always points at the semicolon
-        // Offset behavior:
-        //   - If ownSemicolon is just ";": offset points AT the newline
-        //   - If ownSemicolon has space(s) " ;": offset points AFTER the newline
-        let mut own_semicolon_found = false;
-        let mut semicolon_col: Option<usize> = None;
-        let mut has_space_before_semicolon = false;
-
-        {
-            let mut peekable = tokenizer.clone().into_peekable();
-            let mut temp_count = 0;
-
-            // Look ahead for trailing spaces and semicolon
-            loop {
-                if let Some(peeked) = peekable.peek() {
-                    match peeked.kind {
-                        Kind::Space if peeked.value != "\n" && peeked.value != "\r\n" => {
-                            has_space_before_semicolon = true;
-                            peekable.next();
-                            temp_count += 1;
-                        }
-                        Kind::Semicolon => {
-                            // Save the semicolon's column
-                            semicolon_col = Some(std::cmp::max(1, peeked.column));
-                            own_semicolon_found = true;
-                            temp_count += 1;
-                            break;
-                        }
-                        _ => break,
-                    }
-                } else {
-                    break;
-                }
-            }
-
-            // If we found a semicolon, consume the tokens
-            if own_semicolon_found {
-                for _ in 0..temp_count {
-                    tokenizer.next();
-                }
-            }
-        }
-
-        // Calculate end offset and line
-        let end_line = tokenizer.lines.value();
-        let mut end_offset = tokenizer.index;
-
-        // If there was a space before semicolon, offset should point AFTER the newline
-        // But we don't consume the newline - it belongs to the next node's 'before'
-        if own_semicolon_found && has_space_before_semicolon {
-            let mut peekable2 = tokenizer.clone().into_peekable();
-            if let Some(next_token) = peekable2.peek() {
-                if next_token.kind == Kind::Space && (next_token.value == "\n" || next_token.value == "\r\n") {
-                    // Don't consume the newline, just calculate offset as if we did
-                    end_offset = tokenizer.index + next_token.value.len();
-                }
-            }
-        }
-
-        // If we found an ownSemicolon, build with special end position
-        if own_semicolon_found {
-            if let Some(col) = semicolon_col {
-                // Create end position with saved line (before newline consumption) and column at semicolon
-                let end_pos = crate::Source {
-                    offset: end_offset,
-                    line: end_line,
-                    column: col,
-                };
-
-                let mut node = builder.node;
-                node.raws.after.push_tokens(&spaces);
-                node.source.end = Some(end_pos);
-                return node;
-            }
+        // Check for trailing semicolons (ownSemicolon in PostCSS)
+        // Handles cases like: a{b:c}; or a{b:c} ;
+        if let Some(end_source) = Self::consume_trailing_semicolon(tokenizer) {
+            let mut node = builder.node;
+            node.raws.after.push_tokens(&spaces);
+            node.source.end = Some(end_source);
+            return node;
         }
 
         return builder.build(tokenizer, &spaces);
@@ -194,6 +125,67 @@ impl Rule {
 
     fn create_comment(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
         return crate::Comment::create(token, tokenizer, spaces);
+    }
+
+    /// Detect and consume trailing semicolons after rule bodies (ownSemicolon pattern)
+    /// Returns the end source position if a trailing semicolon is found, None otherwise
+    ///
+    /// PostCSS behavior:
+    /// - Column always points at the semicolon
+    /// - Offset behavior:
+    ///   - Just ";": offset points AT the newline
+    ///   - " ;": offset points AFTER the newline (without consuming it)
+    fn consume_trailing_semicolon(tokenizer: &mut Tokenizer) -> Option<crate::Source> {
+        let mut peekable = tokenizer.clone().into_peekable();
+        let mut has_space_before = false;
+        let mut tokens_to_consume = 0;
+
+        // Consume any spaces before semicolon
+        while let Some(token) = peekable.peek() {
+            match token.kind {
+                Kind::Space if token.value != "\n" && token.value != "\r\n" => {
+                    has_space_before = true;
+                    peekable.next();
+                    tokens_to_consume += 1;
+                }
+                _ => break,
+            }
+        }
+
+        // Check for semicolon
+        let semicolon_col = match peekable.peek() {
+            Some(token) if token.kind == Kind::Semicolon => {
+                tokens_to_consume += 1;
+                std::cmp::max(1, token.column)
+            }
+            _ => return None, // No trailing semicolon found
+        };
+
+        // Consume the spaces and semicolon from the actual tokenizer
+        for _ in 0..tokens_to_consume {
+            tokenizer.next();
+        }
+
+        let line = tokenizer.lines.value();
+        let offset = if has_space_before {
+            // If there's a space before semicolon, calculate offset after the newline
+            // but don't consume it (it belongs to the next node's 'before')
+            tokenizer
+                .clone()
+                .into_peekable()
+                .peek()
+                .filter(|t| t.kind == Kind::Space && (t.value == "\n" || t.value == "\r\n"))
+                .map(|t| tokenizer.index + t.value.len())
+                .unwrap_or(tokenizer.index)
+        } else {
+            tokenizer.index
+        };
+
+        return Some(crate::Source {
+            offset,
+            line,
+            column: semicolon_col,
+        });
     }
 
     /// Peek ahead to determine if the next non-space token indicates a nested rule
