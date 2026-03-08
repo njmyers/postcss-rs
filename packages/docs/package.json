@@ -1,0 +1,15 @@
+{
+  "name": "@postcss-rs/docs",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vitepress dev",
+    "build:rustdoc": "bash scripts/build-rustdoc.sh",
+    "build": "bash scripts/build-rustdoc.sh && vitepress build",
+    "preview": "vitepress preview"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.3"
+  }
+}
