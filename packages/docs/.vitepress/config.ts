@@ -8,6 +8,7 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'API', link: '/api/' },
+      { text: 'Rust API', link: '/rustdoc/postcss_rs_parser/index.html', target: '_blank' },
       { text: 'GitHub', link: 'https://github.com/njmyers/postcss-rs' }
     ],
 

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vitepress dev",
-    "build": "vitepress build",
+    "build:rustdoc": "bash scripts/build-rustdoc.sh",
+    "build": "bash scripts/build-rustdoc.sh && vitepress build",
     "preview": "vitepress preview"
   },
   "devDependencies": {
