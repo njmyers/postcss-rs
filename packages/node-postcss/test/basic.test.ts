@@ -5,6 +5,7 @@
 import { parse } from '../src/index';
 import * as postcss from 'postcss';
 import type { Root, Rule, Declaration } from 'postcss';
+import { describe, test, expect } from 'vitest';
 
 describe('@postcss-rs/node-postcss', () => {
   test('Parse simple CSS', async () => {
