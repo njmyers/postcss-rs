@@ -8,4 +8,4 @@ const { loadBinding } = require('@node-rs/helper')
  * `loadBinding` helper will load `postcss-rs-node.[PLATFORM].node` from `__dirname` first
  * If failed to load addon, it will fallback to load from `postcss-rs-node-[PLATFORM]`
  */
-module.exports = loadBinding(__dirname, '@postcss-rs', '@postcss-rs/node')
+module.exports = loadBinding(__dirname, '@postcss-rs/node', '@postcss-rs/node')

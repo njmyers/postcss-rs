@@ -58,15 +58,15 @@ test('converts source.input recursively', () => {
       '    {\n' +
       '      "raws": {},\n' +
       '      "source": {\n' +
-      '        "start": {\n' +
-      '          "offset": 0,\n' +
-      '          "line": 1,\n' +
-      '          "column": 1\n' +
-      '        },\n' +
       '        "end": {\n' +
       '          "offset": 14,\n' +
       '          "line": 1,\n' +
       '          "column": 15\n' +
+      '        },\n' +
+      '        "start": {\n' +
+      '          "offset": 0,\n' +
+      '          "line": 1,\n' +
+      '          "column": 1\n' +
       '        }\n' +
       '      },\n' +
       '      "type": "rule",\n' +
