@@ -140,7 +140,7 @@ impl Node {
 
     /// Skip serializing the nodes field for leaf node types (declarations and comments)
     /// PostCSS doesn't include a nodes field on these types
-    fn should_skip_nodes(nodes: &Vec<Node>) -> bool {
+    fn should_skip_nodes(nodes: &[Node]) -> bool {
         // For now, skip if empty - we'll need a better approach
         // that checks the parent node type
         nodes.is_empty()
