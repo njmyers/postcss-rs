@@ -29,11 +29,10 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-          cache-dependency-path: packages/docs/pnpm-lock.yaml
+          cache-dependency-path: pnpm-lock.yaml
 
       - name: Install Dependencies
         run: pnpm install
-        working-directory: packages/docs
 
       - name: Build Docs
         run: pnpm build
