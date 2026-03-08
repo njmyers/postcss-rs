@@ -190,7 +190,7 @@ function renderEnum(item, level = 2) {
       const kind = v.inner.variant.kind
       let sig = v.name
       if (kind.tuple) {
-        const tys = kind.tuple.fields
+        const tys = kind.tuple
           .map(id => index[id])
           .filter(Boolean)
           .map(f => renderType(f.inner.struct_field))
@@ -252,8 +252,67 @@ function renderItem(item, level = 2) {
 
 const PAGE_KINDS = new Set(['struct', 'enum', 'function', 'constant', 'type_alias'])
 
-function generateModulePage(moduleItem, modulePath) {
+/**
+ * Returns all child modules of a module item, including those that are
+ * private but re-exported via `pub use submod::*`.
+ */
+function getChildModules(moduleItem) {
   const mod = moduleItem.inner.module
+  const direct = mod.items
+    .map(id => index[id])
+    .filter(Boolean)
+    .filter(i => i.crate_id === 0 && i.inner.module)
+
+  // Also follow glob re-exports: `pub use submod::*`
+  const viaUse = mod.items
+    .map(id => index[id])
+    .filter(Boolean)
+    .filter(i => i.inner.use?.is_glob && i.inner.use?.id != null)
+    .map(i => index[i.inner.use.id])
+    .filter(Boolean)
+    .filter(i => i.crate_id === 0 && i.inner.module)
+
+  // Deduplicate by id
+  const seen = new Set(direct.map(i => i.id))
+  for (const m of viaUse) {
+    if (!seen.has(m.id)) { seen.add(m.id); direct.push(m) }
+  }
+  return direct
+}
+
+/**
+ * Returns all public content items (structs, enums, fns, etc.) in a module,
+ * including items re-exported via glob uses.
+ */
+function getModuleItems(moduleItem) {
+  const mod = moduleItem.inner.module
+  const direct = mod.items
+    .map(id => index[id])
+    .filter(Boolean)
+    .filter(i => i.crate_id === 0 && i.visibility === 'public' && PAGE_KINDS.has(Object.keys(i.inner)[0]))
+
+  // Follow glob re-exports to pull in items from private submodules
+  const viaUse = mod.items
+    .map(id => index[id])
+    .filter(Boolean)
+    .filter(i => i.inner.use?.is_glob && i.inner.use?.id != null)
+    .flatMap(use_item => {
+      const target = index[use_item.inner.use.id]
+      if (!target?.inner.module) return []
+      return target.inner.module.items
+        .map(id => index[id])
+        .filter(Boolean)
+        .filter(i => i.crate_id === 0 && i.visibility === 'public' && PAGE_KINDS.has(Object.keys(i.inner)[0]))
+    })
+
+  const seen = new Set(direct.map(i => i.id))
+  for (const item of viaUse) {
+    if (!seen.has(item.id)) { seen.add(item.id); direct.push(item) }
+  }
+  return direct
+}
+
+function generateModulePage(moduleItem, modulePath) {
   const title = modulePath.length === 0
     ? crateName
     : modulePath[modulePath.length - 1]
@@ -262,21 +321,13 @@ function generateModulePage(moduleItem, modulePath) {
   md += `# ${title}\n\n`
   md += docs(moduleItem)
 
-  const children = mod.items
-    .map(id => index[id])
-    .filter(Boolean)
-    .filter(i => i.crate_id === 0 && i.visibility === 'public')
-
-  const submodules = children.filter(i => i.inner.module)
-  const items = children.filter(i => PAGE_KINDS.has(Object.keys(i.inner)[0]))
+  const submodules = getChildModules(moduleItem)
+  const items = getModuleItems(moduleItem)
 
   if (submodules.length > 0) {
     md += `## Modules\n\n`
     for (const m of submodules) {
-      const link = modulePath.length === 0
-        ? `./${m.name}`
-        : `./${m.name}`
-      md += `- [\`${m.name}\`](${link}) — ${m.docs ? m.docs.split('\n')[0].trim() : ''}\n`
+      md += `- [\`${m.name}\`](./${m.name}) — ${m.docs ? m.docs.split('\n')[0].trim() : ''}\n`
     }
     md += '\n'
   }
@@ -291,13 +342,7 @@ function generateModulePage(moduleItem, modulePath) {
 // ─── Sidebar entry generator ─────────────────────────────────────────────────
 
 function buildSidebar(moduleItem, basePath, modulePath = []) {
-  const mod = moduleItem.inner.module
-  const children = mod.items
-    .map(id => index[id])
-    .filter(Boolean)
-    .filter(i => i.crate_id === 0 && i.visibility === 'public')
-
-  const submodules = children.filter(i => i.inner.module)
+  const submodules = getChildModules(moduleItem)
 
   const link = modulePath.length === 0
     ? `${basePath}/`
@@ -317,7 +362,6 @@ function buildSidebar(moduleItem, basePath, modulePath = []) {
 // ─── File writer ─────────────────────────────────────────────────────────────
 
 function writeModule(moduleItem, dir, modulePath = []) {
-  const mod = moduleItem.inner.module
   const pageContent = generateModulePage(moduleItem, modulePath)
 
   const filePath = modulePath.length === 0
@@ -327,12 +371,7 @@ function writeModule(moduleItem, dir, modulePath = []) {
   mkdirSync(dirname(filePath), { recursive: true })
   writeFileSync(filePath, pageContent)
 
-  const children = mod.items
-    .map(id => index[id])
-    .filter(Boolean)
-    .filter(i => i.crate_id === 0 && i.visibility === 'public' && i.inner.module)
-
-  for (const child of children) {
+  for (const child of getChildModules(moduleItem)) {
     writeModule(child, dir, [...modulePath, child.name])
   }
 }
