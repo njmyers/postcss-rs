@@ -1,4 +1,6 @@
 import { defineConfig } from 'vitepress'
+import parserSidebar from '../rust-api/parser-sidebar.json'
+import tokenizerSidebar from '../rust-api/tokenizer-sidebar.json'
 
 export default defineConfig({
   title: 'postcss-rs',
@@ -8,26 +10,39 @@ export default defineConfig({
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'API', link: '/api/' },
-      { text: 'Rust API', link: '/rustdoc/postcss_rs_parser/index.html', target: '_blank' },
+      { text: 'Rust API', link: '/rust-api/parser/' },
       { text: 'GitHub', link: 'https://github.com/njmyers/postcss-rs' }
     ],
 
-    sidebar: [
-      {
-        text: 'Guide',
-        items: [
-          { text: 'Why postcss-rs?', link: '/guide/why' },
-          { text: 'Getting Started', link: '/guide/getting-started' },
-          { text: 'Architecture', link: '/guide/architecture' }
-        ]
-      },
-      {
-        text: 'API Reference',
-        items: [
-          { text: 'Overview', link: '/api/' }
-        ]
-      }
-    ],
+    sidebar: {
+      '/guide/': [
+        {
+          text: 'Guide',
+          items: [
+            { text: 'Why postcss-rs?', link: '/guide/why' },
+            { text: 'Getting Started', link: '/guide/getting-started' },
+            { text: 'Architecture', link: '/guide/architecture' }
+          ]
+        }
+      ],
+      '/api/': [
+        {
+          text: 'API Reference',
+          items: [
+            { text: 'Overview', link: '/api/' }
+          ]
+        }
+      ],
+      '/rust-api/': [
+        {
+          text: 'Rust API',
+          items: [
+            parserSidebar,
+            tokenizerSidebar
+          ]
+        }
+      ]
+    },
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/njmyers/postcss-rs' }
