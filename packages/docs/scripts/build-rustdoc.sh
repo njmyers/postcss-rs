@@ -7,7 +7,7 @@ DEST="$DOCS_DIR/public/rustdoc"
 
 cd "$REPO_ROOT"
 
-RUSTDOCFLAGS="--extend-css $DOCS_DIR/scripts/rustdoc-custom.css" \
+RUSTDOCFLAGS="--extend-css $DOCS_DIR/rustdoc-custom.css" \
   cargo doc --no-deps -p postcss-rs-parser -p postcss-rs-tokenizer
 
 rm -rf "$DEST"
