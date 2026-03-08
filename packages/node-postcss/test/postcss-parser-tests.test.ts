@@ -3,8 +3,14 @@ import { Input } from 'postcss';
 import { parse } from '../src/index';
 
 function assignInput(node: any, input: Input): void {
-  if (node.source) node.source.input = input;
-  if (node.nodes) for (const child of node.nodes) assignInput(child, input);
+  if (node.source) {
+    node.source.input = input;
+  }
+  if (node.nodes) {
+    for (const child of node.nodes) {
+      assignInput(child, input);
+    }
+  }
 }
 
 describe('postcss-parser-tests', () => {
