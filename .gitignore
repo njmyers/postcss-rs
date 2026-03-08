@@ -16,5 +16,5 @@ output/*
 left.rs
 right.rs
 
-packages/docs/.vitepress/public/rustdoc/
+packages/docs/public/rustdoc/
 packages/docs/.vitepress/cache/

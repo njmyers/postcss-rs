@@ -2,7 +2,7 @@
 set -e
 
 REPO_ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
-DEST="$(cd "$(dirname "$0")/.." && pwd)/.vitepress/public/rustdoc"
+DEST="$(cd "$(dirname "$0")/.." && pwd)/public/rustdoc"
 
 cd "$REPO_ROOT"
 cargo doc --no-deps -p postcss-rs-parser -p postcss-rs-tokenizer
