@@ -3,8 +3,8 @@ on: [push]
 name: Test
 
 jobs:
-  test:
-    name: Test Code
+  test-rust:
+    name: Test Rust
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -13,5 +13,39 @@ jobs:
       - name: Setup Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - name: Test Code
+      - name: Test Rust
         run: cargo test --all-features
+
+  test-node:
+    name: Test Node
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v5
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build native addon (node)
+        working-directory: packages/node
+        run: pnpm run build
+
+      - name: Build native addon (node-postcss)
+        working-directory: packages/node-postcss
+        run: pnpm run build
+
+      - name: Test Node
+        run: pnpm test
