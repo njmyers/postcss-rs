@@ -28,12 +28,7 @@ PostCSS Root
 
 ## Rust Parser
 
-The core parser lives in `packages/parser/src/` and is built as a Rust library (`cdylib`). It produces a PostCSS-compatible JSON representation of the CSS AST with:
-
-- **Conditional field serialization** — `nodes` is omitted on leaf nodes (declarations, comments) to match PostCSS's output
-- **`inputId` on all nodes** — source objects include `inputId: 0` matching PostCSS's format
-- **`inputs` array on root** — the root node carries an `inputs` array with CSS source and file path
-- **Correct `source.end`** — root node inherits its end position from the last child
+The core parser lives in `packages/parser/src/` and is built as a Rust library (`cdylib`). It produces a PostCSS-compatible JSON representation of the CSS AST,
 
 ## NAPI Bindings
 
