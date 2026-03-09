@@ -103,12 +103,12 @@ impl Default for Data {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Deserialize, Clone)]
 pub struct Node {
     pub raws: Raws,
     #[serde(flatten)]
     pub data: Data,
-    #[serde(default, skip_serializing_if = "Node::should_skip_nodes")]
+    #[serde(default)]
     pub nodes: Vec<Node>,
     pub source: Sources,
 }
@@ -131,12 +131,72 @@ impl Node {
         return serde_json::to_string(&self);
     }
 
-    /// Skip serializing the nodes field for leaf node types (declarations and comments)
-    /// PostCSS doesn't include a nodes field on these types
-    fn should_skip_nodes(nodes: &[Node]) -> bool {
-        // For now, skip if empty - we'll need a better approach
-        // that checks the parent node type
-        nodes.is_empty()
+}
+
+impl Serialize for Node {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use serde::ser::SerializeMap;
+
+        // Determine if we should include the nodes field based on node type
+        let include_nodes = match &self.data {
+            Data::Root | Data::Rule(_) => true,
+            Data::AtRule(at_rule) => at_rule.has_block, // AtRule with block has nodes field
+            Data::Declaration(_) | Data::Comment(_) => false,
+        };
+
+        // Calculate the number of fields to serialize
+        let mut len = 3; // raws, data (flattened), source
+        if include_nodes {
+            len += 1; // nodes
+        }
+
+        let mut map = serializer.serialize_map(Some(len))?;
+
+        // Serialize raws
+        map.serialize_entry("raws", &self.raws)?;
+
+        // Serialize data fields (flattened)
+        match &self.data {
+            Data::Root => {
+                map.serialize_entry("type", "root")?;
+            }
+            Data::Rule(rule) => {
+                map.serialize_entry("type", "rule")?;
+                map.serialize_entry("selector", &rule.selector)?;
+            }
+            Data::Declaration(decl) => {
+                map.serialize_entry("type", "decl")?;
+                map.serialize_entry("prop", &decl.prop)?;
+                if let Some(important) = &decl.important {
+                    map.serialize_entry("important", important)?;
+                }
+                map.serialize_entry("value", &decl.value)?;
+            }
+            Data::AtRule(at_rule) => {
+                map.serialize_entry("type", "atrule")?;
+                map.serialize_entry("name", &at_rule.name)?;
+                // params should always be included, use empty string if None
+                let params = at_rule.params.as_deref().unwrap_or("");
+                map.serialize_entry("params", params)?;
+            }
+            Data::Comment(comment) => {
+                map.serialize_entry("type", "comment")?;
+                map.serialize_entry("text", &comment.text)?;
+            }
+        }
+
+        // Serialize nodes field only for container types
+        if include_nodes {
+            map.serialize_entry("nodes", &self.nodes)?;
+        }
+
+        // Serialize source
+        map.serialize_entry("source", &self.source)?;
+
+        map.end()
     }
 }
 
