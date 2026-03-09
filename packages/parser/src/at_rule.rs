@@ -105,8 +105,10 @@ impl AtRule {
         // Build the node based on terminator
         let node = match terminator.ended_by {
             Some(Kind::CloseCurly) => {
-                // Parent will handle setting end position
+                // Nested at-rule terminated by parent's closing brace
+                // These are statement at-rules and should not have a nodes field
                 builder.node.raws.after.push_tokens(&spaces);
+                builder.node.nodes = None;
                 builder.node
             }
             Some(Kind::OpenCurly) => {

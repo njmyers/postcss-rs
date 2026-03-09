@@ -272,15 +272,6 @@ impl NodeBuilder {
         self.node.raws.after.push_tokens(after);
         self.node.source.end = Some(Source::create_end(tokenizer));
 
-        // For statement at-rules (no block), clear nodes field
-        if matches!(self.node.data, Data::AtRule(_)) {
-            if let Some(nodes) = &self.node.nodes {
-                if nodes.is_empty() {
-                    self.node.nodes = None;
-                }
-            }
-        }
-
         return self.node;
     }
 
@@ -293,15 +284,6 @@ impl NodeBuilder {
             line: tokenizer.lines.value(),
             column: cmp::max(1, tokenizer.lines.offset(column_index)),
         });
-
-        // For statement at-rules (no block), clear nodes field
-        if matches!(self.node.data, Data::AtRule(_)) {
-            if let Some(nodes) = &self.node.nodes {
-                if nodes.is_empty() {
-                    self.node.nodes = None;
-                }
-            }
-        }
 
         return self.node;
     }
