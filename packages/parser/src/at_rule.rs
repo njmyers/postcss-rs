@@ -97,14 +97,26 @@ impl AtRule {
 
         builder.at_rule(at_rule);
 
-        // Build the node based on terminator
-        // Don't set end when terminated by CloseCurly (will be handled by parent if needed)
+        // Build the node based on terminator.
+        // nodes encodes the three states:
+        //   Some([...]) = block at-rule (has { })
+        //   None        = statement at-rule (no block)
         let node = match terminator.ended_by {
+            Some(Kind::OpenCurly) => {
+                // Block at-rule: keep nodes as Some(vec![...children...])
+                builder.build(tokenizer, &spaces)
+            }
             Some(Kind::CloseCurly) => {
+                // Statement at-rule terminated by parent's closing brace
+                builder.node.nodes = None;
                 builder.node.raws.after.push_tokens(&spaces);
                 builder.node
             }
-            _ => builder.build(tokenizer, &spaces),
+            _ => {
+                // Statement at-rule (semicolon, EOF, etc.)
+                builder.node.nodes = None;
+                builder.build(tokenizer, &spaces)
+            }
         };
 
         return (node, terminator);

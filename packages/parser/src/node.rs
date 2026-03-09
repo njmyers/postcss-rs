@@ -112,8 +112,8 @@ pub struct Node {
     pub raws: Raws,
     #[serde(flatten)]
     pub data: Data,
-    #[serde(default, skip_serializing_if = "Node::should_skip_nodes")]
-    pub nodes: Vec<Node>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nodes: Option<Vec<Node>>,
     pub source: Sources,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub inputs: Option<Vec<Input>>,
@@ -121,9 +121,16 @@ pub struct Node {
 
 impl Node {
     pub fn new(data: Data) -> Node {
+        // Container nodes (Root, Rule) always have a block; leaf nodes never do.
+        // AtRule is determined later during parsing.
+        let nodes = match &data {
+            Data::Root | Data::Rule(_) => Some(Vec::new()),
+            Data::AtRule(_) | Data::Declaration(_) | Data::Comment(_) => None,
+        };
+
         return Node {
             raws: Raws::default(),
-            nodes: Vec::new(),
+            nodes,
             source: Sources::default(),
             data,
             inputs: None,
@@ -131,19 +138,30 @@ impl Node {
     }
 
     pub fn append(&mut self, child: Node) {
-        self.nodes.push(child);
+        if let Some(ref mut nodes) = self.nodes {
+            nodes.push(child);
+        }
     }
 
     pub fn to_json(&self) -> serde_json::Result<String> {
         return serde_json::to_string(&self);
     }
 
-    /// Skip serializing the nodes field for leaf node types (declarations and comments)
-    /// PostCSS doesn't include a nodes field on these types
-    fn should_skip_nodes(nodes: &[Node]) -> bool {
-        // For now, skip if empty - we'll need a better approach
-        // that checks the parent node type
-        nodes.is_empty()
+    /// Returns true if this node has a block (`{ }`), even if empty.
+    /// Covers root, rules, and block at-rules.
+    pub fn has_block(&self) -> bool {
+        return self.nodes.is_some();
+    }
+
+    /// Returns true if this node is a statement without a block.
+    /// Covers declarations, comments, and statement at-rules.
+    pub fn is_statement(&self) -> bool {
+        return self.nodes.is_none();
+    }
+
+    /// Returns a slice of child nodes, or `None` if this node has no block.
+    pub fn children(&self) -> Option<&[Node]> {
+        return self.nodes.as_deref();
     }
 }
 
@@ -160,6 +178,9 @@ pub struct NodeBuilder {
 impl NodeBuilder {
     pub fn new(token: &Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Self {
         let mut node = Node::default();
+        // Start with Some(vec![]) so children can be collected before the final type is known.
+        // Leaf-node builder methods (declaration, comment) will clear this to None.
+        node.nodes = Some(Vec::new());
         node.source.start = Source::create_start(token, tokenizer);
         node.raws.before.push_tokens(spaces);
 
@@ -179,14 +200,16 @@ impl NodeBuilder {
     }
 
     pub fn declaration(&mut self, data: Declaration) {
+        self.node.nodes = None;
         self.node.data = Data::Declaration(data);
     }
 
     pub fn comment(&mut self) {
-        // Comment data is already set by comment_text
+        self.node.nodes = None;
     }
 
     pub fn comment_text(&mut self, text: &str) {
+        self.node.nodes = None;
         self.node.data = Data::Comment(CommentData {
             text: String::from(text),
         });
@@ -269,19 +292,21 @@ impl NodeBuilder {
 
     pub fn build_root(mut self, after: &[Token]) -> Node {
         let semicolon = self.node.raws.semicolon.unwrap_or(false);
+        let has_children = self.node.nodes.as_ref().map_or(false, |n| !n.is_empty());
 
-        if !self.node.nodes.is_empty() && !semicolon {
+        if has_children && !semicolon {
             self.node.raws.semicolon.set_false();
         }
 
         self.node.raws.after.push_tokens(after);
 
         // Set source.end from last child node if not already set (PostCSS compatibility)
-        if self.node.source.end.is_none() && !self.node.nodes.is_empty() {
-            if let Some(last_node) = self.node.nodes.last() {
-                if let Some(ref end) = last_node.source.end {
-                    self.node.source.end = Some(end.clone());
-                }
+        if self.node.source.end.is_none() {
+            let last_end = self.node.nodes.as_ref()
+                .and_then(|n| n.last())
+                .and_then(|n| n.source.end.clone());
+            if let Some(end) = last_end {
+                self.node.source.end = Some(end);
             }
         }
 
@@ -319,7 +344,10 @@ mod tests {
                 Token::StructEnd,
                 Token::Str("type"),
                 Token::Str("root"),
-                // nodes field is skipped when empty (PostCSS compatibility)
+                Token::Str("nodes"),
+                Token::Some,
+                Token::Seq { len: Some(0) },
+                Token::SeqEnd,
                 Token::Str("source"),
                 Token::Struct {
                     name: "Sources",

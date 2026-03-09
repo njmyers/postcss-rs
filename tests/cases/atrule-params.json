@@ -13,6 +13,7 @@
         "after": ""
       },
       "type": "atrule",
+      "nodes": [],
       "name": "-moz-document",
       "params": "url(\"example.com/{\")",
       "source": {

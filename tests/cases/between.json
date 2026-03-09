@@ -12,6 +12,7 @@
         "after": ""
       },
       "type": "rule",
+      "nodes": [],
       "selector": "a",
       "source": {
         "start": {

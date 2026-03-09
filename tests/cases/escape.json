@@ -125,6 +125,7 @@
         "after": " "
       },
       "type": "rule",
+      "nodes": [],
       "selector": ":not([foo=\")\"])",
       "source": {
         "start": {
@@ -147,6 +148,7 @@
         "after": " "
       },
       "type": "rule",
+      "nodes": [],
       "selector": ":not(div/*)*/)",
       "source": {
         "start": {
@@ -169,6 +171,7 @@
         "after": " "
       },
       "type": "rule",
+      "nodes": [],
       "selector": ":not(:nth-child(2n of [foo=\")\"]))",
       "source": {
         "start": {
@@ -191,6 +194,7 @@
         "after": " "
       },
       "type": "rule",
+      "nodes": [],
       "selector": "[foo=\\\"]",
       "source": {
         "start": {
@@ -213,6 +217,7 @@
         "after": " "
       },
       "type": "rule",
+      "nodes": [],
       "selector": "[foo=\\{]",
       "source": {
         "start": {
@@ -235,6 +240,7 @@
         "after": " "
       },
       "type": "rule",
+      "nodes": [],
       "selector": "[foo=\\(]",
       "source": {
         "start": {
@@ -257,6 +263,7 @@
         "after": " "
       },
       "type": "rule",
+      "nodes": [],
       "selector": "[foo=yes\\:\\(it\\'s\\ work\\)]",
       "source": {
         "start": {
@@ -279,6 +286,7 @@
         "after": " "
       },
       "type": "rule",
+      "nodes": [],
       "selector": "\\@noat",
       "source": {
         "start": {
@@ -348,6 +356,7 @@
         "after": " "
       },
       "type": "rule",
+      "nodes": [],
       "selector": "[attr=;]",
       "source": {
         "start": {

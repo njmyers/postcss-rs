@@ -16,6 +16,7 @@
         }
       },
       "type": "rule",
+      "nodes": [],
       "selector": "a b",
       "source": {
         "start": {
@@ -38,6 +39,7 @@
         "after": ""
       },
       "type": "rule",
+      "nodes": [],
       "selector": "a/* test */b",
       "source": {
         "start": {

@@ -60,8 +60,10 @@ impl Stringifier {
         }
 
         // Visit all children
-        for child in &node.nodes {
-            self.visit_node(child);
+        if let Some(children) = node.children() {
+            for child in children {
+                self.visit_node(child);
+            }
         }
 
         // Add after whitespace
@@ -97,8 +99,10 @@ impl Stringifier {
         self.indent_level += 1;
 
         // Visit children (declarations, nested rules, etc.)
-        for child in &node.nodes {
-            self.visit_node(child);
+        if let Some(children) = node.children() {
+            for child in children {
+                self.visit_node(child);
+            }
         }
 
         // Decrease indent
@@ -178,9 +182,8 @@ impl Stringifier {
             }
         }
 
-        // Check if this at-rule has children
-        if !node.nodes.is_empty() {
-            // Has children - use block syntax
+        // has_block() encodes whether this is a block at-rule ({ }) or a statement
+        if node.has_block() {
             if let Some(between) = node.raws.between.as_ref() {
                 self.output.push_str(between);
             }
@@ -188,9 +191,10 @@ impl Stringifier {
 
             self.indent_level += 1;
 
-            // Visit children
-            for child in &node.nodes {
-                self.visit_node(child);
+            if let Some(children) = node.children() {
+                for child in children {
+                    self.visit_node(child);
+                }
             }
 
             self.indent_level -= 1;
@@ -200,7 +204,7 @@ impl Stringifier {
             }
             self.output.push('}');
         } else {
-            // No children - use statement syntax with semicolon
+            // Statement at-rule - emit semicolon
             match node.raws.semicolon.as_ref() {
                 Some(true) => self.output.push(';'),
                 Some(false) => {} // No semicolon
