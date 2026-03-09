@@ -116,6 +116,8 @@ impl AtRule {
             _ => {
                 // At-rule without body: use tracked params_end_pos or fallback to current position
                 builder.node.raws.after.push_tokens(&spaces);
+                // Statement at-rules should not have a nodes field
+                builder.node.nodes = None;
                 if let Some(end_pos) = params_end_pos {
                     builder.node.source.end = Some(end_pos);
                 } else {

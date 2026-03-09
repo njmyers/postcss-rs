@@ -60,8 +60,10 @@ impl Stringifier {
         }
 
         // Visit all children
-        for child in &node.nodes {
-            self.visit_node(child);
+        if let Some(nodes) = &node.nodes {
+            for child in nodes {
+                self.visit_node(child);
+            }
         }
 
         // Add after whitespace
@@ -97,8 +99,10 @@ impl Stringifier {
         self.indent_level += 1;
 
         // Visit children (declarations, nested rules, etc.)
-        for child in &node.nodes {
-            self.visit_node(child);
+        if let Some(nodes) = &node.nodes {
+            for child in nodes {
+                self.visit_node(child);
+            }
         }
 
         // Decrease indent
@@ -179,26 +183,38 @@ impl Stringifier {
         }
 
         // Check if this at-rule has children
-        if !node.nodes.is_empty() {
-            // Has children - use block syntax
-            if let Some(between) = node.raws.between.as_ref() {
-                self.output.push_str(between);
+        if let Some(nodes) = &node.nodes {
+            if !nodes.is_empty() {
+                // Has children - use block syntax
+                if let Some(between) = node.raws.between.as_ref() {
+                    self.output.push_str(between);
+                }
+                self.output.push('{');
+
+                self.indent_level += 1;
+
+                // Visit children
+                for child in nodes {
+                    self.visit_node(child);
+                }
+
+                self.indent_level -= 1;
+
+                if let Some(after) = node.raws.after.as_ref() {
+                    self.output.push_str(after);
+                }
+                self.output.push('}');
+            } else {
+                // Empty block - still render with braces
+                if let Some(between) = node.raws.between.as_ref() {
+                    self.output.push_str(between);
+                }
+                self.output.push('{');
+                if let Some(after) = node.raws.after.as_ref() {
+                    self.output.push_str(after);
+                }
+                self.output.push('}');
             }
-            self.output.push('{');
-
-            self.indent_level += 1;
-
-            // Visit children
-            for child in &node.nodes {
-                self.visit_node(child);
-            }
-
-            self.indent_level -= 1;
-
-            if let Some(after) = node.raws.after.as_ref() {
-                self.output.push_str(after);
-            }
-            self.output.push('}');
         } else {
             // No children - use statement syntax with semicolon
             match node.raws.semicolon.as_ref() {
