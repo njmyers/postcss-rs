@@ -377,18 +377,20 @@ mod tests {
         return (ast, expected_ast);
     }
 
-    fn parse_and_read(css_path: &str, json_path: &str) -> (Node, Node) {
+    fn parse_and_read(css_path: &str, json_path: &str) -> (serde_json::Value, serde_json::Value) {
         let css = read(css_path);
         let mut parser = Parser::new(&css).unwrap();
         let ast = parser.parse();
         let json = serde_json::to_string_pretty(&ast).unwrap();
 
-        let expected_ast: Node = serde_json::from_str(&read(json_path)).unwrap();
-
         #[cfg(feature = "output")]
         write(json_path, &json);
 
-        return (ast, expected_ast);
+        // Parse both as JSON Values for field-order-independent comparison
+        let actual_value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let expected_value: serde_json::Value = serde_json::from_str(&read(json_path)).unwrap();
+
+        return (actual_value, expected_value);
     }
 
     fn read(file: &str) -> String {

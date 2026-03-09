@@ -15,18 +15,6 @@
       },
       "type": "atrule",
       "name": "supports",
-      "source": {
-        "end": {
-          "column": 1,
-          "line": 10,
-          "offset": 170
-        },
-        "start": {
-          "column": 1,
-          "line": 1,
-          "offset": 0
-        }
-      },
       "params": "(animation-name: test)",
       "nodes": [
         {
@@ -39,18 +27,6 @@
           },
           "type": "atrule",
           "name": "-custom-keyframe",
-          "source": {
-            "end": {
-              "column": 5,
-              "line": 9,
-              "offset": 168
-            },
-            "start": {
-              "column": 5,
-              "line": 2,
-              "offset": 39
-            }
-          },
           "params": "anim",
           "nodes": [
             {
@@ -61,6 +37,7 @@
                 "after": "\n        "
               },
               "type": "rule",
+              "selector": "from",
               "nodes": [
                 {
                   "raws": {
@@ -68,35 +45,34 @@
                     "between": ": "
                   },
                   "type": "decl",
-                  "source": {
-                    "end": {
-                      "column": 25,
-                      "line": 4,
-                      "offset": 104
-                    },
-                    "start": {
-                      "column": 13,
-                      "line": 4,
-                      "offset": 91
-                    }
-                  },
                   "prop": "color",
-                  "value": "black"
+                  "value": "black",
+                  "source": {
+                    "start": {
+                      "offset": 91,
+                      "line": 4,
+                      "column": 13
+                    },
+                    "end": {
+                      "offset": 104,
+                      "line": 4,
+                      "column": 25
+                    }
+                  }
                 }
               ],
               "source": {
-                "end": {
-                  "column": 9,
-                  "line": 5,
-                  "offset": 114
-                },
                 "start": {
-                  "column": 9,
+                  "offset": 72,
                   "line": 3,
-                  "offset": 72
+                  "column": 9
+                },
+                "end": {
+                  "offset": 114,
+                  "line": 5,
+                  "column": 9
                 }
-              },
-              "selector": "from"
+              }
             },
             {
               "raws": {
@@ -106,6 +82,7 @@
                 "after": "\n        "
               },
               "type": "rule",
+              "selector": "to",
               "nodes": [
                 {
                   "raws": {
@@ -113,39 +90,62 @@
                     "between": ": "
                   },
                   "type": "decl",
-                  "source": {
-                    "end": {
-                      "column": 24,
-                      "line": 7,
-                      "offset": 152
-                    },
-                    "start": {
-                      "column": 13,
-                      "line": 7,
-                      "offset": 140
-                    }
-                  },
                   "prop": "color",
-                  "value": "white"
+                  "value": "white",
+                  "source": {
+                    "start": {
+                      "offset": 140,
+                      "line": 7,
+                      "column": 13
+                    },
+                    "end": {
+                      "offset": 152,
+                      "line": 7,
+                      "column": 24
+                    }
+                  }
                 }
               ],
               "source": {
-                "end": {
-                  "column": 9,
-                  "line": 8,
-                  "offset": 162
-                },
                 "start": {
-                  "column": 9,
+                  "offset": 123,
                   "line": 6,
-                  "offset": 123
+                  "column": 9
+                },
+                "end": {
+                  "offset": 162,
+                  "line": 8,
+                  "column": 9
                 }
-              },
-              "selector": "to"
+              }
             }
-          ]
+          ],
+          "source": {
+            "start": {
+              "offset": 39,
+              "line": 2,
+              "column": 5
+            },
+            "end": {
+              "offset": 168,
+              "line": 9,
+              "column": 5
+            }
+          }
         }
-      ]
+      ],
+      "source": {
+        "start": {
+          "offset": 0,
+          "line": 1,
+          "column": 1
+        },
+        "end": {
+          "offset": 170,
+          "line": 10,
+          "column": 1
+        }
+      }
     },
     {
       "raws": {
@@ -157,18 +157,6 @@
       },
       "type": "atrule",
       "name": "support",
-      "source": {
-        "end": {
-          "column": 1,
-          "line": 16,
-          "offset": 257
-        },
-        "start": {
-          "column": 1,
-          "line": 12,
-          "offset": 172
-        }
-      },
       "params": "selector(:focus-visible)",
       "nodes": [
         {
@@ -179,6 +167,7 @@
             "after": "\n  "
           },
           "type": "rule",
+          "selector": "a:focus-visible",
           "nodes": [
             {
               "raws": {
@@ -186,49 +175,60 @@
                 "between": ": "
               },
               "type": "decl",
-              "source": {
-                "end": {
-                  "column": 23,
-                  "line": 14,
-                  "offset": 251
-                },
-                "start": {
-                  "column": 5,
-                  "line": 14,
-                  "offset": 232
-                }
-              },
               "prop": "background",
-              "value": "yellow"
+              "value": "yellow",
+              "source": {
+                "start": {
+                  "offset": 232,
+                  "line": 14,
+                  "column": 5
+                },
+                "end": {
+                  "offset": 251,
+                  "line": 14,
+                  "column": 23
+                }
+              }
             }
           ],
           "source": {
-            "end": {
-              "column": 3,
-              "line": 15,
-              "offset": 255
-            },
             "start": {
-              "column": 3,
+              "offset": 210,
               "line": 13,
-              "offset": 210
+              "column": 3
+            },
+            "end": {
+              "offset": 255,
+              "line": 15,
+              "column": 3
             }
-          },
-          "selector": "a:focus-visible"
+          }
         }
-      ]
+      ],
+      "source": {
+        "start": {
+          "offset": 172,
+          "line": 12,
+          "column": 1
+        },
+        "end": {
+          "offset": 257,
+          "line": 16,
+          "column": 1
+        }
+      }
     }
   ],
   "source": {
-    "end": {
-      "column": 2,
-      "line": 16,
-      "offset": 257
-    },
     "start": {
-      "column": 1,
+      "offset": 0,
       "line": 1,
-      "offset": 0
+      "column": 1
+    },
+    "end": {
+      "offset": 257,
+      "line": 16,
+      "column": 2
     }
   }
 }

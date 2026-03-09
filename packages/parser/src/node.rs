@@ -147,13 +147,7 @@ impl Serialize for Node {
             Data::Declaration(_) | Data::Comment(_) => false,
         };
 
-        // Calculate the number of fields to serialize
-        let mut len = 3; // raws, data (flattened), source
-        if include_nodes {
-            len += 1; // nodes
-        }
-
-        let mut map = serializer.serialize_map(Some(len))?;
+        let mut map = serializer.serialize_map(None)?;
 
         // Serialize raws
         map.serialize_entry("raws", &self.raws)?;
@@ -401,7 +395,10 @@ mod tests {
                 Token::StructEnd,
                 Token::Str("type"),
                 Token::Str("root"),
-                // nodes field is skipped when empty (PostCSS compatibility)
+                // Root nodes always include nodes field even when empty (PostCSS compatibility)
+                Token::Str("nodes"),
+                Token::Seq { len: Some(0) },
+                Token::SeqEnd,
                 Token::Str("source"),
                 Token::Struct {
                     name: "Sources",

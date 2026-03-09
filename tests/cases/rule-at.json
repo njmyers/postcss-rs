@@ -13,6 +13,7 @@
         "after": "\n"
       },
       "type": "rule",
+      "selector": "a",
       "nodes": [
         {
           "raws": {
@@ -20,20 +21,20 @@
             "between": ": "
           },
           "type": "decl",
-          "source": {
-            "end": {
-              "column": 16,
-              "line": 2,
-              "offset": 20
-            },
-            "start": {
-              "column": 5,
-              "line": 2,
-              "offset": 8
-            }
-          },
           "prop": "width",
-          "value": "10px"
+          "value": "10px",
+          "source": {
+            "start": {
+              "offset": 8,
+              "line": 2,
+              "column": 5
+            },
+            "end": {
+              "offset": 20,
+              "line": 2,
+              "column": 16
+            }
+          }
         },
         {
           "raws": {
@@ -41,20 +42,20 @@
             "between": ": "
           },
           "type": "decl",
-          "source": {
-            "end": {
-              "column": 21,
-              "line": 3,
-              "offset": 42
-            },
-            "start": {
-              "column": 5,
-              "line": 3,
-              "offset": 25
-            }
-          },
           "prop": "margin",
-          "value": "0 @width"
+          "value": "0 @width",
+          "source": {
+            "start": {
+              "offset": 25,
+              "line": 3,
+              "column": 5
+            },
+            "end": {
+              "offset": 42,
+              "line": 3,
+              "column": 21
+            }
+          }
         },
         {
           "raws": {
@@ -66,18 +67,6 @@
           },
           "type": "atrule",
           "name": "mixin",
-          "source": {
-            "end": {
-              "column": 5,
-              "line": 6,
-              "offset": 91
-            },
-            "start": {
-              "column": 5,
-              "line": 4,
-              "offset": 47
-            }
-          },
           "params": "mobile",
           "nodes": [
             {
@@ -86,49 +75,60 @@
                 "between": ": "
               },
               "type": "decl",
-              "source": {
-                "end": {
-                  "column": 22,
-                  "line": 5,
-                  "offset": 85
-                },
-                "start": {
-                  "column": 9,
-                  "line": 5,
-                  "offset": 71
-                }
-              },
               "prop": "height",
-              "value": "100px"
+              "value": "100px",
+              "source": {
+                "start": {
+                  "offset": 71,
+                  "line": 5,
+                  "column": 9
+                },
+                "end": {
+                  "offset": 85,
+                  "line": 5,
+                  "column": 22
+                }
+              }
             }
-          ]
+          ],
+          "source": {
+            "start": {
+              "offset": 47,
+              "line": 4,
+              "column": 5
+            },
+            "end": {
+              "offset": 91,
+              "line": 6,
+              "column": 5
+            }
+          }
         }
       ],
       "source": {
-        "end": {
-          "column": 1,
-          "line": 7,
-          "offset": 93
-        },
         "start": {
-          "column": 1,
+          "offset": 0,
           "line": 1,
-          "offset": 0
+          "column": 1
+        },
+        "end": {
+          "offset": 93,
+          "line": 7,
+          "column": 1
         }
-      },
-      "selector": "a"
+      }
     }
   ],
   "source": {
-    "end": {
-      "column": 2,
-      "line": 7,
-      "offset": 93
-    },
     "start": {
-      "column": 1,
+      "offset": 0,
       "line": 1,
-      "offset": 0
+      "column": 1
+    },
+    "end": {
+      "offset": 93,
+      "line": 7,
+      "column": 2
     }
   }
 }
