@@ -141,13 +141,11 @@ impl Node {
     }
 
     /// Returns true if this node has a block (`{ }`), even if empty.
-    /// Covers root, rules, and block at-rules.
     pub fn has_block(&self) -> bool {
         return self.nodes.is_some();
     }
 
     /// Returns true if this node is a statement without a block.
-    /// Covers declarations, comments, and statement at-rules.
     pub fn is_statement(&self) -> bool {
         return self.nodes.is_none();
     }
@@ -310,7 +308,7 @@ impl NodeBuilder {
 
         // PostCSS: root.raws.after is empty when there are child nodes,
         // but contains trailing whitespace when root is empty
-        if has_nodes {
+        if has_children {
             self.node.raws.after.push_str("");
         } else {
             self.node.raws.after.push_tokens(after);
