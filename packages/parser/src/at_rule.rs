@@ -17,8 +17,6 @@ use postcss_rs_tokenizer::Tokens;
 pub struct AtRule {
     pub name: String,
     pub params: Option<String>,
-    #[serde(skip)]
-    pub has_block: bool,
 }
 
 impl AtRule {
@@ -42,9 +40,6 @@ impl AtRule {
 
         // Parse body if params were terminated by OpenCurly
         if let Some(Kind::OpenCurly) = terminator.ended_by {
-            // Mark that this at-rule has a block
-            at_rule.has_block = true;
-
             // Consume the OpenCurly and parse the body
             tokenizer.next();
             builder.ensure_empty_after();
@@ -136,7 +131,6 @@ impl AtRule {
         return Self {
             name: String::from(name),
             params: None,
-            has_block: false,
         };
     }
 
