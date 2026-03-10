@@ -305,7 +305,7 @@ impl NodeBuilder {
 
     pub fn build_root(mut self, tokenizer: &Tokenizer, after: &[Token]) -> Node {
         let semicolon = self.node.raws.semicolon.unwrap_or(false);
-        let has_nodes = self.node.nodes.as_ref().map_or(false, |n| !n.is_empty());
+        let has_nodes = self.node.nodes.as_ref().is_some_and(|n| !n.is_empty());
 
         if has_nodes && !semicolon {
             self.node.raws.semicolon.set_false();
