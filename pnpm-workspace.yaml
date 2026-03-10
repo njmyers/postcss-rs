@@ -1,6 +1,4 @@
 packages:
-  - "packages/node"
   - "packages/node-postcss"
-  - "packages/node-tokenizer"
   - "tests"
   - "packages/docs"

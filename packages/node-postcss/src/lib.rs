@@ -3,14 +3,12 @@
 
 use napi_derive::napi;
 
-// use napi::*;
 use napi::Env;
 use napi::Result;
 use napi::Task;
 
-use postcss_rs_parser::{Parser, Node};
-
-mod stringify;
+use postcss_rs_parser::{Node, Parser};
+use postcss_rs_stringifier::{Stringifier, StringifyOptions};
 
 /// A JavaScript compatible and PostCSS compatible AST.
 #[napi(js_name = "Node")]
@@ -75,7 +73,7 @@ pub mod postcss {
             .map_err(|e| napi::Error::from_reason(format!("Failed to parse JSON: {}", e)))?;
 
         // Stringify the node
-        let css = stringify::Stringifier::stringify(&node, stringify::StringifyOptions::default());
+        let css = Stringifier::stringify(&node, StringifyOptions::default());
 
         return Ok(css);
     }

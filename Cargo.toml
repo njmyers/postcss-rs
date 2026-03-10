@@ -2,9 +2,8 @@
 members = [
   "packages/parser",
   "packages/tokenizer",
-  "packages/node-tokenizer",
+  "packages/stringifier",
   "packages/node-postcss",
-  "packages/node",
 ]
 resolver = "2"
 
