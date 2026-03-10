@@ -12,33 +12,32 @@
         "after": ""
       },
       "type": "rule",
-      "selector": ":fullscreen",
+      "nodes": [],
       "source": {
-        "start": {
-          "offset": 0,
-          "line": 1,
-          "column": 1
-        },
         "end": {
-          "offset": 13,
+          "column": 14,
           "line": 1,
-          "column": 14
+          "offset": 14
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 1,
+          "offset": 0
+        }
+      },
+      "selector": ":fullscreen"
     }
   ],
   "source": {
-    "start": {
-      "offset": 0,
-      "line": 1,
-      "column": 1
-    },
     "end": {
-      "offset": 13,
+      "column": 15,
       "line": 1,
-      "column": 14
+      "offset": 14
     },
-    "inputId": 0
+    "start": {
+      "column": 1,
+      "line": 1,
+      "offset": 0
+    }
   }
 }

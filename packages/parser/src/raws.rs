@@ -26,6 +26,8 @@ pub struct Raws {
     pub right: Raw,
     #[serde(default, skip_serializing_if = "Raw::skip")]
     pub important: Raw,
+    #[serde(default, rename = "ownSemicolon", skip_serializing_if = "Raw::skip")]
+    pub own_semicolon: Raw,
     #[serde(default, skip_serializing_if = "ValueRaw::skip")]
     pub value: ValueRaw,
     #[serde(default, skip_serializing_if = "SelectorRaw::skip")]
@@ -43,6 +45,7 @@ impl Default for Raws {
             left: Raw::default(),
             right: Raw::default(),
             important: Raw::default(),
+            own_semicolon: Raw::default(),
             value: ValueRaw::default(),
             selector: SelectorRaw::default(),
         };

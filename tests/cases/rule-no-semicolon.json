@@ -13,7 +13,6 @@
         "after": ""
       },
       "type": "rule",
-      "selector": "a",
       "nodes": [
         {
           "raws": {
@@ -21,49 +20,47 @@
             "between": ":"
           },
           "type": "decl",
-          "prop": "color",
-          "value": "black",
           "source": {
-            "start": {
-              "offset": 2,
-              "line": 1,
-              "column": 3
-            },
             "end": {
-              "offset": 12,
+              "column": 13,
               "line": 1,
-              "column": 13
+              "offset": 13
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 3,
+              "line": 1,
+              "offset": 2
+            }
+          },
+          "prop": "color",
+          "value": "black"
         }
       ],
       "source": {
-        "start": {
-          "offset": 0,
-          "line": 1,
-          "column": 1
-        },
         "end": {
-          "offset": 13,
+          "column": 14,
           "line": 1,
-          "column": 14
+          "offset": 14
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 1,
+          "offset": 0
+        }
+      },
+      "selector": "a"
     }
   ],
   "source": {
-    "start": {
-      "offset": 0,
-      "line": 1,
-      "column": 1
-    },
     "end": {
-      "offset": 13,
+      "column": 15,
       "line": 1,
-      "column": 14
+      "offset": 14
     },
-    "inputId": 0
+    "start": {
+      "column": 1,
+      "line": 1,
+      "offset": 0
+    }
   }
 }

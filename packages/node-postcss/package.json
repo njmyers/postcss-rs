@@ -2,8 +2,46 @@
   "name": "@postcss-rs/node-postcss",
   "version": "0.1.0",
   "description": "High-performance PostCSS-compatible parser powered by Rust",
+  "keywords": [
+    "postcss",
+    "css",
+    "parser",
+    "rust",
+    "performance",
+    "napi"
+  ],
+  "license": "MIT",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "scripts": {
+    "artifacts": "napi artifacts",
+    "build": "pnpm run build:ts && napi build --platform --release",
+    "build:debug": "napi build --platform",
+    "build:ts": "tsc",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "napi prepublish -t npm",
+    "test": "vitest run",
+    "version": "napi version"
+  },
+  "dependencies": {
+    "@node-rs/helper": "^1.2.1",
+    "postcss": "^8.4.0"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^1.2.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.0.0",
+    "autoprefixer": "^10.0.0",
+    "postcss-parser-tests": "workspace:^",
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
+  },
+  "peerDependencies": {
+    "postcss": "^8.0.0"
+  },
+  "engines": {
+    "node": ">= 10"
+  },
   "napi": {
     "name": "postcss",
     "triples": {
@@ -13,41 +51,5 @@
         "aarch64-pc-windows-msvc"
       ]
     }
-  },
-  "license": "MIT",
-  "keywords": [
-    "postcss",
-    "css",
-    "parser",
-    "rust",
-    "performance",
-    "napi"
-  ],
-  "dependencies": {
-    "@node-rs/helper": "^1.2.1",
-    "postcss": "^8.4.0"
-  },
-  "devDependencies": {
-    "@napi-rs/cli": "^1.2.1",
-    "@types/node": "^20.0.0",
-    "vitest": "^3.0.0",
-    "typescript": "^5.0.0",
-    "autoprefixer": "^10.0.0"
-  },
-  "peerDependencies": {
-    "postcss": "^8.0.0"
-  },
-  "engines": {
-    "node": ">= 10"
-  },
-  "scripts": {
-    "artifacts": "napi artifacts",
-    "build": "pnpm run build:ts && napi build --platform --release",
-    "build:ts": "tsc",
-    "build:debug": "napi build --platform",
-    "prepublishOnly": "napi prepublish -t npm",
-    "version": "napi version",
-    "test": "vitest run",
-    "clean": "rm -rf dist"
   }
 }

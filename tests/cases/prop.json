@@ -13,7 +13,6 @@
         "after": "\n"
       },
       "type": "rule",
-      "selector": "a",
       "nodes": [
         {
           "raws": {
@@ -21,21 +20,20 @@
             "between": " : "
           },
           "type": "decl",
-          "prop": "color",
-          "value": "black",
           "source": {
-            "start": {
-              "offset": 8,
-              "line": 2,
-              "column": 5
-            },
             "end": {
-              "offset": 22,
+              "column": 19,
               "line": 2,
-              "column": 19
+              "offset": 23
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 5,
+              "line": 2,
+              "offset": 8
+            }
+          },
+          "prop": "color",
+          "value": "black"
         },
         {
           "raws": {
@@ -43,21 +41,20 @@
             "between": ": "
           },
           "type": "decl",
-          "prop": "background",
-          "value": "white",
           "source": {
-            "start": {
-              "offset": 28,
-              "line": 3,
-              "column": 5
-            },
             "end": {
-              "offset": 46,
+              "column": 23,
               "line": 3,
-              "column": 23
+              "offset": 47
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 5,
+              "line": 3,
+              "offset": 28
+            }
+          },
+          "prop": "background",
+          "value": "white"
         },
         {
           "raws": {
@@ -65,21 +62,20 @@
             "between": "/**/: "
           },
           "type": "decl",
-          "prop": "font-size",
-          "value": "big",
           "source": {
-            "start": {
-              "offset": 52,
-              "line": 4,
-              "column": 5
-            },
             "end": {
-              "offset": 70,
+              "column": 23,
               "line": 4,
-              "column": 23
+              "offset": 71
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 5,
+              "line": 4,
+              "offset": 52
+            }
+          },
+          "prop": "font-size",
+          "value": "big"
         },
         {
           "raws": {
@@ -87,49 +83,47 @@
             "between": ": "
           },
           "type": "decl",
-          "prop": "$(var)-size",
-          "value": "100%",
           "source": {
-            "start": {
-              "offset": 76,
-              "line": 5,
-              "column": 5
-            },
             "end": {
-              "offset": 93,
+              "column": 22,
               "line": 5,
-              "column": 22
+              "offset": 94
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 5,
+              "line": 5,
+              "offset": 76
+            }
+          },
+          "prop": "$(var)-size",
+          "value": "100%"
         }
       ],
       "source": {
-        "start": {
-          "offset": 0,
-          "line": 1,
-          "column": 1
-        },
         "end": {
-          "offset": 95,
+          "column": 1,
           "line": 6,
-          "column": 1
+          "offset": 96
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 1,
+          "offset": 0
+        }
+      },
+      "selector": "a"
     }
   ],
   "source": {
-    "start": {
-      "offset": 0,
-      "line": 1,
-      "column": 1
-    },
     "end": {
-      "offset": 95,
+      "column": 2,
       "line": 6,
-      "column": 1
+      "offset": 96
     },
-    "inputId": 0
+    "start": {
+      "column": 1,
+      "line": 1,
+      "offset": 0
+    }
   }
 }

@@ -39,21 +39,20 @@ impl Source {
     }
 
     pub fn create_end(tokenizer: &Tokenizer) -> Self {
+        // PostCSS end positions: offset points AFTER last char, column points AT last char
+        // PostCSS uses 1-indexed columns (minimum is 1)
+        let column_index = if tokenizer.index > 0 {
+            tokenizer.index - 1
+        } else {
+            0
+        };
+        let raw_column = tokenizer.lines.offset(column_index);
         return Self {
-            offset: tokenizer.index - 1,
+            offset: tokenizer.index,  // Points after the last character
             line: tokenizer.lines.value(),
-            column: tokenizer.lines.offset(tokenizer.index - 1),
+            column: cmp::max(1, raw_column),  // Ensure column is at least 1
         };
     }
-}
-
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
-pub struct Input {
-    #[serde(rename = "hasBOM")]
-    pub has_bom: bool,
-    pub css: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub file: Option<String>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
@@ -61,8 +60,6 @@ pub struct Sources {
     pub start: Source,
     #[serde(skip_serializing_if = "Sources::skip")]
     pub end: Option<Source>,
-    #[serde(rename = "inputId", default)]
-    pub input_id: usize,
 }
 
 impl Sources {
@@ -76,7 +73,6 @@ impl Default for Sources {
         return Self {
             start: Source::default(),
             end: None,
-            input_id: 0,
         };
     }
 }
@@ -112,38 +108,37 @@ pub struct Node {
     pub raws: Raws,
     #[serde(flatten)]
     pub data: Data,
-    #[serde(default, skip_serializing_if = "Node::should_skip_nodes")]
-    pub nodes: Vec<Node>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub nodes: Option<Vec<Node>>,
     pub source: Sources,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub inputs: Option<Vec<Input>>,
 }
 
 impl Node {
     pub fn new(data: Data) -> Node {
+        // Container nodes (Root, Rule) start with Some(vec![])
+        // Leaf nodes (Declaration, Comment) have None
+        // AtRule: will be determined later based on whether it has children
+        let nodes = match &data {
+            Data::Root | Data::Rule(_) => Some(Vec::new()),
+            Data::AtRule(_) | Data::Declaration(_) | Data::Comment(_) => None,
+        };
+
         return Node {
             raws: Raws::default(),
-            nodes: Vec::new(),
+            nodes,
             source: Sources::default(),
             data,
-            inputs: None,
         };
     }
 
     pub fn append(&mut self, child: Node) {
-        self.nodes.push(child);
+        if let Some(ref mut nodes) = self.nodes {
+            nodes.push(child);
+        }
     }
 
     pub fn to_json(&self) -> serde_json::Result<String> {
         return serde_json::to_string(&self);
-    }
-
-    /// Skip serializing the nodes field for leaf node types (declarations and comments)
-    /// PostCSS doesn't include a nodes field on these types
-    fn should_skip_nodes(nodes: &[Node]) -> bool {
-        // For now, skip if empty - we'll need a better approach
-        // that checks the parent node type
-        nodes.is_empty()
     }
 }
 
@@ -160,6 +155,9 @@ pub struct NodeBuilder {
 impl NodeBuilder {
     pub fn new(token: &Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Self {
         let mut node = Node::default();
+        // Start with Some(vec![]) to collect children before type is finalized
+        // Will be set to None later if the final type is Declaration or Comment
+        node.nodes = Some(Vec::new());
         node.source.start = Source::create_start(token, tokenizer);
         node.raws.before.push_tokens(spaces);
 
@@ -171,22 +169,32 @@ impl NodeBuilder {
     }
 
     pub fn at_rule(&mut self, at_rule: AtRule) {
+        // Keep nodes as-is - at-rules with blocks (even empty) keep Some(vec![])
+        // Only statement at-rules will have nodes set to None elsewhere
         self.node.data = Data::AtRule(at_rule);
     }
 
     pub fn rule(&mut self, rule: Rule) {
+        // Rules always have a nodes field - keep existing children
+        // nodes should already be Some(vec![...]) from new()
         self.node.data = Data::Rule(rule);
     }
 
     pub fn declaration(&mut self, data: Declaration) {
+        // Declarations never have a nodes field
+        self.node.nodes = None;
         self.node.data = Data::Declaration(data);
     }
 
     pub fn comment(&mut self) {
         // Comment data is already set by comment_text
+        // Comments never have a nodes field
+        self.node.nodes = None;
     }
 
     pub fn comment_text(&mut self, text: &str) {
+        // Comments never have a nodes field
+        self.node.nodes = None;
         self.node.data = Data::Comment(CommentData {
             text: String::from(text),
         });
@@ -267,21 +275,53 @@ impl NodeBuilder {
         return self.node;
     }
 
-    pub fn build_root(mut self, after: &[Token]) -> Node {
-        let semicolon = self.node.raws.semicolon.unwrap_or(false);
+    pub fn build_with_end_index(mut self, tokenizer: &Tokenizer, after: &[Token], end_index: usize) -> Node {
+        self.node.raws.after.push_tokens(after);
+        // Create end position at the specified index instead of current tokenizer position
+        let column_index = if end_index > 0 { end_index - 1 } else { 0 };
+        self.node.source.end = Some(Source {
+            offset: end_index,
+            line: tokenizer.lines.value(),
+            column: cmp::max(1, tokenizer.lines.offset(column_index)),
+        });
 
-        if !self.node.nodes.is_empty() && !semicolon {
+        return self.node;
+    }
+
+    pub fn build_root(mut self, tokenizer: &Tokenizer, after: &[Token]) -> Node {
+        let semicolon = self.node.raws.semicolon.unwrap_or(false);
+        let has_nodes = self.node.nodes.as_ref().map_or(false, |n| !n.is_empty());
+
+        if has_nodes && !semicolon {
             self.node.raws.semicolon.set_false();
         }
 
-        self.node.raws.after.push_tokens(after);
+        // PostCSS: root.raws.after is empty when there are child nodes,
+        // but contains trailing whitespace when root is empty
+        if has_nodes {
+            self.node.raws.after.push_str("");
+        } else {
+            self.node.raws.after.push_tokens(after);
+        }
 
-        // Set source.end from last child node if not already set (PostCSS compatibility)
-        if self.node.source.end.is_none() && !self.node.nodes.is_empty() {
-            if let Some(last_node) = self.node.nodes.last() {
-                if let Some(ref end) = last_node.source.end {
-                    self.node.source.end = Some(end.clone());
+        // Set source.end based on last child node
+        if self.node.source.end.is_none() {
+            if has_nodes {
+                // Non-empty root: extend one position past the last child's end
+                if let Some(nodes) = &self.node.nodes {
+                    if let Some(last_node) = nodes.last() {
+                        if let Some(ref child_end) = last_node.source.end {
+                            self.node.source.end = Some(Source {
+                                offset: child_end.offset,
+                                line: child_end.line,
+                                column: child_end.column + 1,
+                            });
+                        }
+                    }
                 }
+            } else {
+                // Empty root: use current tokenizer position (end of file)
+                self.node.source.end = Some(Source::create_end(tokenizer));
             }
         }
 
@@ -319,11 +359,15 @@ mod tests {
                 Token::StructEnd,
                 Token::Str("type"),
                 Token::Str("root"),
-                // nodes field is skipped when empty (PostCSS compatibility)
+                // nodes field (Some(vec![]))
+                Token::Str("nodes"),
+                Token::Some,
+                Token::Seq { len: Some(0) },
+                Token::SeqEnd,
                 Token::Str("source"),
                 Token::Struct {
                     name: "Sources",
-                    len: 2,
+                    len: 1,
                 },
                 Token::Str("start"),
                 Token::Struct {
@@ -337,8 +381,6 @@ mod tests {
                 Token::Str("column"),
                 Token::U64(1),
                 Token::StructEnd,
-                Token::Str("inputId"),
-                Token::U64(0),
                 Token::StructEnd,
                 Token::MapEnd,
             ],

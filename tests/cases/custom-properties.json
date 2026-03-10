@@ -13,7 +13,6 @@
         "after": "\n"
       },
       "type": "rule",
-      "selector": ":root",
       "nodes": [
         {
           "raws": {
@@ -21,21 +20,20 @@
             "between": ": "
           },
           "type": "decl",
+          "source": {
+            "end": {
+              "column": 14,
+              "line": 2,
+              "offset": 22
+            },
+            "start": {
+              "column": 3,
+              "line": 2,
+              "offset": 10
+            }
+          },
           "prop": "--number",
-          "value": "1",
-          "source": {
-            "start": {
-              "offset": 10,
-              "line": 2,
-              "column": 3
-            },
-            "end": {
-              "offset": 21,
-              "line": 2,
-              "column": 14
-            },
-            "inputId": 0
-          }
+          "value": "1"
         },
         {
           "raws": {
@@ -43,21 +41,20 @@
             "between": ": "
           },
           "type": "decl",
+          "source": {
+            "end": {
+              "column": 16,
+              "line": 3,
+              "offset": 39
+            },
+            "start": {
+              "column": 3,
+              "line": 3,
+              "offset": 25
+            }
+          },
           "prop": "--unit",
-          "value": "100vw",
-          "source": {
-            "start": {
-              "offset": 25,
-              "line": 3,
-              "column": 3
-            },
-            "end": {
-              "offset": 38,
-              "line": 3,
-              "column": 16
-            },
-            "inputId": 0
-          }
+          "value": "100vw"
         },
         {
           "raws": {
@@ -65,21 +62,20 @@
             "between": ": "
           },
           "type": "decl",
+          "source": {
+            "end": {
+              "column": 16,
+              "line": 4,
+              "offset": 56
+            },
+            "start": {
+              "column": 3,
+              "line": 4,
+              "offset": 42
+            }
+          },
           "prop": "--color",
-          "value": "#06c",
-          "source": {
-            "start": {
-              "offset": 42,
-              "line": 4,
-              "column": 3
-            },
-            "end": {
-              "offset": 55,
-              "line": 4,
-              "column": 16
-            },
-            "inputId": 0
-          }
+          "value": "#06c"
         },
         {
           "raws": {
@@ -87,21 +83,20 @@
             "between": ": "
           },
           "type": "decl",
+          "source": {
+            "end": {
+              "column": 26,
+              "line": 6,
+              "offset": 84
+            },
+            "start": {
+              "column": 3,
+              "line": 6,
+              "offset": 60
+            }
+          },
           "prop": "--function",
-          "value": "calc(1 + 1)",
-          "source": {
-            "start": {
-              "offset": 60,
-              "line": 6,
-              "column": 3
-            },
-            "end": {
-              "offset": 83,
-              "line": 6,
-              "column": 26
-            },
-            "inputId": 0
-          }
+          "value": "calc(1 + 1)"
         },
         {
           "raws": {
@@ -109,21 +104,20 @@
             "between": ": "
           },
           "type": "decl",
+          "source": {
+            "end": {
+              "column": 26,
+              "line": 7,
+              "offset": 111
+            },
+            "start": {
+              "column": 3,
+              "line": 7,
+              "offset": 87
+            }
+          },
           "prop": "--variable",
-          "value": "var(--unit)",
-          "source": {
-            "start": {
-              "offset": 87,
-              "line": 7,
-              "column": 3
-            },
-            "end": {
-              "offset": 110,
-              "line": 7,
-              "column": 26
-            },
-            "inputId": 0
-          }
+          "value": "var(--unit)"
         },
         {
           "raws": {
@@ -131,21 +125,20 @@
             "between": ": "
           },
           "type": "decl",
-          "prop": "--string",
-          "value": "'single quoted string'",
           "source": {
-            "start": {
-              "offset": 115,
-              "line": 9,
-              "column": 3
-            },
             "end": {
-              "offset": 147,
+              "column": 35,
               "line": 9,
-              "column": 35
+              "offset": 148
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 3,
+              "line": 9,
+              "offset": 115
+            }
+          },
+          "prop": "--string",
+          "value": "'single quoted string'"
         },
         {
           "raws": {
@@ -153,21 +146,20 @@
             "between": ": "
           },
           "type": "decl",
-          "prop": "--string",
-          "value": "\"double quoted string\"",
           "source": {
-            "start": {
-              "offset": 151,
-              "line": 10,
-              "column": 3
-            },
             "end": {
-              "offset": 183,
+              "column": 35,
               "line": 10,
-              "column": 35
+              "offset": 184
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 3,
+              "line": 10,
+              "offset": 151
+            }
+          },
+          "prop": "--string",
+          "value": "\"double quoted string\""
         },
         {
           "raws": {
@@ -175,21 +167,20 @@
             "between": ": "
           },
           "type": "decl",
+          "source": {
+            "end": {
+              "column": 28,
+              "line": 12,
+              "offset": 214
+            },
+            "start": {
+              "column": 3,
+              "line": 12,
+              "offset": 188
+            }
+          },
           "prop": "--square-block",
-          "value": "[1, 2, 3]",
-          "source": {
-            "start": {
-              "offset": 188,
-              "line": 12,
-              "column": 3
-            },
-            "end": {
-              "offset": 213,
-              "line": 12,
-              "column": 28
-            },
-            "inputId": 0
-          }
+          "value": "[1, 2, 3]"
         },
         {
           "raws": {
@@ -197,21 +188,20 @@
             "between": ": "
           },
           "type": "decl",
-          "prop": "--round-block",
-          "value": "(1, 2, 3)",
           "source": {
-            "start": {
-              "offset": 217,
-              "line": 13,
-              "column": 3
-            },
             "end": {
-              "offset": 241,
+              "column": 27,
               "line": 13,
-              "column": 27
+              "offset": 242
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 3,
+              "line": 13,
+              "offset": 217
+            }
+          },
+          "prop": "--round-block",
+          "value": "(1, 2, 3)"
         },
         {
           "raws": {
@@ -219,47 +209,45 @@
             "between": ":"
           },
           "type": "decl",
-          "prop": "--empty1",
-          "value": " ",
           "source": {
-            "start": {
-              "offset": 246,
-              "line": 15,
-              "column": 3
-            },
             "end": {
-              "offset": 256,
+              "column": 13,
               "line": 15,
-              "column": 13
+              "offset": 257
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 3,
+              "line": 15,
+              "offset": 246
+            }
+          },
+          "prop": "--empty1",
+          "value": " "
         },
         {
           "raws": {
             "before": "\n  ",
             "between": ":",
             "value": {
-              "value": " ",
-              "raw": " /**/"
+              "raw": " /**/",
+              "value": " "
             }
           },
           "type": "decl",
-          "prop": "--empty2",
-          "value": " ",
           "source": {
-            "start": {
-              "offset": 260,
-              "line": 16,
-              "column": 3
-            },
             "end": {
-              "offset": 274,
+              "column": 17,
               "line": 16,
-              "column": 17
+              "offset": 275
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 3,
+              "line": 16,
+              "offset": 260
+            }
+          },
+          "prop": "--empty2",
+          "value": " "
         },
         {
           "raws": {
@@ -268,22 +256,21 @@
             "important": "!important"
           },
           "type": "decl",
+          "source": {
+            "end": {
+              "column": 23,
+              "line": 17,
+              "offset": 299
+            },
+            "start": {
+              "column": 3,
+              "line": 17,
+              "offset": 278
+            }
+          },
           "prop": "--empty3",
           "important": true,
-          "value": " ",
-          "source": {
-            "start": {
-              "offset": 278,
-              "line": 17,
-              "column": 3
-            },
-            "end": {
-              "offset": 298,
-              "line": 17,
-              "column": 23
-            },
-            "inputId": 0
-          }
+          "value": " "
         },
         {
           "raws": {
@@ -291,53 +278,51 @@
             "between": ":",
             "important": "!important",
             "value": {
-              "value": " ",
-              "raw": "/**/ "
+              "raw": "/**/ ",
+              "value": " "
             }
           },
           "type": "decl",
+          "source": {
+            "end": {
+              "column": 27,
+              "line": 18,
+              "offset": 327
+            },
+            "start": {
+              "column": 3,
+              "line": 18,
+              "offset": 302
+            }
+          },
           "prop": "--empty4",
           "important": true,
-          "value": " ",
-          "source": {
-            "start": {
-              "offset": 302,
-              "line": 18,
-              "column": 3
-            },
-            "end": {
-              "offset": 326,
-              "line": 18,
-              "column": 27
-            },
-            "inputId": 0
-          }
+          "value": " "
         },
         {
           "raws": {
             "before": "\n  ",
             "between": ":",
             "value": {
-              "value": " ",
-              "raw": "/**/ "
+              "raw": "/**/ ",
+              "value": " "
             }
           },
           "type": "decl",
-          "prop": "--empty5",
-          "value": " ",
           "source": {
-            "start": {
-              "offset": 330,
-              "line": 19,
-              "column": 3
-            },
             "end": {
-              "offset": 344,
+              "column": 17,
               "line": 19,
-              "column": 17
+              "offset": 345
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 3,
+              "line": 19,
+              "offset": 330
+            }
+          },
+          "prop": "--empty5",
+          "value": " "
         },
         {
           "raws": {
@@ -345,21 +330,20 @@
             "between": ": "
           },
           "type": "decl",
+          "source": {
+            "end": {
+              "column": 29,
+              "line": 21,
+              "offset": 376
+            },
+            "start": {
+              "column": 3,
+              "line": 21,
+              "offset": 349
+            }
+          },
           "prop": "--bracket-block",
-          "value": "{1, 2, 3}",
-          "source": {
-            "start": {
-              "offset": 349,
-              "line": 21,
-              "column": 3
-            },
-            "end": {
-              "offset": 375,
-              "line": 21,
-              "column": 29
-            },
-            "inputId": 0
-          }
+          "value": "{1, 2, 3}"
         },
         {
           "raws": {
@@ -367,21 +351,20 @@
             "between": ": "
           },
           "type": "decl",
+          "source": {
+            "end": {
+              "column": 44,
+              "line": 22,
+              "offset": 421
+            },
+            "start": {
+              "column": 3,
+              "line": 22,
+              "offset": 379
+            }
+          },
           "prop": "--JSON",
-          "value": "[1, \"2\", {\"three\": {\"a\":1}}, [4]]",
-          "source": {
-            "start": {
-              "offset": 379,
-              "line": 22,
-              "column": 3
-            },
-            "end": {
-              "offset": 420,
-              "line": 22,
-              "column": 44
-            },
-            "inputId": 0
-          }
+          "value": "[1, \"2\", {\"three\": {\"a\":1}}, [4]]"
         },
         {
           "raws": {
@@ -389,36 +372,35 @@
             "between": ": "
           },
           "type": "decl",
-          "prop": "--javascript",
-          "value": "function(rule) { console.log(rule) }",
           "source": {
-            "start": {
-              "offset": 424,
-              "line": 23,
-              "column": 3
-            },
             "end": {
-              "offset": 474,
+              "column": 53,
               "line": 23,
-              "column": 53
+              "offset": 475
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 3,
+              "line": 23,
+              "offset": 424
+            }
+          },
+          "prop": "--javascript",
+          "value": "function(rule) { console.log(rule) }"
         }
       ],
       "source": {
-        "start": {
-          "offset": 0,
-          "line": 1,
-          "column": 1
-        },
         "end": {
-          "offset": 476,
+          "column": 1,
           "line": 24,
-          "column": 1
+          "offset": 477
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 1,
+          "offset": 0
+        }
+      },
+      "selector": ":root"
     },
     {
       "raws": {
@@ -428,7 +410,6 @@
         "after": ""
       },
       "type": "rule",
-      "selector": ":root",
       "nodes": [
         {
           "raws": {
@@ -436,36 +417,35 @@
             "between": ":"
           },
           "type": "decl",
-          "prop": "--a",
-          "value": "1",
           "source": {
-            "start": {
-              "offset": 485,
-              "line": 26,
-              "column": 7
-            },
             "end": {
-              "offset": 489,
+              "column": 11,
               "line": 26,
-              "column": 11
+              "offset": 490
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 7,
+              "line": 26,
+              "offset": 485
+            }
+          },
+          "prop": "--a",
+          "value": "1"
         }
       ],
       "source": {
-        "start": {
-          "offset": 479,
-          "line": 26,
-          "column": 1
-        },
         "end": {
-          "offset": 490,
+          "column": 12,
           "line": 26,
-          "column": 12
+          "offset": 491
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 26,
+          "offset": 479
+        }
+      },
+      "selector": ":root"
     },
     {
       "raws": {
@@ -475,48 +455,46 @@
         "after": ""
       },
       "type": "rule",
-      "selector": ".semicolon-less",
       "nodes": [
         {
           "raws": {
             "before": "",
             "between": ":",
             "value": {
-              "value": " ",
-              "raw": "/**/ "
+              "raw": "/**/ ",
+              "value": " "
             }
           },
           "type": "decl",
-          "prop": "--empty-end",
-          "value": " ",
           "source": {
-            "start": {
-              "offset": 510,
-              "line": 28,
-              "column": 18
-            },
             "end": {
-              "offset": 525,
+              "column": 33,
               "line": 28,
-              "column": 33
+              "offset": 526
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 18,
+              "line": 28,
+              "offset": 510
+            }
+          },
+          "prop": "--empty-end",
+          "value": " "
         }
       ],
       "source": {
-        "start": {
-          "offset": 493,
-          "line": 28,
-          "column": 1
-        },
         "end": {
-          "offset": 527,
+          "column": 35,
           "line": 28,
-          "column": 35
+          "offset": 528
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 28,
+          "offset": 493
+        }
+      },
+      "selector": ".semicolon-less"
     },
     {
       "raws": {
@@ -526,7 +504,6 @@
         "after": ""
       },
       "type": "rule",
-      "selector": ".empty",
       "nodes": [
         {
           "raws": {
@@ -534,49 +511,47 @@
             "between": ":"
           },
           "type": "decl",
-          "prop": "--a",
-          "value": " ",
           "source": {
-            "start": {
-              "offset": 537,
-              "line": 30,
-              "column": 8
-            },
             "end": {
-              "offset": 540,
+              "column": 11,
               "line": 30,
-              "column": 11
+              "offset": 541
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 8,
+              "line": 30,
+              "offset": 537
+            }
+          },
+          "prop": "--a",
+          "value": " "
         }
       ],
       "source": {
-        "start": {
-          "offset": 530,
-          "line": 30,
-          "column": 1
-        },
         "end": {
-          "offset": 542,
+          "column": 13,
           "line": 30,
-          "column": 13
+          "offset": 543
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 30,
+          "offset": 530
+        }
+      },
+      "selector": ".empty"
     }
   ],
   "source": {
-    "start": {
-      "offset": 0,
-      "line": 1,
-      "column": 1
-    },
     "end": {
-      "offset": 542,
+      "column": 14,
       "line": 30,
-      "column": 13
+      "offset": 543
     },
-    "inputId": 0
+    "start": {
+      "column": 1,
+      "line": 1,
+      "offset": 0
+    }
   }
 }
