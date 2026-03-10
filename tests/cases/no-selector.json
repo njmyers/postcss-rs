@@ -13,7 +13,6 @@
       },
       "type": "rule",
       "nodes": [],
-      "selector": "",
       "source": {
         "end": {
           "column": 2,

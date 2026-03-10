@@ -13,7 +13,6 @@
       },
       "type": "rule",
       "nodes": [],
-      "selector": ":fullscreen",
       "source": {
         "end": {
           "column": 14,

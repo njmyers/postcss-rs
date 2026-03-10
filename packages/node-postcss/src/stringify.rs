@@ -60,8 +60,8 @@ impl Stringifier {
         }
 
         // Visit all children
-        if let Some(children) = node.children() {
-            for child in children {
+        if let Some(nodes) = &node.nodes {
+            for child in nodes {
                 self.visit_node(child);
             }
         }
@@ -99,8 +99,8 @@ impl Stringifier {
         self.indent_level += 1;
 
         // Visit children (declarations, nested rules, etc.)
-        if let Some(children) = node.children() {
-            for child in children {
+        if let Some(nodes) = &node.nodes {
+            for child in nodes {
                 self.visit_node(child);
             }
         }
@@ -182,29 +182,41 @@ impl Stringifier {
             }
         }
 
-        // has_block() encodes whether this is a block at-rule ({ }) or a statement
-        if node.has_block() {
-            if let Some(between) = node.raws.between.as_ref() {
-                self.output.push_str(between);
-            }
-            self.output.push('{');
+        // Check if this at-rule has children
+        if let Some(nodes) = &node.nodes {
+            if !nodes.is_empty() {
+                // Has children - use block syntax
+                if let Some(between) = node.raws.between.as_ref() {
+                    self.output.push_str(between);
+                }
+                self.output.push('{');
 
-            self.indent_level += 1;
+                self.indent_level += 1;
 
-            if let Some(children) = node.children() {
-                for child in children {
+                // Visit children
+                for child in nodes {
                     self.visit_node(child);
                 }
-            }
 
-            self.indent_level -= 1;
+                self.indent_level -= 1;
 
-            if let Some(after) = node.raws.after.as_ref() {
-                self.output.push_str(after);
+                if let Some(after) = node.raws.after.as_ref() {
+                    self.output.push_str(after);
+                }
+                self.output.push('}');
+            } else {
+                // Empty block - still render with braces
+                if let Some(between) = node.raws.between.as_ref() {
+                    self.output.push_str(between);
+                }
+                self.output.push('{');
+                if let Some(after) = node.raws.after.as_ref() {
+                    self.output.push_str(after);
+                }
+                self.output.push('}');
             }
-            self.output.push('}');
         } else {
-            // Statement at-rule - emit semicolon
+            // No children - use statement syntax with semicolon
             match node.raws.semicolon.as_ref() {
                 Some(true) => self.output.push(';'),
                 Some(false) => {} // No semicolon

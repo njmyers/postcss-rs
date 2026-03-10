@@ -17,6 +17,8 @@ use postcss_rs_tokenizer::Tokens;
 pub struct AtRule {
     pub name: String,
     pub params: Option<String>,
+    #[serde(skip)]
+    pub has_block: bool,
 }
 
 impl AtRule {
@@ -40,6 +42,9 @@ impl AtRule {
 
         // Parse body if params were terminated by OpenCurly
         if let Some(Kind::OpenCurly) = terminator.ended_by {
+            // Mark that this at-rule has a block
+            at_rule.has_block = true;
+
             // Consume the OpenCurly and parse the body
             tokenizer.next();
             builder.ensure_empty_after();
@@ -97,10 +102,7 @@ impl AtRule {
 
         builder.at_rule(at_rule);
 
-        // Build the node based on terminator.
-        // nodes encodes the three states:
-        //   Some([...]) = block at-rule (has { })
-        //   None        = statement at-rule (no block)
+        // Build the node based on terminator
         let node = match terminator.ended_by {
             Some(Kind::CloseCurly) => {
                 // Nested at-rule terminated by parent's closing brace
@@ -134,6 +136,7 @@ impl AtRule {
         return Self {
             name: String::from(name),
             params: None,
+            has_block: false,
         };
     }
 

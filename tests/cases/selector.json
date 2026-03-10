@@ -17,7 +17,6 @@
       },
       "type": "rule",
       "nodes": [],
-      "selector": "a b",
       "source": {
         "end": {
           "column": 15,
@@ -40,7 +39,6 @@
       },
       "type": "rule",
       "nodes": [],
-      "selector": "a/* test */b",
       "source": {
         "end": {
           "column": 15,

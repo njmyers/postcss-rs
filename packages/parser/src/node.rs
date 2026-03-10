@@ -115,8 +115,9 @@ pub struct Node {
 
 impl Node {
     pub fn new(data: Data) -> Node {
-        // Container nodes (Root, Rule) always have a block; leaf nodes never do.
-        // AtRule is determined later during parsing.
+        // Container nodes (Root, Rule) start with Some(vec![])
+        // Leaf nodes (Declaration, Comment) have None
+        // AtRule: will be determined later based on whether it has children
         let nodes = match &data {
             Data::Root | Data::Rule(_) => Some(Vec::new()),
             Data::AtRule(_) | Data::Declaration(_) | Data::Comment(_) => None,
@@ -139,21 +140,6 @@ impl Node {
     pub fn to_json(&self) -> serde_json::Result<String> {
         return serde_json::to_string(&self);
     }
-
-    /// Returns true if this node has a block (`{ }`), even if empty.
-    pub fn has_block(&self) -> bool {
-        return self.nodes.is_some();
-    }
-
-    /// Returns true if this node is a statement without a block.
-    pub fn is_statement(&self) -> bool {
-        return self.nodes.is_none();
-    }
-
-    /// Returns a slice of child nodes, or `None` if this node has no block.
-    pub fn children(&self) -> Option<&[Node]> {
-        return self.nodes.as_deref();
-    }
 }
 
 impl Default for Node {
@@ -169,8 +155,8 @@ pub struct NodeBuilder {
 impl NodeBuilder {
     pub fn new(token: &Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Self {
         let mut node = Node::default();
-        // Start with Some(vec![]) so children can be collected before the final type is known.
-        // Leaf-node builder methods (declaration, comment) will clear this to None.
+        // Start with Some(vec![]) to collect children before type is finalized
+        // Will be set to None later if the final type is Declaration or Comment
         node.nodes = Some(Vec::new());
         node.source.start = Source::create_start(token, tokenizer);
         node.raws.before.push_tokens(spaces);
@@ -195,15 +181,19 @@ impl NodeBuilder {
     }
 
     pub fn declaration(&mut self, data: Declaration) {
+        // Declarations never have a nodes field
         self.node.nodes = None;
         self.node.data = Data::Declaration(data);
     }
 
     pub fn comment(&mut self) {
+        // Comment data is already set by comment_text
+        // Comments never have a nodes field
         self.node.nodes = None;
     }
 
     pub fn comment_text(&mut self, text: &str) {
+        // Comments never have a nodes field
         self.node.nodes = None;
         self.node.data = Data::Comment(CommentData {
             text: String::from(text),
@@ -300,15 +290,15 @@ impl NodeBuilder {
 
     pub fn build_root(mut self, tokenizer: &Tokenizer, after: &[Token]) -> Node {
         let semicolon = self.node.raws.semicolon.unwrap_or(false);
-        let has_children = self.node.nodes.as_ref().map_or(false, |n| !n.is_empty());
+        let has_nodes = self.node.nodes.as_ref().map_or(false, |n| !n.is_empty());
 
-        if has_children && !semicolon {
+        if has_nodes && !semicolon {
             self.node.raws.semicolon.set_false();
         }
 
         // PostCSS: root.raws.after is empty when there are child nodes,
         // but contains trailing whitespace when root is empty
-        if has_children {
+        if has_nodes {
             self.node.raws.after.push_str("");
         } else {
             self.node.raws.after.push_tokens(after);
@@ -316,7 +306,7 @@ impl NodeBuilder {
 
         // Set source.end based on last child node
         if self.node.source.end.is_none() {
-            if has_children {
+            if has_nodes {
                 // Non-empty root: extend one position past the last child's end
                 if let Some(nodes) = &self.node.nodes {
                     if let Some(last_node) = nodes.last() {
@@ -369,6 +359,7 @@ mod tests {
                 Token::StructEnd,
                 Token::Str("type"),
                 Token::Str("root"),
+                // nodes field (Some(vec![]))
                 Token::Str("nodes"),
                 Token::Some,
                 Token::Seq { len: Some(0) },

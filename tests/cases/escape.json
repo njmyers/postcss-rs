@@ -121,7 +121,6 @@
       },
       "type": "rule",
       "nodes": [],
-      "selector": ":not([foo=\")\"])",
       "source": {
         "end": {
           "column": 19,
@@ -144,7 +143,6 @@
       },
       "type": "rule",
       "nodes": [],
-      "selector": ":not(div/*)*/)",
       "source": {
         "end": {
           "column": 18,
@@ -167,7 +165,6 @@
       },
       "type": "rule",
       "nodes": [],
-      "selector": ":not(:nth-child(2n of [foo=\")\"]))",
       "source": {
         "end": {
           "column": 37,
@@ -190,7 +187,6 @@
       },
       "type": "rule",
       "nodes": [],
-      "selector": "[foo=\\\"]",
       "source": {
         "end": {
           "column": 12,
@@ -213,7 +209,6 @@
       },
       "type": "rule",
       "nodes": [],
-      "selector": "[foo=\\{]",
       "source": {
         "end": {
           "column": 12,
@@ -236,7 +231,6 @@
       },
       "type": "rule",
       "nodes": [],
-      "selector": "[foo=\\(]",
       "source": {
         "end": {
           "column": 12,
@@ -259,7 +253,6 @@
       },
       "type": "rule",
       "nodes": [],
-      "selector": "[foo=yes\\:\\(it\\'s\\ work\\)]",
       "source": {
         "end": {
           "column": 30,
@@ -282,7 +275,6 @@
       },
       "type": "rule",
       "nodes": [],
-      "selector": "\\@noat",
       "source": {
         "end": {
           "column": 10,
@@ -350,7 +342,6 @@
       },
       "type": "rule",
       "nodes": [],
-      "selector": "[attr=;]",
       "source": {
         "end": {
           "column": 12,
