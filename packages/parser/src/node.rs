@@ -140,6 +140,21 @@ impl Node {
     pub fn to_json(&self) -> serde_json::Result<String> {
         return serde_json::to_string(&self);
     }
+
+    /// Returns true if this node has a block (`{ }`), even if empty.
+    pub fn has_block(&self) -> bool {
+        return self.nodes.is_some();
+    }
+
+    /// Returns true if this node is a statement without a block.
+    pub fn is_statement(&self) -> bool {
+        return self.nodes.is_none();
+    }
+
+    /// Returns a slice of child nodes, or `None` if this node has no block.
+    pub fn children(&self) -> Option<&[Node]> {
+        return self.nodes.as_deref();
+    }
 }
 
 impl Default for Node {
