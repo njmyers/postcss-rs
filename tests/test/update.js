@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-let path = require('path')
-let fs = require('fs')
+let fs = require('node:fs')
+let path = require('node:path')
 
 let postcss = require('../../postcss/lib/postcss')
-let jsonify = require('../jsonify')
 let extra = require('../extra-cases')
+let jsonify = require('../jsonify')
 
 let cases = path.join(__dirname, '..', 'cases')
 
@@ -25,7 +25,8 @@ fs.readdirSync(cases).forEach(i => {
     process.stderr.write('\n./cases/' + name + '.css\n' + e.stack + '\n')
     process.exit(1)
   }
-  fs.writeFileSync(path.join(cases, name + '.json'), jsonify(root) + '\n')
+  let json = JSON.stringify(jsonify(root), null, 2)
+  fs.writeFileSync(path.join(cases, name + '.json'), json + '\n')
   process.stdout.write('.')
 })
 

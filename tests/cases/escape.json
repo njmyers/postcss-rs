@@ -13,7 +13,6 @@
         "after": "\n"
       },
       "type": "rule",
-      "selector": "a",
       "nodes": [
         {
           "raws": {
@@ -21,21 +20,20 @@
             "between": ": "
           },
           "type": "decl",
-          "prop": "background",
-          "value": "url(\"a).png\")",
           "source": {
-            "start": {
-              "offset": 8,
+            "end": {
+              "column": 30,
               "line": 2,
-              "column": 5
+              "offset": 34
             },
-            "end": {
-              "offset": 33,
+            "start": {
+              "column": 5,
               "line": 2,
-              "column": 30
-            },
-            "inputId": 0
-          }
+              "offset": 8
+            }
+          },
+          "prop": "background",
+          "value": "url(\"a).png\")"
         },
         {
           "raws": {
@@ -43,21 +41,20 @@
             "between": ": "
           },
           "type": "decl",
-          "prop": "background",
-          "value": "url(a;a)",
           "source": {
-            "start": {
-              "offset": 39,
+            "end": {
+              "column": 25,
               "line": 3,
-              "column": 5
+              "offset": 60
             },
-            "end": {
-              "offset": 59,
+            "start": {
+              "column": 5,
               "line": 3,
-              "column": 25
-            },
-            "inputId": 0
-          }
+              "offset": 39
+            }
+          },
+          "prop": "background",
+          "value": "url(a;a)"
         },
         {
           "raws": {
@@ -65,21 +62,20 @@
             "between": ": "
           },
           "type": "decl",
-          "prop": "background",
-          "value": "url(a/*)",
           "source": {
-            "start": {
-              "offset": 65,
-              "line": 4,
-              "column": 5
-            },
             "end": {
-              "offset": 85,
+              "column": 25,
               "line": 4,
-              "column": 25
+              "offset": 86
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 5,
+              "line": 4,
+              "offset": 65
+            }
+          },
+          "prop": "background",
+          "value": "url(a/*)"
         },
         {
           "raws": {
@@ -87,36 +83,35 @@
             "between": ": "
           },
           "type": "decl",
-          "prop": "background",
-          "value": "\\;a",
           "source": {
-            "start": {
-              "offset": 91,
-              "line": 5,
-              "column": 5
-            },
             "end": {
-              "offset": 106,
+              "column": 20,
               "line": 5,
-              "column": 20
+              "offset": 107
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 5,
+              "line": 5,
+              "offset": 91
+            }
+          },
+          "prop": "background",
+          "value": "\\;a"
         }
       ],
       "source": {
-        "start": {
-          "offset": 0,
-          "line": 1,
-          "column": 1
-        },
         "end": {
-          "offset": 108,
+          "column": 1,
           "line": 6,
-          "column": 1
+          "offset": 109
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 1,
+          "offset": 0
+        }
+      },
+      "selector": "a"
     },
     {
       "raws": {
@@ -128,18 +123,18 @@
       "nodes": [],
       "selector": ":not([foo=\")\"])",
       "source": {
-        "start": {
-          "offset": 111,
-          "line": 8,
-          "column": 1
-        },
         "end": {
-          "offset": 129,
+          "column": 19,
           "line": 8,
-          "column": 19
+          "offset": 130
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 8,
+          "offset": 111
+        }
+      },
+      "selector": ":not([foo=\")\"])"
     },
     {
       "raws": {
@@ -151,18 +146,18 @@
       "nodes": [],
       "selector": ":not(div/*)*/)",
       "source": {
-        "start": {
-          "offset": 131,
-          "line": 9,
-          "column": 1
-        },
         "end": {
-          "offset": 148,
+          "column": 18,
           "line": 9,
-          "column": 18
+          "offset": 149
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 9,
+          "offset": 131
+        }
+      },
+      "selector": ":not(div/*)*/)"
     },
     {
       "raws": {
@@ -174,18 +169,18 @@
       "nodes": [],
       "selector": ":not(:nth-child(2n of [foo=\")\"]))",
       "source": {
-        "start": {
-          "offset": 150,
-          "line": 10,
-          "column": 1
-        },
         "end": {
-          "offset": 186,
+          "column": 37,
           "line": 10,
-          "column": 37
+          "offset": 187
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 10,
+          "offset": 150
+        }
+      },
+      "selector": ":not(:nth-child(2n of [foo=\")\"]))"
     },
     {
       "raws": {
@@ -197,18 +192,18 @@
       "nodes": [],
       "selector": "[foo=\\\"]",
       "source": {
-        "start": {
-          "offset": 188,
-          "line": 11,
-          "column": 1
-        },
         "end": {
-          "offset": 199,
+          "column": 12,
           "line": 11,
-          "column": 12
+          "offset": 200
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 11,
+          "offset": 188
+        }
+      },
+      "selector": "[foo=\\\"]"
     },
     {
       "raws": {
@@ -220,18 +215,18 @@
       "nodes": [],
       "selector": "[foo=\\{]",
       "source": {
-        "start": {
-          "offset": 201,
-          "line": 12,
-          "column": 1
-        },
         "end": {
-          "offset": 212,
+          "column": 12,
           "line": 12,
-          "column": 12
+          "offset": 213
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 12,
+          "offset": 201
+        }
+      },
+      "selector": "[foo=\\{]"
     },
     {
       "raws": {
@@ -243,18 +238,18 @@
       "nodes": [],
       "selector": "[foo=\\(]",
       "source": {
-        "start": {
-          "offset": 214,
-          "line": 13,
-          "column": 1
-        },
         "end": {
-          "offset": 225,
+          "column": 12,
           "line": 13,
-          "column": 12
+          "offset": 226
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 13,
+          "offset": 214
+        }
+      },
+      "selector": "[foo=\\(]"
     },
     {
       "raws": {
@@ -266,18 +261,18 @@
       "nodes": [],
       "selector": "[foo=yes\\:\\(it\\'s\\ work\\)]",
       "source": {
-        "start": {
-          "offset": 227,
-          "line": 14,
-          "column": 1
-        },
         "end": {
-          "offset": 256,
+          "column": 30,
           "line": 14,
-          "column": 30
+          "offset": 257
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 14,
+          "offset": 227
+        }
+      },
+      "selector": "[foo=yes\\:\\(it\\'s\\ work\\)]"
     },
     {
       "raws": {
@@ -289,18 +284,18 @@
       "nodes": [],
       "selector": "\\@noat",
       "source": {
-        "start": {
-          "offset": 259,
-          "line": 16,
-          "column": 1
-        },
         "end": {
-          "offset": 268,
+          "column": 10,
           "line": 16,
-          "column": 10
+          "offset": 269
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 16,
+          "offset": 259
+        }
+      },
+      "selector": "\\@noat"
     },
     {
       "raws": {
@@ -310,7 +305,6 @@
         "after": "\n"
       },
       "type": "rule",
-      "selector": "h1\\\\",
       "nodes": [
         {
           "raws": {
@@ -318,36 +312,35 @@
             "between": ": "
           },
           "type": "decl",
-          "prop": "color",
-          "value": "\\\\",
           "source": {
-            "start": {
-              "offset": 281,
-              "line": 19,
-              "column": 5
-            },
             "end": {
-              "offset": 290,
+              "column": 14,
               "line": 19,
-              "column": 14
+              "offset": 291
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 5,
+              "line": 19,
+              "offset": 281
+            }
+          },
+          "prop": "color",
+          "value": "\\\\"
         }
       ],
       "source": {
-        "start": {
-          "offset": 271,
-          "line": 18,
-          "column": 1
-        },
         "end": {
-          "offset": 292,
+          "column": 1,
           "line": 20,
-          "column": 1
+          "offset": 293
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 18,
+          "offset": 271
+        }
+      },
+      "selector": "h1\\\\"
     },
     {
       "raws": {
@@ -359,18 +352,18 @@
       "nodes": [],
       "selector": "[attr=;]",
       "source": {
-        "start": {
-          "offset": 295,
-          "line": 22,
-          "column": 1
-        },
         "end": {
-          "offset": 306,
+          "column": 12,
           "line": 22,
-          "column": 12
+          "offset": 307
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 22,
+          "offset": 295
+        }
+      },
+      "selector": "[attr=;]"
     },
     {
       "raws": {
@@ -380,7 +373,6 @@
         "after": "\n"
       },
       "type": "rule",
-      "selector": ".prop",
       "nodes": [
         {
           "raws": {
@@ -388,49 +380,47 @@
             "between": ": "
           },
           "type": "decl",
-          "prop": "\\62 olor",
-          "value": "red",
           "source": {
-            "start": {
-              "offset": 321,
-              "line": 25,
-              "column": 5
-            },
             "end": {
-              "offset": 333,
+              "column": 17,
               "line": 25,
-              "column": 17
+              "offset": 334
             },
-            "inputId": 0
-          }
+            "start": {
+              "column": 5,
+              "line": 25,
+              "offset": 321
+            }
+          },
+          "prop": "\\62 olor",
+          "value": "red"
         }
       ],
       "source": {
-        "start": {
-          "offset": 309,
-          "line": 24,
-          "column": 1
-        },
         "end": {
-          "offset": 335,
+          "column": 1,
           "line": 26,
-          "column": 1
+          "offset": 336
         },
-        "inputId": 0
-      }
+        "start": {
+          "column": 1,
+          "line": 24,
+          "offset": 309
+        }
+      },
+      "selector": ".prop"
     }
   ],
   "source": {
-    "start": {
-      "offset": 0,
-      "line": 1,
-      "column": 1
-    },
     "end": {
-      "offset": 335,
+      "column": 2,
       "line": 26,
-      "column": 1
+      "offset": 336
     },
-    "inputId": 0
+    "start": {
+      "column": 1,
+      "line": 1,
+      "offset": 0
+    }
   }
 }

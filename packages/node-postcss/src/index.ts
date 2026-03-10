@@ -68,6 +68,40 @@ export async function parse(css: string, opts: ParseOptions = {}): Promise<Root>
   // This creates real Root, Rule, Declaration, etc. instances
   const root = postcss.default.fromJSON(rustJSON) as Root;
 
+  // PostCSS fromJSON() normalizes consecutive newlines in raws.before
+  // We need to restore the original raws from our JSON to preserve exact whitespace
+  function restoreRaws(node: any, originalNode: any) {
+    if (originalNode.raws && node.raws) {
+      // Restore raws properties that might have been normalized by PostCSS
+      Object.assign(node.raws, originalNode.raws);
+    }
+    if (originalNode.nodes && node.nodes) {
+      for (let i = 0; i < originalNode.nodes.length; i++) {
+        if (node.nodes[i] && originalNode.nodes[i]) {
+          restoreRaws(node.nodes[i], originalNode.nodes[i]);
+        }
+      }
+    }
+  }
+  restoreRaws(root, rustJSON);
+
+  // Create a PostCSS Input object for the source
+  // This is needed for plugins that access node.source.input (e.g., autoprefixer for source maps)
+  const input = new postcss.Input(css, { from: opts.from });
+
+  // Walk through all nodes and attach the input to their source
+  // This ensures plugins can access source.input.from for error reporting and source maps
+  root.walk(node => {
+    if (node.source) {
+      node.source.input = input;
+    }
+  });
+
+  // Also set it on the root itself
+  if (root.source) {
+    root.source.input = input;
+  }
+
   return root;
 }
 

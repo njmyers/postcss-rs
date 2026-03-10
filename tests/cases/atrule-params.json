@@ -16,6 +16,7 @@
       "nodes": [],
       "name": "-moz-document",
       "params": "url(\"example.com/{\")",
+      "nodes": [],
       "source": {
         "start": {
           "offset": 0,
@@ -23,11 +24,10 @@
           "column": 1
         },
         "end": {
-          "offset": 68,
+          "offset": 69,
           "line": 1,
           "column": 69
-        },
-        "inputId": 0
+        }
       }
     }
   ],
@@ -38,10 +38,9 @@
       "column": 1
     },
     "end": {
-      "offset": 68,
+      "offset": 69,
       "line": 1,
-      "column": 69
-    },
-    "inputId": 0
+      "column": 70
+    }
   }
 }

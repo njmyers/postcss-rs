@@ -2,6 +2,20 @@
 This project uses major version number for PostCSS,
 minor for adding/removing tests, and patch for fixes.
 
+## 8.9.0
+* Added more rules with semicolon cases (by @romainmenke).
+
+## 8.8
+* Update `offset` according to fix in `postcss` (by Ido Rosenthal).
+
+## 8.7
+* Moved `jsonify()` from `string` to `object`.
+* Moved `eachTest()`from `string` to `object` in `json` argument.
+* Added `source.end` for `Root` (by Romain Menke).
+
+## 8.6
+* Removed Habr.com real tests because of often 404 error.
+
 ## 8.5.2
 * Fixed ESM support.
 

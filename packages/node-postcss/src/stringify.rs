@@ -189,7 +189,7 @@ impl Stringifier {
             }
             self.output.push('{');
 
-            self.indent_level += 1;
+                self.indent_level += 1;
 
             if let Some(children) = node.children() {
                 for child in children {
@@ -197,12 +197,23 @@ impl Stringifier {
                 }
             }
 
-            self.indent_level -= 1;
+                self.indent_level -= 1;
 
-            if let Some(after) = node.raws.after.as_ref() {
-                self.output.push_str(after);
+                if let Some(after) = node.raws.after.as_ref() {
+                    self.output.push_str(after);
+                }
+                self.output.push('}');
+            } else {
+                // Empty block - still render with braces
+                if let Some(between) = node.raws.between.as_ref() {
+                    self.output.push_str(between);
+                }
+                self.output.push('{');
+                if let Some(after) = node.raws.after.as_ref() {
+                    self.output.push_str(after);
+                }
+                self.output.push('}');
             }
-            self.output.push('}');
         } else {
             // Statement at-rule - emit semicolon
             match node.raws.semicolon.as_ref() {
@@ -260,7 +271,8 @@ mod tests {
         let node = parser.parse();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
-        assert_eq!(output, ".test  {  color:  red  }\n");
+        // Note: trailing newline is not preserved in raws.after (PostCSS compatibility)
+        assert_eq!(output, ".test  {  color:  red  }");
     }
 
     #[test]

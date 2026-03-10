@@ -16,6 +16,7 @@
       "nodes": [],
       "name": "page",
       "params": "",
+      "nodes": [],
       "source": {
         "start": {
           "offset": 0,
@@ -23,11 +24,10 @@
           "column": 1
         },
         "end": {
-          "offset": 7,
+          "offset": 8,
           "line": 1,
           "column": 8
-        },
-        "inputId": 0
+        }
       }
     }
   ],
@@ -38,10 +38,9 @@
       "column": 1
     },
     "end": {
-      "offset": 7,
+      "offset": 8,
       "line": 1,
-      "column": 8
-    },
-    "inputId": 0
+      "column": 9
+    }
   }
 }

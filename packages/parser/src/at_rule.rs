@@ -17,6 +17,8 @@ use postcss_rs_tokenizer::Tokens;
 pub struct AtRule {
     pub name: String,
     pub params: Option<String>,
+    #[serde(skip)]
+    pub has_block: bool,
 }
 
 impl AtRule {
@@ -31,7 +33,7 @@ impl AtRule {
         builder.ensure_empty_after_name();
 
         let mut at_rule = Self::new(&token.value[1..]);
-        let (params, terminator) = Params::create(&mut builder, tokenizer);
+        let (params, terminator, params_end_pos) = Params::create(&mut builder, tokenizer);
 
         at_rule.set_params(params);
 
@@ -40,6 +42,9 @@ impl AtRule {
 
         // Parse body if params were terminated by OpenCurly
         if let Some(Kind::OpenCurly) = terminator.ended_by {
+            // Mark that this at-rule has a block
+            at_rule.has_block = true;
+
             // Consume the OpenCurly and parse the body
             tokenizer.next();
             builder.ensure_empty_after();
@@ -110,6 +115,13 @@ impl AtRule {
                 // Statement at-rule terminated by parent's closing brace
                 builder.node.nodes = None;
                 builder.node.raws.after.push_tokens(&spaces);
+                // Statement at-rules should not have a nodes field
+                builder.node.nodes = None;
+                if let Some(end_pos) = params_end_pos {
+                    builder.node.source.end = Some(end_pos);
+                } else {
+                    builder.node.source.end = Some(crate::Source::create_end(tokenizer));
+                }
                 builder.node
             }
             _ => {
@@ -126,6 +138,7 @@ impl AtRule {
         return Self {
             name: String::from(name),
             params: None,
+            has_block: false,
         };
     }
 
@@ -197,10 +210,12 @@ impl Params {
     fn create(
         parent: &mut NodeBuilder,
         tokenizer: &mut Tokenizer,
-    ) -> (String, StatementTerminator) {
+    ) -> (String, StatementTerminator, Option<crate::Source>) {
         let mut spaces = Tokens::new();
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
+        let mut between_buffer = Tokens::new(); // Buffer for potential 'between' spaces
+        let mut params_end_pos: Option<crate::Source> = None; // Track where params actually end
 
         // Create peekable once outside the loop for efficiency
         let mut peekable = tokenizer.clone().into_peekable();
@@ -239,27 +254,38 @@ impl Params {
                 // Handle spacing and comments before params start
                 Kind::Space | Kind::Comment if statement.is_empty() => spaces.push(token),
                 // Handle spacing and comments within params - add to statement when brackets are open
-                Kind::Space | Kind::Comment if statement.is_open() => statement.push(token),
-                // Handle spacing and comments after params - add to between
-                Kind::Space | Kind::Comment => parent.between(&token),
+                Kind::Space | Kind::Comment if statement.is_open() => {
+                    statement.push(token);
+                    params_end_pos = Some(crate::Source::create_end(tokenizer));
+                }
+                // Handle spacing and comments after params - buffer them for now
+                Kind::Space | Kind::Comment => between_buffer.push(token),
 
-                // Handle tokens that are part of params
-                Kind::Word => statement.push(token),
-                Kind::Brackets => statement.push(token),
-                Kind::Colon => statement.push(token),
-                Kind::String => statement.push(token),
-                Kind::OpenSquare => statement.push(token),
-                Kind::CloseSquare => statement.push(token),
-                Kind::OpenCurvy => statement.push(token),
-                Kind::CloseCurvy => statement.push(token),
+                // Handle tokens that are part of params - update end position after each
+                Kind::Word | Kind::Brackets | Kind::Colon | Kind::String |
+                Kind::OpenSquare | Kind::CloseSquare | Kind::OpenCurvy | Kind::CloseCurvy => {
+                    statement.push(token);
+                    params_end_pos = Some(crate::Source::create_end(tokenizer));
+                }
 
                 // Handle curly braces - they can be part of params if nested
-                Kind::OpenCurly if statement.is_open() => statement.push(token),
-                Kind::CloseCurly if statement.is_open() => statement.push(token),
+                Kind::OpenCurly if statement.is_open() => {
+                    statement.push(token);
+                    params_end_pos = Some(crate::Source::create_end(tokenizer));
+                }
+                Kind::CloseCurly if statement.is_open() => {
+                    statement.push(token);
+                    params_end_pos = Some(crate::Source::create_end(tokenizer));
+                }
 
                 // Handle semicolon - ends params only if not nested
-                Kind::Semicolon if statement.is_open() => statement.push(token),
+                Kind::Semicolon if statement.is_open() => {
+                    statement.push(token);
+                    params_end_pos = Some(crate::Source::create_end(tokenizer));
+                }
                 Kind::Semicolon => {
+                    // Semicolon ends the at-rule - track its end position
+                    params_end_pos = Some(crate::Source::create_end(tokenizer));
                     terminator.set_ended_by(Kind::Semicolon);
                     break;
                 }
@@ -271,7 +297,15 @@ impl Params {
 
         Self::spaces(&statement, parent, &spaces);
 
-        return (statement.to_string(), terminator);
+        // Only add buffered spaces to 'between' if there's a body (OpenCurly terminator)
+        if matches!(terminator.ended_by, Some(Kind::OpenCurly) | Some(Kind::CloseCurly)) {
+            for token in between_buffer.iter() {
+                parent.between(token);
+            }
+        }
+        // Otherwise, buffered spaces are trailing and should not be part of the at-rule
+
+        return (statement.to_string(), terminator, params_end_pos);
     }
 
     /// Set the spaces for the parent node builder depending on whether the param exists or not.

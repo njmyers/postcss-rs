@@ -5,11 +5,15 @@
   "type": "root",
   "nodes": [],
   "source": {
-    "start": {
-      "offset": 0,
+    "end": {
+      "column": 1,
       "line": 1,
-      "column": 1
+      "offset": 0
     },
-    "inputId": 0
+    "start": {
+      "column": 1,
+      "line": 1,
+      "offset": 0
+    }
   }
 }
