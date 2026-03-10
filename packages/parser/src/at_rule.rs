@@ -102,13 +102,19 @@ impl AtRule {
         //   Some([...]) = block at-rule (has { })
         //   None        = statement at-rule (no block)
         let node = match terminator.ended_by {
+            Some(Kind::CloseCurly) => {
+                // Nested at-rule terminated by parent's closing brace
+                // These are statement at-rules and should not have a nodes field
+                builder.node.raws.after.push_tokens(&spaces);
+                builder.node.nodes = None;
+                builder.node
+            }
             Some(Kind::OpenCurly) => {
-                // Block at-rule: keep nodes as Some(vec![...children...])
+                // At-rule with body: use current tokenizer position
                 builder.build(tokenizer, &spaces)
             }
-            Some(Kind::CloseCurly) => {
-                // Statement at-rule terminated by parent's closing brace
-                builder.node.nodes = None;
+            _ => {
+                // At-rule without body: use tracked params_end_pos or fallback to current position
                 builder.node.raws.after.push_tokens(&spaces);
                 // Statement at-rules should not have a nodes field
                 builder.node.nodes = None;
@@ -118,11 +124,6 @@ impl AtRule {
                     builder.node.source.end = Some(crate::Source::create_end(tokenizer));
                 }
                 builder.node
-            }
-            _ => {
-                // Statement at-rule (semicolon, EOF, etc.)
-                builder.node.nodes = None;
-                builder.build(tokenizer, &spaces)
             }
         };
 

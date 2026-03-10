@@ -314,13 +314,24 @@ impl NodeBuilder {
             self.node.raws.after.push_tokens(after);
         }
 
-        // Set source.end from last child node if not already set (PostCSS compatibility)
+        // Set source.end based on last child node
         if self.node.source.end.is_none() {
-            let last_end = self.node.nodes.as_ref()
-                .and_then(|n| n.last())
-                .and_then(|n| n.source.end.clone());
-            if let Some(end) = last_end {
-                self.node.source.end = Some(end);
+            if has_children {
+                // Non-empty root: extend one position past the last child's end
+                if let Some(nodes) = &self.node.nodes {
+                    if let Some(last_node) = nodes.last() {
+                        if let Some(ref child_end) = last_node.source.end {
+                            self.node.source.end = Some(Source {
+                                offset: child_end.offset,
+                                line: child_end.line,
+                                column: child_end.column + 1,
+                            });
+                        }
+                    }
+                }
+            } else {
+                // Empty root: use current tokenizer position (end of file)
+                self.node.source.end = Some(Source::create_end(tokenizer));
             }
         }
 
