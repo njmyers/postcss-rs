@@ -1,5 +1,10 @@
 name: Setup Node
 description: Install pnpm and Node.js with dependency caching
+inputs:
+  node-version:
+    description: 'Node.js version to use'
+    required: false
+    default: '20'
 
 runs:
   using: composite
@@ -12,6 +17,6 @@ runs:
     - name: Setup Node
       uses: actions/setup-node@v4
       with:
-        node-version: 20
+        node-version: ${{ inputs.node-version }}
         cache: pnpm
         cache-dependency-path: pnpm-lock.yaml

@@ -19,6 +19,9 @@ jobs:
   test-node:
     name: Test Node
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22, 24]
     steps:
       - name: Checkout Code
         uses: actions/checkout@v5
@@ -28,17 +31,14 @@ jobs:
 
       - name: Setup Node
         uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build native addon (node)
-        working-directory: packages/node
-        run: pnpm run build
-
       - name: Build native addon (node-postcss)
-        working-directory: packages/node-postcss
-        run: pnpm run build
+        run: pnpm run build:debug
 
       - name: Test Node
         run: pnpm test
