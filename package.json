@@ -9,7 +9,9 @@
     "tests"
   ],
   "scripts": {
-    "test": "pnpm --recursive --sort run test"
+    "test": "pnpm --recursive --sort run test",
+    "build:debug": "pnpm --recursive --sort run build:debug",
+    "build:release": "pnpm --recursive --sort run build:release"
   },
   "engines": {
     "node": ">=20",
