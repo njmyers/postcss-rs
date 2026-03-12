@@ -327,23 +327,21 @@ impl NodeBuilder {
 
         // Set source.end based on last child node
         if self.node.source.end.is_none() {
-            if self.node.has_nodes() {
+            self.node.source.end = if self.node.has_nodes() {
                 // Non-empty root: extend one position past the last child's end
-                if let Some(nodes) = &self.node.nodes {
-                    if let Some(last_node) = nodes.last() {
-                        if let Some(ref child_end) = last_node.source.end {
-                            self.node.source.end = Some(Source {
-                                offset: child_end.offset,
-                                line: child_end.line,
-                                column: child_end.column + 1,
-                            });
-                        }
-                    }
-                }
+                self.node.nodes
+                    .as_ref()
+                    .and_then(|nodes| nodes.last())
+                    .and_then(|last| last.source.end.as_ref())
+                    .map(|end| Source {
+                        offset: end.offset,
+                        line: end.line,
+                        column: end.column + 1,
+                    })
             } else {
                 // Empty root: use current tokenizer position (end of file)
-                self.node.source.end = Some(Source::create_end(tokenizer));
-            }
+                Some(Source::create_end(tokenizer))
+            };
         }
 
         return self.node;
