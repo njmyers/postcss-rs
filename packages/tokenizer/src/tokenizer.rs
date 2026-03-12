@@ -16,21 +16,38 @@ use itertools::multipeek;
 use itertools::MultiPeek;
 use serde::{Deserialize, Serialize};
 
+/// The category of a CSS token produced by the [`Tokenizer`].
+///
+/// Each variant corresponds to a distinct lexical construct in CSS.
 #[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Copy, Clone)]
 pub enum Kind {
+    /// One or more CSS whitespace characters (space, tab, newline, …).
     Space,
+    /// An identifier, keyword, or other word-like token.
     Word,
+    /// A balanced parenthesised group, e.g. `(content)`.
     Brackets,
+    /// A quoted string literal, e.g. `"value"` or `'value'`.
     String,
+    /// An at-keyword, e.g. `@media`.
     AtWord,
+    /// `{`
     OpenCurly,
+    /// `}`
     CloseCurly,
+    /// `[`
     OpenSquare,
+    /// `]`
     CloseSquare,
+    /// `(`
     OpenCurvy,
+    /// `)`
     CloseCurvy,
+    /// `;`
     Semicolon,
+    /// `:`
     Colon,
+    /// A block comment `/* … */`.
     Comment,
 }
 
@@ -55,12 +72,18 @@ impl fmt::Display for Kind {
     }
 }
 
+/// A single CSS token produced by the [`Tokenizer`].
 #[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
 pub struct Token {
+    /// Byte offset of the first character of this token in the source.
     pub start: usize,
+    /// Byte offset one past the last character of this token.
     pub end: usize,
+    /// The lexical category of this token.
     pub kind: Kind,
+    /// The raw source text of this token.
     pub value: String,
+    /// 1-based column of the first character of this token on its source line.
     pub column: usize,
 }
 
@@ -148,26 +171,35 @@ impl Token {
     }
 }
 
+/// An ordered collection of [`Token`]s.
+///
+/// Provides a thin wrapper around `Vec<Token>` with helper methods used
+/// throughout the parser to accumulate token sequences.
 #[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Tokens(Vec<Token>);
 
 impl Tokens {
+    /// Creates an empty token collection.
     pub fn new() -> Self {
         return Self(Vec::new());
     }
 
+    /// Appends `token` to the end of this collection.
     pub fn push(&mut self, token: Token) {
         self.0.push(token);
     }
 
+    /// Removes all tokens from this collection.
     pub fn clear(&mut self) {
         self.0.clear();
     }
 
+    /// Removes and returns the last token, or `None` if the collection is empty.
     pub fn pop(&mut self) -> Option<Token> {
         self.0.pop()
     }
 
+    /// Returns a reference to the last token, or `None` if the collection is empty.
     pub fn last(&self) -> Option<&Token> {
         self.0.last()
     }
@@ -197,16 +229,34 @@ impl Deref for Tokens {
     }
 }
 
+/// Converts a CSS source string into a stream of [`Token`]s.
+///
+/// `Tokenizer` implements [`Iterator`]`<Item = Token>`, so tokens can be
+/// consumed one at a time.  For lookahead, use [`Tokenizer::into_peekable`] or
+/// [`Tokenizer::into_multipeek`].
+///
+/// # Example
+/// ```
+/// use postcss_rs_tokenizer::{Tokenizer, Kind};
+///
+/// let mut tokenizer = Tokenizer::new("a { color: red }");
+/// let first = tokenizer.next().unwrap();
+/// assert_eq!(first.kind, Kind::Word);
+/// assert_eq!(first.value, "a");
+/// ```
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Tokenizer {
     css: String,
     letters: Vec<char>,
     stack: RefCell<Vec<Token>>,
+    /// Current byte index into the source (advances as tokens are produced).
     pub index: usize,
+    /// Line-tracking state; updated whenever a newline is encountered.
     pub lines: Lines,
 }
 
 impl Tokenizer {
+    /// Creates a new `Tokenizer` for the given CSS source string.
     pub fn new(css: impl Into<String>) -> Self {
         let css = css.into();
         let letters: Vec<char> = css.chars().collect();
@@ -220,6 +270,7 @@ impl Tokenizer {
         };
     }
 
+    /// Returns the most recently produced token without advancing the iterator.
     pub fn prev(&self) -> Option<Token> {
         let stack = self.stack.borrow();
         return stack.last().cloned();

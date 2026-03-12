@@ -13,15 +13,25 @@ use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
 use postcss_rs_tokenizer::Tokens;
 
+/// Data for a CSS at-rule, e.g. `@media screen { … }` or `@import "…";`.
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct AtRule {
+    /// The at-rule name without the leading `@`, e.g. `"media"`.
     pub name: String,
+    /// The at-rule parameters (everything between the name and the block or
+    /// semicolon), e.g. `"screen"` for `@media screen { … }`.
     pub params: Option<String>,
+    /// `true` when the at-rule is followed by a `{ … }` block.
     #[serde(skip)]
     pub has_block: bool,
 }
 
 impl AtRule {
+    /// Parses an at-rule from the token stream.
+    ///
+    /// `token` is the `@name` token (already consumed).  The method reads
+    /// optional parameters and an optional block body, returning both the
+    /// resulting [`Node`] and the [`StatementTerminator`] that ended parsing.
     pub fn create(
         token: Token,
         tokenizer: &mut Tokenizer,

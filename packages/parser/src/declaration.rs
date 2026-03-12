@@ -11,15 +11,25 @@ use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
 
+/// Data for a CSS property declaration, e.g. `color: red`.
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Declaration {
+    /// The property name, e.g. `"color"`.
     pub prop: String,
+    /// `Some(true)` when the declaration contains `!important`, `None` otherwise.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub important: Option<bool>,
+    /// The property value, stripped of inline comments, e.g. `"red"`.
     pub value: String,
 }
 
 impl Declaration {
+    /// Parses a declaration from the token stream.
+    ///
+    /// `prop` is the first token of the property name (already consumed from
+    /// `tokenizer`).  The method reads the rest of the value up to the next
+    /// semicolon or closing brace and returns both the resulting [`Node`] and
+    /// the [`StatementTerminator`] that ended parsing.
     pub fn create(
         prop: Token,
         tokenizer: &mut Tokenizer,

@@ -4,9 +4,19 @@ use crate::NodeBuilder;
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
 
+/// Parser for CSS block comments.
+///
+/// Extracts the comment text and its surrounding whitespace from a raw
+/// `/* … */` token and builds a [`Node`] with the appropriate `raws.left`
+/// and `raws.right` fields set.
 pub struct Comment;
 
 impl Comment {
+    /// Parses a comment token into a [`Node`].
+    ///
+    /// `token` is the raw comment token (value like `"/* text */"`).
+    /// `spaces` are any whitespace tokens that appear before the comment in the
+    /// source; they are placed in `raws.before`.
     pub fn create(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
         builder.ensure_empty_before();
@@ -47,5 +57,72 @@ impl Comment {
         builder.comment();
 
         return builder.build(tokenizer, &[]);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Data;
+    use postcss_rs_tokenizer::{Kind, Tokenizer};
+
+    fn comment_token(value: &str) -> Token {
+        Token {
+            kind: Kind::Comment,
+            value: value.to_string(),
+            start: 0,
+            end: value.len(),
+            column: 1,
+        }
+    }
+
+    #[test]
+    fn test_comment_plain_text() {
+        let mut tokenizer = Tokenizer::new("");
+        let node = Comment::create(comment_token("/* hello */"), &mut tokenizer, &[]);
+        if let Data::Comment(data) = &node.data {
+            assert_eq!(data.text, "hello");
+        } else {
+            panic!("expected comment node");
+        }
+        assert_eq!(node.raws.left.as_deref(), Some(" "));
+        assert_eq!(node.raws.right.as_deref(), Some(" "));
+    }
+
+    #[test]
+    fn test_comment_no_whitespace() {
+        let mut tokenizer = Tokenizer::new("");
+        let node = Comment::create(comment_token("/*hello*/"), &mut tokenizer, &[]);
+        if let Data::Comment(data) = &node.data {
+            assert_eq!(data.text, "hello");
+        } else {
+            panic!("expected comment node");
+        }
+        assert_eq!(node.raws.left.as_deref(), Some(""));
+        assert_eq!(node.raws.right.as_deref(), Some(""));
+    }
+
+    #[test]
+    fn test_comment_empty() {
+        let mut tokenizer = Tokenizer::new("");
+        let node = Comment::create(comment_token("/* */"), &mut tokenizer, &[]);
+        if let Data::Comment(data) = &node.data {
+            assert_eq!(data.text, "");
+        } else {
+            panic!("expected comment node");
+        }
+    }
+
+    #[test]
+    fn test_comment_asymmetric_whitespace() {
+        let mut tokenizer = Tokenizer::new("");
+        let node = Comment::create(comment_token("/*  text */"), &mut tokenizer, &[]);
+        if let Data::Comment(data) = &node.data {
+            assert_eq!(data.text, "text");
+        } else {
+            panic!("expected comment node");
+        }
+        assert_eq!(node.raws.left.as_deref(), Some("  "));
+        assert_eq!(node.raws.right.as_deref(), Some(" "));
     }
 }
