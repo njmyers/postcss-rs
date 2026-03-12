@@ -41,7 +41,7 @@ impl Declaration {
         // Returns: Optional value token if we split a Word starting with ':'
         let first_value_token: Option<Token> = {
             let mut result = None;
-            while let Some(token) = tokenizer.next() {
+            for token in tokenizer.by_ref() {
                 match token.kind {
                     Kind::Colon => {
                         builder.between(&token);

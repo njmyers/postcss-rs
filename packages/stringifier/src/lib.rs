@@ -18,7 +18,6 @@ pub struct StringifyOptions {
 /// Stringifier - Converts AST to CSS string
 pub struct Stringifier {
     output: String,
-    #[allow(dead_code)]
     indent_level: usize,
     #[allow(dead_code)]
     options: StringifyOptions,

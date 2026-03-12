@@ -48,9 +48,9 @@ impl Source {
         };
         let raw_column = tokenizer.lines.offset(column_index);
         return Self {
-            offset: tokenizer.index,  // Points after the last character
+            offset: tokenizer.index, // Points after the last character
             line: tokenizer.lines.value(),
-            column: cmp::max(1, raw_column),  // Ensure column is at least 1
+            column: cmp::max(1, raw_column), // Ensure column is at least 1
         };
     }
 }
@@ -146,6 +146,11 @@ impl Node {
         return self.nodes.is_some();
     }
 
+    /// Returns true if this node has child nodes (i.e., a non-empty block).
+    pub fn has_nodes(&self) -> bool {
+        return self.nodes.as_ref().is_some_and(|n| !n.is_empty());
+    }
+
     /// Returns true if this node is a statement without a block.
     pub fn is_statement(&self) -> bool {
         return self.nodes.is_none();
@@ -170,9 +175,6 @@ pub struct NodeBuilder {
 impl NodeBuilder {
     pub fn new(token: &Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Self {
         let mut node = Node::default();
-        // Start with Some(vec![]) to collect children before type is finalized
-        // Will be set to None later if the final type is Declaration or Comment
-        node.nodes = Some(Vec::new());
         node.source.start = Source::create_start(token, tokenizer);
         node.raws.before.push_tokens(spaces);
 
@@ -228,7 +230,7 @@ impl NodeBuilder {
     }
 
     pub fn selector_raw(&mut self, value: &str, raw: &str) {
-        self.node.raws.selector = crate::SelectorRaw::new(String::from(value), String::from(raw));
+        self.node.raws.selector = crate::ValueRaw::new(String::from(value), String::from(raw));
     }
 
     pub fn important_raw(&mut self, value: &str) {
@@ -290,7 +292,12 @@ impl NodeBuilder {
         return self.node;
     }
 
-    pub fn build_with_end_index(mut self, tokenizer: &Tokenizer, after: &[Token], end_index: usize) -> Node {
+    pub fn build_with_end_index(
+        mut self,
+        tokenizer: &Tokenizer,
+        after: &[Token],
+        end_index: usize,
+    ) -> Node {
         self.node.raws.after.push_tokens(after);
         // Create end position at the specified index instead of current tokenizer position
         let column_index = if end_index > 0 { end_index - 1 } else { 0 };
@@ -305,15 +312,14 @@ impl NodeBuilder {
 
     pub fn build_root(mut self, tokenizer: &Tokenizer, after: &[Token]) -> Node {
         let semicolon = self.node.raws.semicolon.unwrap_or(false);
-        let has_nodes = self.node.nodes.as_ref().is_some_and(|n| !n.is_empty());
 
-        if has_nodes && !semicolon {
+        if self.node.has_nodes() && !semicolon {
             self.node.raws.semicolon.set_false();
         }
 
         // PostCSS: root.raws.after is empty when there are child nodes,
         // but contains trailing whitespace when root is empty
-        if has_nodes {
+        if self.node.has_nodes() {
             self.node.raws.after.push_str("");
         } else {
             self.node.raws.after.push_tokens(after);
@@ -321,7 +327,7 @@ impl NodeBuilder {
 
         // Set source.end based on last child node
         if self.node.source.end.is_none() {
-            if has_nodes {
+            if self.node.has_nodes() {
                 // Non-empty root: extend one position past the last child's end
                 if let Some(nodes) = &self.node.nodes {
                     if let Some(last_node) = nodes.last() {

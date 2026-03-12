@@ -152,9 +152,7 @@ struct AtRuleDeclaration;
 impl AtRuleDeclaration {
     /// Test whether the the tokens following an at word rule are part of a declaration or not
     pub fn test(tokenizer: &Tokenizer) -> bool {
-        let mut copy = tokenizer.clone();
-
-        while let Some(token) = copy.next() {
+        for token in tokenizer.clone() {
             if token.kind == Kind::OpenCurly {
                 return false;
             }
