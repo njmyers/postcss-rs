@@ -152,9 +152,7 @@ struct AtRuleDeclaration;
 impl AtRuleDeclaration {
     /// Test whether the the tokens following an at word rule are part of a declaration or not
     pub fn test(tokenizer: &Tokenizer) -> bool {
-        let mut copy = tokenizer.clone();
-
-        while let Some(token) = copy.next() {
+        for token in tokenizer.clone() {
             if token.kind == Kind::OpenCurly {
                 return false;
             }
@@ -259,37 +257,28 @@ impl Params {
                 // Handle spacing and comments after params - buffer them for now
                 Kind::Space | Kind::Comment => between_buffer.push(token),
 
-                // Handle tokens that are part of params - update end position after each
-                Kind::Word | Kind::Brackets | Kind::Colon | Kind::String |
-                Kind::OpenSquare | Kind::CloseSquare | Kind::OpenCurvy | Kind::CloseCurvy => {
-                    statement.push(token);
-                    params_end_pos = Some(crate::Source::create_end(tokenizer));
-                }
-
-                // Handle curly braces - they can be part of params if nested
-                Kind::OpenCurly if statement.is_open() => {
-                    statement.push(token);
-                    params_end_pos = Some(crate::Source::create_end(tokenizer));
-                }
-                Kind::CloseCurly if statement.is_open() => {
-                    statement.push(token);
-                    params_end_pos = Some(crate::Source::create_end(tokenizer));
-                }
-
-                // Handle semicolon - ends params only if not nested
-                Kind::Semicolon if statement.is_open() => {
-                    statement.push(token);
-                    params_end_pos = Some(crate::Source::create_end(tokenizer));
-                }
+                // Handle semicolon - ends params only when not nested
                 Kind::Semicolon => {
-                    // Semicolon ends the at-rule - track its end position
                     params_end_pos = Some(crate::Source::create_end(tokenizer));
-                    terminator.set_ended_by(Kind::Semicolon);
-                    break;
+                    if statement.is_open() {
+                        statement.push(token);
+                    } else {
+                        terminator.set_ended_by(Kind::Semicolon);
+                        break;
+                    }
                 }
 
-                // These cases should not be reached due to peek check above
-                Kind::OpenCurly | Kind::CloseCurly | Kind::AtWord => break,
+                // Handle all other content tokens - update end position after each.
+                // OpenCurly/CloseCurly only reach here when statement.is_open() (guarded in peek loop above).
+                Kind::Word | Kind::Brackets | Kind::Colon | Kind::String |
+                Kind::OpenSquare | Kind::CloseSquare | Kind::OpenCurvy | Kind::CloseCurvy |
+                Kind::OpenCurly | Kind::CloseCurly => {
+                    statement.push(token);
+                    params_end_pos = Some(crate::Source::create_end(tokenizer));
+                }
+
+                // Unreachable: AtWord causes a break in the peek loop before consuming
+                Kind::AtWord => break,
             };
         }
 

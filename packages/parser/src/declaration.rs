@@ -41,7 +41,7 @@ impl Declaration {
         // Returns: Optional value token if we split a Word starting with ':'
         let first_value_token: Option<Token> = {
             let mut result = None;
-            while let Some(token) = tokenizer.next() {
+            for token in tokenizer.by_ref() {
                 match token.kind {
                     Kind::Colon => {
                         builder.between(&token);
@@ -96,28 +96,16 @@ impl Declaration {
 
                 // Space with newline followed by comment or CloseCurly ends declaration
                 Kind::Space if peeked.value.starts_with(characters::NEWLINE) && !statement.is_open() => {
-                    let mut multi = tokenizer.clone().into_multipeek();
-                    multi.peek(); // peek first token
-                    match multi.peek() {
-                        Some(next) if next.kind == Kind::Comment || next.kind == Kind::CloseCurly => break,
-                        _ => {} // Not before terminator, continue
+                    if matches!(Self::peek_second_kind(tokenizer), Some(Kind::Comment) | Some(Kind::CloseCurly)) {
+                        break;
                     }
                 }
 
-                // Check for trailing spaces before CloseCurly
-                // Any space directly before CloseCurly (when not in open brackets) is trailing
+                // Space directly before CloseCurly (trailing space) ends declaration
                 Kind::Space if !statement.is_open() => {
-                    let mut multi = tokenizer.clone().into_multipeek();
-                    multi.peek(); // peek first token
-                    match multi.peek() {
-                        Some(next) if next.kind == Kind::CloseCurly => {
-                            // Space followed by CloseCurly - this is a trailing space
-                            // We need to: 1) add it to value, 2) consume it, 3) use pre-consume position as end
-                            // Break here to avoid consuming - will handle in post-loop
-                            terminator.set_ended_by(Kind::CloseCurly);
-                            break;
-                        }
-                        _ => {} // Not trailing, will be consumed normally
+                    if Self::peek_second_kind(tokenizer) == Some(Kind::CloseCurly) {
+                        terminator.set_ended_by(Kind::CloseCurly);
+                        break;
                     }
                 }
                 _ => {}
@@ -141,42 +129,25 @@ impl Declaration {
 
                 // Comment handling in value
                 Kind::Comment => {
-                    // Check if clean value is empty (ignore raw-only tokens)
-                    if statement.values_clean.is_empty() && !statement.is_open() {
-                        // Comment before any real content - check if it's before a function call
-                        let mut peekable = tokenizer.clone().into_peekable();
-                        match peekable.peek() {
-                            Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
-                                // Comment before function - move pending to between, keep comment
-                                if !pending_spaces.is_empty() {
-                                    for space in pending_spaces.drain(..) {
-                                        builder.between(&space);
-                                    }
-                                }
-                                statement.push(token);
+                    let before_content = statement.values_clean.is_empty() && !statement.is_open();
+                    let next_is_fn = Self::next_is_open_bracket(tokenizer);
+                    match (before_content, next_is_fn) {
+                        (true, true) => {
+                            // Comment before function - move pending to between, keep comment
+                            for space in pending_spaces.drain(..) {
+                                builder.between(&space);
                             }
-                            _ => {
-                                // Regular comment - strip it but keep token order correct
-                                // Add pending spaces to both raw and clean to maintain correct order
-                                for space in pending_spaces.drain(..) {
-                                    statement.push(space);
-                                }
-                                // Add comment to raw only (stripped from clean)
-                                statement.push_raw_only(token);
-                            }
+                            statement.push(token);
                         }
-                    } else {
-                        // Comment inside value - check if it's before an opening paren
-                        let mut peekable = tokenizer.clone().into_peekable();
-                        match peekable.peek() {
-                            Some(next) if next.kind == Kind::Brackets && next.value.starts_with('(') => {
-                                statement.push(token);
+                        (true, false) => {
+                            // Comment before content - flush pending to raw, strip comment
+                            for space in pending_spaces.drain(..) {
+                                statement.push(space);
                             }
-                            _ => {
-                                // Regular inline comment - only add to raw, not clean
-                                statement.push_raw_only(token);
-                            }
+                            statement.push_raw_only(token);
                         }
+                        (false, true) => statement.push(token),
+                        (false, false) => statement.push_raw_only(token),
                     }
                 }
 
@@ -210,10 +181,8 @@ impl Declaration {
                         }
                         ImportantResult::NotImportant => {
                             // Contains ! but not important
-                            if !pending_spaces.is_empty() {
-                                for space in pending_spaces.drain(..) {
-                                    builder.between(&space);
-                                }
+                            for space in pending_spaces.drain(..) {
+                                builder.between(&space);
                             }
                             statement.push(token);
                         }
@@ -221,12 +190,9 @@ impl Declaration {
                 }
 
                 _ => {
-                    // Non-space token - decide what to do with pending spaces
-                    if !pending_spaces.is_empty() {
-                        // Add pending spaces to between (they're before actual content)
-                        for space in pending_spaces.drain(..) {
-                            builder.between(&space);
-                        }
+                    // Non-space token - flush any pending spaces to between (they're before actual content)
+                    for space in pending_spaces.drain(..) {
+                        builder.between(&space);
                     }
                     statement.push(token);
                 }
@@ -402,6 +368,20 @@ impl Declaration {
             return true;
         }
         "important".to_lowercase().starts_with(&s.to_lowercase())
+    }
+
+    /// Return the kind of the token after the next one (skips one token ahead).
+    /// Used to look past the current peeked token to detect terminators.
+    fn peek_second_kind(tokenizer: &Tokenizer) -> Option<Kind> {
+        let mut multi = tokenizer.clone().into_multipeek();
+        multi.peek(); // skip current token
+        multi.peek().map(|t| t.kind)
+    }
+
+    /// Check if the next token is an opening bracket `(`.
+    fn next_is_open_bracket(tokenizer: &Tokenizer) -> bool {
+        let mut peekable = tokenizer.clone().into_peekable();
+        matches!(peekable.peek(), Some(t) if t.kind == Kind::Brackets && t.value.starts_with('('))
     }
 
     /// Extract IE hack prefix (* or _) from property name
