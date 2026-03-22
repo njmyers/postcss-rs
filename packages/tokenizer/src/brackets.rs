@@ -1,7 +1,6 @@
 use crate::characters::*;
 use crate::escape::Escape;
 use crate::utils;
-use crate::Token;
 
 use std::cmp;
 
@@ -86,7 +85,7 @@ pub struct Bracket;
 
 impl Bracket {
     /// Return whether a character is a single opening parenthesis token `(`
-    pub fn test(current: &char, next: &char, prev: Option<Token>) -> bool {
+    pub fn test(current: &char, next: &char, prev: Option<&str>) -> bool {
         if current != OPEN_CURVY {
             return false;
         }
@@ -151,11 +150,8 @@ impl Bracket {
         return cmp::min(length, count - lookbehind);
     }
 
-    fn is_prev_url_token(prev: Option<Token>) -> bool {
-        return match prev {
-            Some(token) => token.value == "url",
-            None => false,
-        };
+    fn is_prev_url_token(prev: Option<&str>) -> bool {
+        return prev == Some("url");
     }
 }
 
