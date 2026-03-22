@@ -20,6 +20,7 @@
     "build:ts": "tsc",
     "clean": "rm -rf dist",
     "prepublishOnly": "napi prepublish -t npm",
+    "bench": "vitest bench",
     "test": "vitest run",
     "version": "napi version"
   },
