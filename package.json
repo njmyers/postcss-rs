@@ -18,7 +18,7 @@
     "pnpm": ">=8"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^1.2.1"
+    "@napi-rs/cli": "^3.0.0"
   },
   "dependencies": {
     "autoprefixer": "^10.4.23",

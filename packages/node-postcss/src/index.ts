@@ -16,22 +16,16 @@
 
 import * as postcss from 'postcss';
 import type { Root, Plugin, Processor, ProcessOptions } from 'postcss';
-import { loadBinding } from '@node-rs/helper';
 import * as path from 'path';
 
-interface PostcssRsBindings {
+// Load Rust native bindings via the napi-rs v3 generated loader
+// __dirname is dist/, index.js is in the package root (one level up)
+const bindings = require(path.join(__dirname, '../index.js')) as {
   postcss: {
-    parse: (css: string, from?: string) => Promise<{ json: string }>;
+    parse: (css: string, from?: string | null) => Promise<{ json: string }>;
+    stringify: (json: string) => string;
   };
-}
-
-// Load Rust native bindings
-// __dirname is src/, but .node file is in parent directory
-const bindings = loadBinding(
-  path.join(__dirname, '..'),
-  'postcss',
-  '@postcss-rs/postcss'
-) as PostcssRsBindings;
+};
 
 export interface ParseOptions {
   from?: string;
