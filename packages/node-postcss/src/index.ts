@@ -22,7 +22,8 @@ import * as path from 'path';
 // __dirname is dist/, index.js is in the package root (one level up)
 const bindings = require(path.join(__dirname, '../index.js')) as {
   postcss: {
-    parse: (css: string, from?: string | null) => Promise<{ json: string }>;
+    // Returns a JSON string; caller does JSON.parse() + fromJSON()
+    parse: (css: string, from?: string | null) => Promise<string>;
     stringify: (json: string) => string;
   };
 };
@@ -53,14 +54,13 @@ export interface ParseOptions {
  * ```
  */
 export async function parse(css: string, opts: ParseOptions = {}): Promise<Root> {
-  // Parse with Rust (fast!)
-  // Rust now outputs 100% PostCSS-compatible JSON, no adapter needed!
-  const rustResult = await bindings.postcss.parse(css, opts.from);
-  const rustJSON = JSON.parse(rustResult.json);
+  // Parse with Rust — returns a JSON string; we parse it here on the JS side.
+  const jsonStr = await bindings.postcss.parse(css, opts.from);
+  const rustObj = JSON.parse(jsonStr);
 
   // Hydrate into PostCSS classes
   // This creates real Root, Rule, Declaration, etc. instances
-  const root = postcss.default.fromJSON(rustJSON) as Root;
+  const root = postcss.default.fromJSON(rustObj) as Root;
 
   // PostCSS fromJSON() normalizes consecutive newlines in raws.before
   // We need to restore the original raws from our JSON to preserve exact whitespace
@@ -77,7 +77,7 @@ export async function parse(css: string, opts: ParseOptions = {}): Promise<Root>
       }
     }
   }
-  restoreRaws(root, rustJSON);
+  restoreRaws(root, rustObj);
 
   // Create a PostCSS Input object for the source
   // This is needed for plugins that access node.source.input (e.g., autoprefixer for source maps)

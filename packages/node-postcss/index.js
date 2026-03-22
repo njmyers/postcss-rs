@@ -576,6 +576,4 @@ if (!nativeBinding) {
 }
 
 module.exports = nativeBinding
-module.exports.Node = nativeBinding.Node
-module.exports.JsNode = nativeBinding.JsNode
 module.exports.postcss = nativeBinding.postcss
