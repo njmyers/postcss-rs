@@ -113,8 +113,8 @@ impl Default for Statement {
     fn default() -> Self {
         return Self {
             brackets: BracketDepth::new(),
-            values: Tokens::new(),
-            values_clean: Tokens::new(),
+            values: Tokens::with_capacity(8),
+            values_clean: Tokens::with_capacity(8),
         };
     }
 }

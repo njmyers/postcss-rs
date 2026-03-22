@@ -8,7 +8,6 @@ use crate::symbol::*;
 use crate::whitespace::*;
 use crate::word::*;
 
-use std::cell::RefCell;
 use std::fmt;
 use std::ops::Deref;
 
@@ -184,6 +183,11 @@ impl Tokens {
         return Self(Vec::new());
     }
 
+    /// Creates an empty token collection pre-allocated for at least `capacity` tokens.
+    pub fn with_capacity(capacity: usize) -> Self {
+        return Self(Vec::with_capacity(capacity));
+    }
+
     /// Appends `token` to the end of this collection.
     pub fn push(&mut self, token: Token) {
         self.0.push(token);
@@ -248,7 +252,8 @@ impl Deref for Tokens {
 pub struct Tokenizer {
     css: String,
     letters: Vec<char>,
-    stack: RefCell<Vec<Token>>,
+    /// Value of the most recently produced token, used for `url(` detection.
+    prev_value: Option<String>,
     /// Current byte index into the source (advances as tokens are produced).
     pub index: usize,
     /// Line-tracking state; updated whenever a newline is encountered.
@@ -259,21 +264,21 @@ impl Tokenizer {
     /// Creates a new `Tokenizer` for the given CSS source string.
     pub fn new(css: impl Into<String>) -> Self {
         let css = css.into();
-        let letters: Vec<char> = css.chars().collect();
+        let mut letters = Vec::with_capacity(css.len());
+        letters.extend(css.chars());
 
         return Self {
             css,
             index: 0,
             letters,
-            stack: RefCell::new(Vec::new()),
+            prev_value: None,
             lines: Lines::new(),
         };
     }
 
-    /// Returns the most recently produced token without advancing the iterator.
-    pub fn prev(&self) -> Option<Token> {
-        let stack = self.stack.borrow();
-        return stack.last().cloned();
+    /// Returns the value of the most recently produced token.
+    pub fn prev(&self) -> Option<&str> {
+        self.prev_value.as_deref()
     }
 
     /// Convert this tokenizer into a PeekableTokenizer for simple next-token peeking.
@@ -320,18 +325,16 @@ impl Tokenizer {
 
         self.index = index;
 
-        let token = Token {
+        let value = value.to_string();
+        self.prev_value = Some(value.clone());
+
+        return Token {
             start,
             end,
             kind,
-            value: value.to_string(),
+            value,
             column,
         };
-
-        let mut stack = self.stack.borrow_mut();
-        stack.push(token.clone());
-
-        return token;
     }
 }
 
