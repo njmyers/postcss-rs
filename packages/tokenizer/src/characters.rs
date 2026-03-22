@@ -1,3 +1,9 @@
+//! Character constants used throughout the tokenizer.
+//!
+//! All CSS-significant characters are defined here as `&char` constants so
+//! they can be used in `matches!` patterns and comparisons without repeating
+//! raw literals throughout the codebase.
+
 pub const SINGLE_QUOTE: &char = &'\'';
 pub const DOUBLE_QUOTE: &char = &'"';
 pub const OPEN_SQUARE: &char = &'[';

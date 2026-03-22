@@ -228,13 +228,16 @@ impl Deref for Semicolon {
 /// A struct representing value raws with both the raw (with comments) and clean (without comments) versions
 #[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
 pub struct ValueRaw {
+    /// The comment-stripped (clean) value, e.g. `"red"`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub value: Option<String>,
+    /// The raw value preserving inline comments, e.g. `"red /* note */"`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub raw: Option<String>,
 }
 
 impl ValueRaw {
+    /// Creates a new `ValueRaw` with both a clean `value` and a `raw` string.
     pub fn new(value: String, raw: String) -> Self {
         return Self {
             value: Some(value),
@@ -242,6 +245,7 @@ impl ValueRaw {
         };
     }
 
+    /// Returns `true` when both `value` and `raw` are absent (skip serialization).
     pub fn skip(&self) -> bool {
         return self.value.is_none() && self.raw.is_none();
     }
@@ -253,5 +257,107 @@ impl Default for ValueRaw {
             value: None,
             raw: None,
         };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use postcss_rs_tokenizer::{Kind, Token};
+
+    fn space_token(value: &str) -> Token {
+        Token { kind: Kind::Space, value: value.to_string(), start: 0, end: value.len(), column: 1 }
+    }
+
+    // ---- Raw tests ----
+
+    #[test]
+    fn test_raw_default_is_empty() {
+        let raw = Raw::default();
+        assert!(raw.skip());
+        assert!(raw.0.is_none());
+    }
+
+    #[test]
+    fn test_raw_push_str() {
+        let mut raw = Raw::default();
+        raw.push_str("hello");
+        assert_eq!(&raw, &"hello");
+        assert!(!raw.skip());
+    }
+
+    #[test]
+    fn test_raw_push_appends() {
+        let mut raw = Raw::default();
+        raw.push_str("hello");
+        raw.push_str(" world");
+        assert_eq!(&raw, &"hello world");
+    }
+
+    #[test]
+    fn test_raw_push_token() {
+        let mut raw = Raw::default();
+        raw.push(&space_token("\n"));
+        assert_eq!(&raw, &"\n");
+    }
+
+    #[test]
+    fn test_raw_push_tokens() {
+        let mut raw = Raw::default();
+        raw.push_tokens(&[space_token(" "), space_token("\n")]);
+        assert_eq!(&raw, &" \n");
+    }
+
+    #[test]
+    fn test_raw_new() {
+        let raw = Raw::new("test");
+        assert_eq!(&raw, &"test");
+        assert!(!raw.skip());
+    }
+
+    // ---- Semicolon tests ----
+
+    #[test]
+    fn test_semicolon_default_skips() {
+        let s = Semicolon::default();
+        assert!(s.skip());
+        assert!(s.0.is_none());
+    }
+
+    #[test]
+    fn test_semicolon_new_true() {
+        let s = Semicolon::new(true);
+        assert!(!s.skip());
+        assert_eq!(*s, Some(true));
+    }
+
+    #[test]
+    fn test_semicolon_set_true() {
+        let mut s = Semicolon::default();
+        s.set_true();
+        assert_eq!(*s, Some(true));
+    }
+
+    #[test]
+    fn test_semicolon_set_false() {
+        let mut s = Semicolon::default();
+        s.set_false();
+        assert_eq!(*s, Some(false));
+    }
+
+    // ---- ValueRaw tests ----
+
+    #[test]
+    fn test_value_raw_default_skips() {
+        let vr = ValueRaw::default();
+        assert!(vr.skip());
+    }
+
+    #[test]
+    fn test_value_raw_new() {
+        let vr = ValueRaw::new("red".to_string(), "red /* comment */".to_string());
+        assert!(!vr.skip());
+        assert_eq!(vr.value.as_deref(), Some("red"));
+        assert_eq!(vr.raw.as_deref(), Some("red /* comment */"));
     }
 }

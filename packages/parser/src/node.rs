@@ -12,10 +12,14 @@ use std::cmp;
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
 
+/// A single source-map position (line, column, and byte offset).
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Source {
+    /// Byte offset from the start of the CSS source.
     pub offset: usize,
+    /// 1-based line number.
     pub line: usize,
+    /// 1-based column number on `line`.
     pub column: usize,
 }
 
@@ -55,9 +59,13 @@ impl Source {
     }
 }
 
+/// The start and (optional) end source positions of a node.
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Sources {
+    /// Position of the first character of the node.
     pub start: Source,
+    /// Position of the last character of the node; `None` before the node is
+    /// fully parsed.
     #[serde(skip_serializing_if = "Sources::skip")]
     pub end: Option<Source>,
 }
@@ -77,23 +85,36 @@ impl Default for Sources {
     }
 }
 
+/// The type-specific payload of a [`Node`].
+///
+/// Serialises to/from JSON with a `"type"` discriminator field, matching the
+/// PostCSS JSON output format.
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 pub enum Data {
+    /// The root node wrapping the entire stylesheet.
     #[serde(rename = "root")]
     Root,
+    /// A rule with a selector, e.g. `.foo { … }`.
     #[serde(rename = "rule")]
     Rule(Rule),
+    /// A property declaration, e.g. `color: red`.
     #[serde(rename = "decl")]
     Declaration(Declaration),
+    /// An at-rule, e.g. `@media screen { … }`.
     #[serde(rename = "atrule")]
     AtRule(AtRule),
+    /// A block comment, e.g. `/* text */`.
     #[serde(rename = "comment")]
     Comment(CommentData),
 }
 
+/// Text payload for a CSS comment node.
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct CommentData {
+    /// The comment text, without the surrounding `/*` and `*/` delimiters or
+    /// any leading/trailing whitespace (which is stored in `raws.left` /
+    /// `raws.right`).
     pub text: String,
 }
 
@@ -103,6 +124,13 @@ impl Default for Data {
     }
 }
 
+/// A single node in the PostCSS-compatible CSS abstract syntax tree.
+///
+/// Each node carries:
+/// - `raws` — original whitespace and formatting information.
+/// - `data` — the type-specific payload (rule, declaration, comment, …).
+/// - `nodes` — child nodes for container types (root, rule, at-rule with a block).
+/// - `source` — source position information.
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Node {
     pub raws: Raws,
