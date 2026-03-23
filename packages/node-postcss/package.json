@@ -19,16 +19,16 @@
     "build:debug": "napi build --platform",
     "build:ts": "tsc",
     "clean": "rm -rf dist",
-    "prepublishOnly": "napi prepublish -t npm",
+    "prepublishOnly": "napi pre-publish -t npm",
+    "bench": "vitest bench",
     "test": "vitest run",
     "version": "napi version"
   },
   "dependencies": {
-    "@node-rs/helper": "^1.2.1",
     "postcss": "^8.4.0"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^1.2.1",
+    "@napi-rs/cli": "^3.0.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",
     "autoprefixer": "^10.0.0",
@@ -43,13 +43,11 @@
     "node": ">= 10"
   },
   "napi": {
-    "name": "postcss",
-    "triples": {
-      "additional": [
-        "aarch64-apple-darwin",
-        "aarch64-unknown-linux-gnu",
-        "aarch64-pc-windows-msvc"
-      ]
-    }
+    "binaryName": "postcss",
+    "targets": [
+      "aarch64-apple-darwin",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-pc-windows-msvc"
+    ]
   }
 }

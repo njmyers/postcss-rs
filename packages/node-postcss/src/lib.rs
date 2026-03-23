@@ -3,47 +3,27 @@
 
 use napi_derive::napi;
 
-use napi::Env;
-use napi::Result;
-use napi::Task;
+use napi::{Env, Result, Task};
 
 use postcss_rs_parser::{Node, Parser};
 use postcss_rs_stringifier::{Stringifier, StringifyOptions};
 
-/// A JavaScript compatible and PostCSS compatible AST.
-#[napi(js_name = "Node")]
-pub struct JsNode {
-    pub json: String,
-}
-
-#[napi]
-impl JsNode {
-    #[napi(constructor)]
-    pub fn new(json: String) -> Self {
-        return JsNode { json };
-    }
-}
-
-/// Async compute task for parsing css.
 pub struct AsyncParseTask {
     css: String,
     _from: Option<String>,
 }
 
 impl Task for AsyncParseTask {
-    type Output = JsNode;
-    type JsValue = JsNode;
+    type Output = String;
+    type JsValue = String;
 
     fn compute(&mut self) -> Result<Self::Output> {
         let mut parser = Parser::new(&self.css).unwrap();
         let node = parser.parse();
-
-        return Ok(JsNode {
-            json: node.to_json().unwrap(),
-        });
+        return node.to_json().map_err(|e| napi::Error::from_reason(e.to_string()));
     }
 
-    fn resolve(&mut self, _: Env, output: Self::Output) -> Result<Self::JsValue> {
+    fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
         return Ok(output);
     }
 }
@@ -59,22 +39,11 @@ pub mod postcss {
         return AsyncTask::new(AsyncParseTask { css, _from: from });
     }
 
-    /// Stringify a PostCSS AST back to CSS
-    ///
-    /// Takes JSON representation of AST and converts it back to CSS string,
-    /// preserving all original formatting from the `raws` fields.
-    ///
-    /// @param json - JSON string representation of PostCSS AST
-    /// @returns CSS string
     #[napi]
     pub fn stringify(json: String) -> Result<String> {
-        // Deserialize JSON to Node
         let node: Node = serde_json::from_str(&json)
             .map_err(|e| napi::Error::from_reason(format!("Failed to parse JSON: {}", e)))?;
-
-        // Stringify the node
         let css = Stringifier::stringify(&node, StringifyOptions::default());
-
         return Ok(css);
     }
 }
