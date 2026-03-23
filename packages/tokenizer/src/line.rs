@@ -49,7 +49,7 @@ impl Lines {
     ///
     /// This equals the number of newlines recorded so far plus one.
     pub fn value(&self) -> usize {
-        return self.lines.borrow().iter().count() + 1;
+        return self.lines.borrow().len() + 1;
     }
 
     /// Returns the 1-based column offset for a given byte `index`.

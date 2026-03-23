@@ -1,4 +1,3 @@
-use crate::characters::*;
 use crate::utils;
 
 /// Tokenizer for CSS whitespace sequences.
@@ -9,25 +8,19 @@ use crate::utils;
 pub struct Whitespace;
 
 impl Whitespace {
-    /// Returns `true` if `letter` is a CSS whitespace character.
-    pub fn test(letter: &char) -> bool {
-        return matches!(
-            letter,
-            HORIZONTAL_TAB | NEWLINE | VERTICAL_TAB | FORM_FEED | CARRIAGE_RETURN | SPACE
-        );
+    /// Returns `true` if `byte` is a CSS whitespace character.
+    pub fn test(byte: u8) -> bool {
+        matches!(byte, b'\t' | b'\n' | b'\x0B' | b'\x0C' | b'\r' | b' ')
     }
 
-    /// Returns the index of the last whitespace character in a run of whitespace.
+    /// Returns the index of the last whitespace byte in a run of whitespace.
     ///
-    /// Scans `letters` from the start and returns the index of the last
-    /// consecutive whitespace character (0-based). Returns `0` when the
+    /// Scans `bytes` from the start and returns the index of the last
+    /// consecutive whitespace byte (0-based). Returns `0` when the
     /// entire slice is whitespace or when the slice is empty.
-    pub fn tokenize(letters: &[char]) -> usize {
-        let result = letters.iter().position(|letter| {
-            return !matches!(letter, letter if Self::test(letter));
-        });
-
-        let position = utils::unwrap_position(result, letters);
+    pub fn tokenize(bytes: &[u8]) -> usize {
+        let result = bytes.iter().position(|&b| !Self::test(b));
+        let position = utils::unwrap_position(result, bytes.len());
         return utils::back(position);
     }
 }
@@ -36,9 +29,9 @@ impl Whitespace {
 pub struct Newline;
 
 impl Newline {
-    /// Returns `true` if `letter` is a newline (`\n`) or carriage return (`\r`).
-    pub fn test(letter: &char) -> bool {
-        return matches!(letter, NEWLINE | CARRIAGE_RETURN);
+    /// Returns `true` if `byte` is a newline (`\n`) or carriage return (`\r`).
+    pub fn test(byte: u8) -> bool {
+        matches!(byte, b'\n' | b'\r')
     }
 }
 
@@ -48,59 +41,53 @@ mod tests {
 
     #[test]
     fn it_tests_newline_character() {
-        assert!(Newline::test(&'\n'));
+        assert!(Newline::test(b'\n'));
     }
 
     #[test]
     fn test_newline_carriage_return() {
-        assert!(Newline::test(&'\r'));
+        assert!(Newline::test(b'\r'));
     }
 
     #[test]
     fn test_newline_rejects_space() {
-        assert!(!Newline::test(&' '));
-        assert!(!Newline::test(&'\t'));
+        assert!(!Newline::test(b' '));
+        assert!(!Newline::test(b'\t'));
     }
 
     #[test]
     fn test_whitespace_space() {
-        assert!(Whitespace::test(&' '));
+        assert!(Whitespace::test(b' '));
     }
 
     #[test]
     fn test_whitespace_tab() {
-        assert!(Whitespace::test(&'\t'));
+        assert!(Whitespace::test(b'\t'));
     }
 
     #[test]
     fn test_whitespace_newline() {
-        assert!(Whitespace::test(&'\n'));
+        assert!(Whitespace::test(b'\n'));
     }
 
     #[test]
     fn test_whitespace_rejects_word_char() {
-        assert!(!Whitespace::test(&'a'));
-        assert!(!Whitespace::test(&'{'));
+        assert!(!Whitespace::test(b'a'));
+        assert!(!Whitespace::test(b'{'));
     }
 
     #[test]
     fn test_whitespace_tokenize_single_space() {
-        let chars: Vec<char> = " hello".chars().collect();
-        // Single leading space → index 0
-        assert_eq!(Whitespace::tokenize(&chars), 0);
+        assert_eq!(Whitespace::tokenize(b" hello"), 0);
     }
 
     #[test]
     fn test_whitespace_tokenize_multiple_spaces() {
-        let chars: Vec<char> = "   hello".chars().collect();
-        // Three leading spaces → last whitespace is at index 2
-        assert_eq!(Whitespace::tokenize(&chars), 2);
+        assert_eq!(Whitespace::tokenize(b"   hello"), 2);
     }
 
     #[test]
     fn test_whitespace_tokenize_all_whitespace() {
-        let chars: Vec<char> = "   ".chars().collect();
-        // Entirely whitespace — back(3) = 2
-        assert_eq!(Whitespace::tokenize(&chars), 2);
+        assert_eq!(Whitespace::tokenize(b"   "), 2);
     }
 }

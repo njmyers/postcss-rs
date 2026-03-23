@@ -1,5 +1,4 @@
 use crate::brackets::*;
-use crate::characters::*;
 use crate::comment::*;
 use crate::escape::*;
 use crate::line::*;
@@ -10,6 +9,7 @@ use crate::word::*;
 
 use std::fmt;
 use std::ops::Deref;
+use std::sync::Arc;
 
 use itertools::multipeek;
 use itertools::MultiPeek;
@@ -250,8 +250,7 @@ impl Deref for Tokens {
 /// ```
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Tokenizer {
-    css: String,
-    letters: Vec<char>,
+    css: Arc<str>,
     /// Value of the most recently produced token, used for `url(` detection.
     prev_value: Option<String>,
     /// Current byte index into the source (advances as tokens are produced).
@@ -263,14 +262,12 @@ pub struct Tokenizer {
 impl Tokenizer {
     /// Creates a new `Tokenizer` for the given CSS source string.
     pub fn new(css: impl Into<String>) -> Self {
-        let css = css.into();
-        let mut letters = Vec::with_capacity(css.len());
-        letters.extend(css.chars());
+        let css_string: String = css.into();
+        let css: Arc<str> = Arc::from(css_string.as_str());
 
         return Self {
             css,
             index: 0,
-            letters,
             prev_value: None,
             lines: Lines::new(),
         };
@@ -317,9 +314,9 @@ impl Tokenizer {
         let index = end + 1;
         let value = &self.css[start..index];
 
-        for (length, letter) in value.chars().enumerate() {
-            if Newline::test(&letter) {
-                self.lines.increment(start + length)
+        for (i, &b) in value.as_bytes().iter().enumerate() {
+            if Newline::test(b) {
+                self.lines.increment(start + i)
             }
         }
 
@@ -342,129 +339,126 @@ impl Iterator for Tokenizer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let letters = &self.letters[self.index..];
-        let letter = self.letters.get(self.index)?;
+        let bytes = self.css.as_bytes();
+        let remaining = &bytes[self.index..];
+        let byte = *remaining.first()?;
+        let next = remaining.get(1).copied().unwrap_or(0);
 
-        let next = match self.letters.get(self.index + 1) {
-            Some(value) => value,
-            None => NULL_CHARACTER,
-        };
-
-        match letter {
-            letter if Whitespace::test(letter) => {
-                let length = Whitespace::tokenize(letters);
+        match byte {
+            b if Whitespace::test(b) => {
+                let length = Whitespace::tokenize(remaining);
                 let token = self.create(length, Kind::Space);
 
                 return Some(token);
             }
 
-            letter if AtWord::test(letter, next) => {
-                let length = AtWord::tokenize(letters);
+            b if AtWord::test(b, next) => {
+                let length = AtWord::tokenize(remaining);
                 let token = self.create(length, Kind::AtWord);
 
                 return Some(token);
             }
 
-            letter if Word::test(letter, next) => {
-                let length = Word::tokenize(letters);
+            b if Word::test(b, next) => {
+                let length = Word::tokenize(remaining);
                 let token = self.create(length, Kind::Word);
 
                 return Some(token);
             }
 
-            letter if Bracket::test(letter, next, self.prev()) => {
-                let length = Bracket::tokenize(letters);
+            b if Bracket::test(b, next, self.prev()) => {
+                let length = Bracket::tokenize(remaining);
                 let token = self.create(length, Kind::Brackets);
 
                 return Some(token);
             }
 
-            letter if OpenCurly::test(letter) => {
-                let length = OpenCurly::tokenize(letters);
+            b if OpenCurly::test(b) => {
+                let length = OpenCurly::tokenize(remaining);
                 let token = self.create(length, Kind::OpenCurly);
 
                 return Some(token);
             }
 
-            letter if CloseCurly::test(letter) => {
-                let length = CloseCurly::tokenize(letters);
+            b if CloseCurly::test(b) => {
+                let length = CloseCurly::tokenize(remaining);
                 let token = self.create(length, Kind::CloseCurly);
 
                 return Some(token);
             }
 
-            letter if OpenSquare::test(letter) => {
-                let length = OpenSquare::tokenize(letters);
+            b if OpenSquare::test(b) => {
+                let length = OpenSquare::tokenize(remaining);
                 let token = self.create(length, Kind::OpenSquare);
 
                 return Some(token);
             }
 
-            letter if CloseSquare::test(letter) => {
-                let length = CloseSquare::tokenize(letters);
+            b if CloseSquare::test(b) => {
+                let length = CloseSquare::tokenize(remaining);
                 let token = self.create(length, Kind::CloseSquare);
 
                 return Some(token);
             }
 
-            letter if OpenCurvy::test(letter) => {
-                let length = OpenCurvy::tokenize(letters);
+            b if OpenCurvy::test(b) => {
+                let length = OpenCurvy::tokenize(remaining);
                 let token = self.create(length, Kind::OpenCurvy);
 
                 return Some(token);
             }
 
-            letter if CloseCurvy::test(letter) => {
-                let length = CloseCurvy::tokenize(letters);
+            b if CloseCurvy::test(b) => {
+                let length = CloseCurvy::tokenize(remaining);
                 let token = self.create(length, Kind::CloseCurvy);
 
                 return Some(token);
             }
 
-            letter if Semicolon::test(letter) => {
-                let length = Semicolon::tokenize(letters);
+            b if Semicolon::test(b) => {
+                let length = Semicolon::tokenize(remaining);
                 let token = self.create(length, Kind::Semicolon);
 
                 return Some(token);
             }
 
-            letter if Colon::test(letter) => {
-                let length = Colon::tokenize(letters);
+            b if Colon::test(b) => {
+                let length = Colon::tokenize(remaining);
                 let token = self.create(length, Kind::Colon);
 
                 return Some(token);
             }
 
-            letter if Comment::test(letter, next) => {
-                let length = Comment::tokenize(&letters[2..]);
+            b if Comment::test(b, next) => {
+                let length = Comment::tokenize(&remaining[2..]);
                 let token = self.create(length + 3, Kind::Comment);
 
                 return Some(token);
             }
 
-            letter if Escape::test(letter) => {
-                let length = Escape::tokenize(letters);
+            b if Escape::test(b) => {
+                let length = Escape::tokenize(remaining);
                 let token = self.create(length, Kind::Word);
 
                 return Some(token);
             }
 
-            letter if SingleString::test(letter) => {
-                let length = SingleString::tokenize(letters);
+            b if SingleString::test(b) => {
+                let length = SingleString::tokenize(remaining);
                 let token = self.create(length, Kind::String);
 
                 return Some(token);
             }
 
-            letter if DoubleString::test(letter) => {
-                let length = DoubleString::tokenize(letters);
+            b if DoubleString::test(b) => {
+                let length = DoubleString::tokenize(remaining);
                 let token = self.create(length, Kind::String);
 
                 return Some(token);
             }
 
             _ => {
-                let length = Word::tokenize(letters);
+                let length = Word::tokenize(remaining);
                 let token = self.create(length, Kind::Word);
 
                 return Some(token);
