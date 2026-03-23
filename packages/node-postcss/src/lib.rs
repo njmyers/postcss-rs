@@ -8,17 +8,13 @@ use napi::{Env, Result, Task};
 use postcss_rs_parser::{Node, Parser};
 use postcss_rs_stringifier::{Stringifier, StringifyOptions};
 
-// ── Async parse task ──────────────────────────────────────────────────────────
-
 pub struct AsyncParseTask {
     css: String,
     _from: Option<String>,
 }
 
 impl Task for AsyncParseTask {
-    /// Parse CSS + serialize to JSON — both run on the thread pool.
     type Output = String;
-    /// JSON string is returned as-is; JS does JSON.parse() + fromJSON().
     type JsValue = String;
 
     fn compute(&mut self) -> Result<Self::Output> {
@@ -32,8 +28,6 @@ impl Task for AsyncParseTask {
     }
 }
 
-// ── Exported module ───────────────────────────────────────────────────────────
-
 #[napi]
 pub mod postcss {
     use napi::bindgen_prelude::AsyncTask;
@@ -45,13 +39,6 @@ pub mod postcss {
         return AsyncTask::new(AsyncParseTask { css, _from: from });
     }
 
-    /// Stringify a PostCSS AST back to CSS
-    ///
-    /// Takes JSON representation of AST and converts it back to CSS string,
-    /// preserving all original formatting from the `raws` fields.
-    ///
-    /// @param json - JSON string representation of PostCSS AST
-    /// @returns CSS string
     #[napi]
     pub fn stringify(json: String) -> Result<String> {
         let node: Node = serde_json::from_str(&json)
