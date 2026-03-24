@@ -6,6 +6,7 @@ use crate::StatementTerminator;
 
 use serde::Deserialize;
 use serde::Serialize;
+use serde::de;
 
 use std::cmp;
 
@@ -13,7 +14,9 @@ use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
 
 /// A single source-map position (line, column, and byte offset).
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+///
+/// Not serialized directly — always encoded inline inside [`Sources`].
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Source {
     /// Byte offset from the start of the CSS source.
     pub offset: usize,
@@ -60,13 +63,22 @@ impl Source {
 }
 
 /// The start and (optional) end source positions of a node.
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+///
+/// **Wire format** — serialised as a compact flat integer array to reduce
+/// JSON payload size (source positions account for ~70 % of the raw JSON):
+///
+/// * 6 elements when `end` is present: `[start_offset, start_line, start_col,
+///   end_offset, end_line, end_col]`
+/// * 3 elements when `end` is absent:  `[start_offset, start_line, start_col]`
+///
+/// This shrinks per-node source data from ~70 bytes (nested objects) to ~22
+/// bytes, cutting large-CSS JSON payloads roughly in half.
+#[derive(PartialEq, Eq, Debug, Clone)]
 pub struct Sources {
     /// Position of the first character of the node.
     pub start: Source,
     /// Position of the last character of the node; `None` before the node is
     /// fully parsed.
-    #[serde(skip_serializing_if = "Sources::skip")]
     pub end: Option<Source>,
 }
 
@@ -82,6 +94,65 @@ impl Default for Sources {
             start: Source::default(),
             end: None,
         };
+    }
+}
+
+impl Serialize for Sources {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        use serde::ser::SerializeSeq;
+        let s = &self.start;
+        if let Some(e) = &self.end {
+            let mut seq = serializer.serialize_seq(Some(6))?;
+            seq.serialize_element(&s.offset)?;
+            seq.serialize_element(&s.line)?;
+            seq.serialize_element(&s.column)?;
+            seq.serialize_element(&e.offset)?;
+            seq.serialize_element(&e.line)?;
+            seq.serialize_element(&e.column)?;
+            seq.end()
+        } else {
+            let mut seq = serializer.serialize_seq(Some(3))?;
+            seq.serialize_element(&s.offset)?;
+            seq.serialize_element(&s.line)?;
+            seq.serialize_element(&s.column)?;
+            seq.end()
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for Sources {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        struct SourcesVisitor;
+
+        impl<'de> de::Visitor<'de> for SourcesVisitor {
+            type Value = Sources;
+
+            fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "a sequence of 3 or 6 unsigned integers [offset, line, col, ...]")
+            }
+
+            fn visit_seq<A: de::SeqAccess<'de>>(self, mut seq: A) -> Result<Sources, A::Error> {
+                let start_offset: usize = seq.next_element()?.ok_or_else(|| de::Error::invalid_length(0, &self))?;
+                let start_line:   usize = seq.next_element()?.ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                let start_col:    usize = seq.next_element()?.ok_or_else(|| de::Error::invalid_length(2, &self))?;
+
+                let end = match seq.next_element::<usize>()? {
+                    Some(end_offset) => {
+                        let end_line: usize = seq.next_element()?.ok_or_else(|| de::Error::invalid_length(4, &self))?;
+                        let end_col:  usize = seq.next_element()?.ok_or_else(|| de::Error::invalid_length(5, &self))?;
+                        Some(Source { offset: end_offset, line: end_line, column: end_col })
+                    }
+                    None => None,
+                };
+
+                Ok(Sources {
+                    start: Source { offset: start_offset, line: start_line, column: start_col },
+                    end,
+                })
+            }
+        }
+
+        deserializer.deserialize_seq(SourcesVisitor)
     }
 }
 
@@ -411,24 +482,14 @@ mod tests {
                 Token::Some,
                 Token::Seq { len: Some(0) },
                 Token::SeqEnd,
+                // Sources serialises as a compact 3-element sequence
+                // [offset, line, column] when end is None.
                 Token::Str("source"),
-                Token::Struct {
-                    name: "Sources",
-                    len: 1,
-                },
-                Token::Str("start"),
-                Token::Struct {
-                    name: "Source",
-                    len: 3,
-                },
-                Token::Str("offset"),
-                Token::U64(0),
-                Token::Str("line"),
-                Token::U64(1),
-                Token::Str("column"),
-                Token::U64(1),
-                Token::StructEnd,
-                Token::StructEnd,
+                Token::Seq { len: Some(3) },
+                Token::U64(0), // start.offset
+                Token::U64(1), // start.line
+                Token::U64(1), // start.column
+                Token::SeqEnd,
                 Token::MapEnd,
             ],
         );

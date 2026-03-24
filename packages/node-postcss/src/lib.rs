@@ -20,7 +20,14 @@ impl Task for AsyncParseTask {
     fn compute(&mut self) -> Result<Self::Output> {
         let mut parser = Parser::new(&self.css).unwrap();
         let node = parser.parse();
-        return node.to_json().map_err(|e| napi::Error::from_reason(e.to_string()));
+        // sonic-rs is a SIMD-accelerated JSON library (AVX2 on this host).
+        // Pre-allocate the output buffer to avoid reallocations during
+        // serialisation; CSS AST JSON is typically 3–8× the CSS source size.
+        let mut buf = Vec::with_capacity(self.css.len() * 5);
+        sonic_rs::to_writer(&mut buf, &node)
+            .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+        // sonic-rs always produces valid UTF-8.
+        return Ok(unsafe { String::from_utf8_unchecked(buf) });
     }
 
     fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {

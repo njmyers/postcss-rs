@@ -12,6 +12,7 @@ napi-derive = "3"
 postcss-rs-parser = { path = "../parser" }
 postcss-rs-stringifier = { path = "../stringifier" }
 serde_json = "1.0"
+sonic-rs   = "0.5"
 
 [build-dependencies]
 napi-build = "2"
