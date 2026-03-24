@@ -178,9 +178,9 @@ export interface ParseOptions {
  * ```
  */
 export async function parse(css: string, opts: ParseOptions = {}): Promise<Root> {
-  const jsonStr  = await bindings.postcss.parse(css, opts.from ?? null);
-  const rustObj  = JSON.parse(jsonStr);
-  const input    = new postcss.Input(css, { from: opts.from });
+  const jsonStr = await bindings.postcss.parse(css, opts.from ?? null);
+  const rustObj = JSON.parse(jsonStr);
+  const input   = new postcss.Input(css, { from: opts.from });
   return buildNode(rustObj, input, undefined) as Root;
 }
 
