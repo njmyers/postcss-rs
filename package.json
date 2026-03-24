@@ -14,7 +14,7 @@
     "build:release": "pnpm --recursive --sort run build:release"
   },
   "engines": {
-    "node": ">=20",
+    "node": ">=20.12",
     "pnpm": ">=8"
   },
   "devDependencies": {
