@@ -1,3 +1,4 @@
+use crate::bytes::{DOUBLE_QUOTE, SINGLE_QUOTE};
 use crate::escape::Escape;
 
 /// Count consecutive backslashes preceding a position
@@ -28,7 +29,7 @@ impl SingleString {
     /// assert_eq!(SingleString::test(b'\''), true);
     /// ```
     pub fn test(byte: u8) -> bool {
-        byte == b'\''
+        byte == SINGLE_QUOTE
     }
 
     /// Tokenize the string contained within single quotation marks like `'word'`.
@@ -37,7 +38,7 @@ impl SingleString {
         let mut index = 1;
 
         while index < count {
-            if bytes[index] != b'\'' {
+            if bytes[index] != SINGLE_QUOTE {
                 index += 1;
                 continue;
             }
@@ -59,7 +60,7 @@ pub struct DoubleString;
 impl DoubleString {
     /// Return whether a byte is a double-quote `"`
     pub fn test(byte: u8) -> bool {
-        byte == b'"'
+        byte == DOUBLE_QUOTE
     }
 
     /// Tokenize the string contained within double quotation marks like `"word"`.
@@ -68,7 +69,7 @@ impl DoubleString {
         let mut index = 1;
 
         while index < count {
-            if bytes[index] != b'"' {
+            if bytes[index] != DOUBLE_QUOTE {
                 index += 1;
                 continue;
             }

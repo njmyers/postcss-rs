@@ -1,3 +1,4 @@
+use crate::bytes::{CARRIAGE_RETURN, FORM_FEED, NEWLINE, SPACE, TAB, VERTICAL_TAB};
 use crate::utils;
 
 /// Tokenizer for CSS whitespace sequences.
@@ -10,7 +11,7 @@ pub struct Whitespace;
 impl Whitespace {
     /// Returns `true` if `byte` is a CSS whitespace character.
     pub fn test(byte: u8) -> bool {
-        matches!(byte, b'\t' | b'\n' | b'\x0B' | b'\x0C' | b'\r' | b' ')
+        matches!(byte, TAB | NEWLINE | VERTICAL_TAB | FORM_FEED | CARRIAGE_RETURN | SPACE)
     }
 
     /// Returns the index of the last whitespace byte in a run of whitespace.
@@ -31,7 +32,7 @@ pub struct Newline;
 impl Newline {
     /// Returns `true` if `byte` is a newline (`\n`) or carriage return (`\r`).
     pub fn test(byte: u8) -> bool {
-        matches!(byte, b'\n' | b'\r')
+        matches!(byte, NEWLINE | CARRIAGE_RETURN)
     }
 }
 

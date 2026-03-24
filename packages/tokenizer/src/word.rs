@@ -1,4 +1,5 @@
 use crate::brackets::*;
+use crate::bytes::{AT, COLON, DASH, EXCLAMATION, NULL_BYTE};
 use crate::comment::*;
 use crate::escape::Escape;
 use crate::string::*;
@@ -14,13 +15,13 @@ impl Word {
         if Self::leading(current) {
             // Colons followed by digits should not be Word tokens (e.g., :1 in --a:1)
             // But colons followed by letters are valid (e.g., :root, :hover)
-            if current == b':' && next.is_ascii_digit() {
+            if current == COLON && next.is_ascii_digit() {
                 return false;
             }
-            return Self::is_word_byte(next) || next == b'-' || next == 0;
+            return Self::is_word_byte(next) || next == DASH || next == NULL_BYTE;
         }
 
-        return Self::is_word_byte(current) || current == b'-' || current == 0;
+        return Self::is_word_byte(current) || current == DASH || current == NULL_BYTE;
     }
 
     pub fn tokenize(bytes: &[u8]) -> usize {
@@ -59,7 +60,7 @@ impl Word {
     }
 
     fn leading(byte: u8) -> bool {
-        byte == b'!' || byte == b':'
+        byte == EXCLAMATION || byte == COLON
     }
 
     /// Returns true for bytes that are valid word characters.
@@ -74,7 +75,7 @@ pub struct AtWord;
 
 impl AtWord {
     pub fn test(current: u8, next: u8) -> bool {
-        return current == b'@' && Word::test(next, 0);
+        return current == AT && Word::test(next, NULL_BYTE);
     }
 
     pub fn tokenize(bytes: &[u8]) -> usize {
