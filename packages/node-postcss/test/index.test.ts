@@ -203,7 +203,7 @@ describe('Edge cases', () => {
     expect(root.first?.type).toBe('comment');
   });
 
-  test.skip('Handles trailing semicolon after rule', async () => {
+  test('Handles trailing semicolon after rule', async () => {
     const css = '.test { color: red; };';
     const root = await parse(css);
     const rule = root.first as any;
@@ -212,7 +212,7 @@ describe('Edge cases', () => {
     expect(rule?.raws?.ownSemicolon).toBe(';');
   });
 
-  test.skip('Handles trailing semicolon with space', async () => {
+  test('Handles trailing semicolon with space', async () => {
     const css = '.test { color: red; } ;';
     const root = await parse(css);
     const rule = root.first as any;
