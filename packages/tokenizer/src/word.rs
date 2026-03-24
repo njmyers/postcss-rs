@@ -1,5 +1,5 @@
 use crate::brackets::*;
-use crate::characters::*;
+use crate::bytes::{AT, COLON, DASH, EXCLAMATION, NULL_BYTE};
 use crate::comment::*;
 use crate::escape::Escape;
 use crate::string::*;
@@ -11,47 +11,47 @@ use std::cmp;
 pub struct Word;
 
 impl Word {
-    pub fn test(current: &char, next: &char) -> bool {
+    pub fn test(current: u8, next: u8) -> bool {
         if Self::leading(current) {
             // Colons followed by digits should not be Word tokens (e.g., :1 in --a:1)
             // But colons followed by letters are valid (e.g., :root, :hover)
-            if current == COLON && next.is_numeric() {
+            if current == COLON && next.is_ascii_digit() {
                 return false;
             }
-            return next.is_alphanumeric() || next == DASH || next == NULL_CHARACTER;
+            return Self::is_word_byte(next) || next == DASH || next == NULL_BYTE;
         }
 
-        return current.is_alphanumeric() || current == DASH || current == NULL_CHARACTER;
+        return Self::is_word_byte(current) || current == DASH || current == NULL_BYTE;
     }
 
-    pub fn tokenize(letters: &[char]) -> usize {
-        let count = letters.len();
+    pub fn tokenize(bytes: &[u8]) -> usize {
+        let count = bytes.len();
         let mut escape_open = false;
 
         for i in 1..count {
-            let letter = &letters[i];
+            let byte = bytes[i];
             if escape_open {
                 escape_open = false;
                 continue;
             }
-            if Escape::test(letter) {
+            if Escape::test(byte) {
                 escape_open = true;
                 continue;
             }
-            if Whitespace::test(letter)
-                || OpenCurly::test(letter)
-                || CloseCurly::test(letter)
-                || OpenSquare::test(letter)
-                || CloseSquare::test(letter)
-                || OpenCurvy::test(letter)
-                || CloseCurvy::test(letter)
-                || Semicolon::test(letter)
-                || Colon::test(letter)
-                || SingleString::test(letter)
-                || DoubleString::test(letter)
-                || Bracket::is_opening_token(letter)
-                || Comment::is_forward_slash(letter)
-                || Word::leading(letter)
+            if Whitespace::test(byte)
+                || OpenCurly::test(byte)
+                || CloseCurly::test(byte)
+                || OpenSquare::test(byte)
+                || CloseSquare::test(byte)
+                || OpenCurvy::test(byte)
+                || CloseCurvy::test(byte)
+                || Semicolon::test(byte)
+                || Colon::test(byte)
+                || SingleString::test(byte)
+                || DoubleString::test(byte)
+                || Bracket::is_opening_token(byte)
+                || Comment::is_forward_slash(byte)
+                || Word::leading(byte)
             {
                 return cmp::min(i - 1, count - 1);
             }
@@ -59,20 +59,27 @@ impl Word {
         count - 1
     }
 
-    fn leading(letter: &char) -> bool {
-        return letter == EXCLAMATION_POINT || letter == COLON;
+    fn leading(byte: u8) -> bool {
+        byte == EXCLAMATION || byte == COLON
+    }
+
+    /// Returns true for bytes that are valid word characters.
+    /// ASCII alphanumerics plus any non-ASCII byte (part of a multi-byte UTF-8 sequence).
+    #[inline]
+    fn is_word_byte(byte: u8) -> bool {
+        byte.is_ascii_alphanumeric() || byte >= 0x80
     }
 }
 
 pub struct AtWord;
 
 impl AtWord {
-    pub fn test(current: &char, next: &char) -> bool {
-        return current == AT_CHAR && Word::test(next, NULL_CHARACTER);
+    pub fn test(current: u8, next: u8) -> bool {
+        return current == AT && Word::test(next, NULL_BYTE);
     }
 
-    pub fn tokenize(letters: &[char]) -> usize {
-        return Word::tokenize(letters);
+    pub fn tokenize(bytes: &[u8]) -> usize {
+        return Word::tokenize(bytes);
     }
 }
 
@@ -80,56 +87,45 @@ impl AtWord {
 mod tests {
     use super::*;
 
-    fn chars(s: &str) -> Vec<char> {
-        s.chars().collect()
-    }
-
     #[test]
     fn tokenize_simple_word() {
         // "color " — stops at space (returns position of space - 1 = 4)
-        let letters = chars("color ");
-        assert_eq!(Word::tokenize(&letters), 4);
+        assert_eq!(Word::tokenize(b"color "), 4);
     }
 
     #[test]
     fn tokenize_stops_at_semicolon() {
         // "red;" — stops at ; (returns position 2)
-        let letters = chars("red;");
-        assert_eq!(Word::tokenize(&letters), 2);
+        assert_eq!(Word::tokenize(b"red;"), 2);
     }
 
     #[test]
     fn tokenize_stops_at_colon() {
         // "color:red" — stops at : (returns 4)
-        let letters = chars("color:red");
-        assert_eq!(Word::tokenize(&letters), 4);
+        assert_eq!(Word::tokenize(b"color:red"), 4);
     }
 
     #[test]
     fn tokenize_stops_at_opening_bracket() {
         // "url(" — stops at ( (returns 2)
-        let letters = chars("url(");
-        assert_eq!(Word::tokenize(&letters), 2);
+        assert_eq!(Word::tokenize(b"url("), 2);
     }
 
     #[test]
     fn tokenize_splits_at_exclamation() {
         // "aa!bb" — stops before !, like the original (returns 1 → "aa")
-        let letters = chars("aa!bb");
-        assert_eq!(Word::tokenize(&letters), 1);
+        assert_eq!(Word::tokenize(b"aa!bb"), 1);
     }
 
     #[test]
     fn tokenize_mid_word_escape_skips_terminator() {
         // "a\;x" — backslash mid-word escapes the semicolon, all consumed
-        let letters = chars("a\\;x");
-        assert_eq!(Word::tokenize(&letters), 3);
+        assert_eq!(Word::tokenize(b"a\\;x"), 3);
     }
 
     #[test]
     fn tokenize_single_char_word() {
         // "a{" — just "a" (returns 0)
-        let letters = chars("a{");
-        assert_eq!(Word::tokenize(&letters), 0);
+        assert_eq!(Word::tokenize(b"a{"), 0);
     }
 }

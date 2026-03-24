@@ -161,18 +161,18 @@ struct AtRuleDeclaration;
 
 impl AtRuleDeclaration {
     /// Test whether the the tokens following an at word rule are part of a declaration or not
-    pub fn test(tokenizer: &Tokenizer) -> bool {
-        for token in tokenizer.clone() {
-            if token.kind == Kind::OpenCurly {
-                return false;
+    pub fn test(tokenizer: &mut Tokenizer) -> bool {
+        let cp = tokenizer.checkpoint();
+        let result = loop {
+            match tokenizer.next() {
+                None => break true,
+                Some(t) if t.kind == Kind::OpenCurly => break false,
+                Some(t) if t.kind == Kind::CloseCurly => break true,
+                _ => {}
             }
-
-            if token.kind == Kind::CloseCurly {
-                return true;
-            }
-        }
-
-        return true;
+        };
+        tokenizer.rewind(cp);
+        result
     }
 }
 
@@ -195,22 +195,19 @@ struct Params;
 
 impl Params {
     /// Peek ahead past spaces to see if there's a terminator (CloseCurly)
-    fn peek_for_terminator_after_space(tokenizer: &Tokenizer) -> bool {
-        let mut multi = tokenizer.clone().into_multipeek();
-
-        // Skip the first token (which we already peeked at as Space in the caller)
-        multi.peek();
-
-        // Skip past any spaces
-        while let Some(token) = multi.peek() {
-            match token.kind {
-                Kind::Space => continue,
-                Kind::CloseCurly => return true,
-                _ => return false,
+    fn peek_for_terminator_after_space(tokenizer: &mut Tokenizer) -> bool {
+        let cp = tokenizer.checkpoint();
+        tokenizer.next(); // skip the current space token
+        let result = loop {
+            match tokenizer.next() {
+                None => break false,
+                Some(t) if t.kind == Kind::Space => continue,
+                Some(t) if t.kind == Kind::CloseCurly => break true,
+                _ => break false,
             }
-        }
-
-        false
+        };
+        tokenizer.rewind(cp);
+        result
     }
 
     fn create(
@@ -223,10 +220,7 @@ impl Params {
         let mut between_buffer = Tokens::new(); // Buffer for potential 'between' spaces
         let mut params_end_pos: Option<crate::Source> = None; // Track where params actually end
 
-        // Create peekable once outside the loop for efficiency
-        let mut peekable = tokenizer.clone().into_peekable();
-
-        while let Some(token) = peekable.peek() {
+        while let Some(token) = tokenizer.peek() {
             // Check if this token should end params without being consumed
             match token.kind {
                 Kind::OpenCurly if !statement.is_open() => {
@@ -251,8 +245,7 @@ impl Params {
                 _ => {}
             };
 
-            // Consume the token from both peekable and original tokenizer
-            peekable.next();
+            // Consume the token from tokenizer
             let token = tokenizer.next().unwrap();
             terminator.process(&token);
 

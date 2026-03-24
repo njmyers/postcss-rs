@@ -49,7 +49,19 @@ impl Lines {
     ///
     /// This equals the number of newlines recorded so far plus one.
     pub fn value(&self) -> usize {
-        return self.lines.borrow().iter().count() + 1;
+        return self.lines.borrow().len() + 1;
+    }
+
+    /// Returns the number of newlines recorded so far.
+    pub fn len(&self) -> usize {
+        self.lines.borrow().len()
+    }
+
+    /// Truncates the newline records to `len` entries.
+    ///
+    /// Used by [`Tokenizer::rewind`] to restore line-tracking state.
+    pub fn truncate(&self, len: usize) {
+        self.lines.borrow_mut().truncate(len);
     }
 
     /// Returns the 1-based column offset for a given byte `index`.

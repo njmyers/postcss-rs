@@ -1,5 +1,4 @@
 use crate::brackets::*;
-use crate::characters::*;
 use crate::comment::*;
 use crate::escape::*;
 use crate::line::*;
@@ -10,6 +9,7 @@ use crate::word::*;
 
 use std::fmt;
 use std::ops::Deref;
+use std::sync::Arc;
 
 use itertools::multipeek;
 use itertools::MultiPeek;
@@ -81,7 +81,7 @@ pub struct Token {
     /// The lexical category of this token.
     pub kind: Kind,
     /// The raw source text of this token.
-    pub value: String,
+    pub value: Arc<str>,
     /// 1-based column of the first character of this token on its source line.
     pub column: usize,
 }
@@ -102,7 +102,7 @@ impl Token {
     pub fn slice(&self, start_offset: usize, end_offset: usize) -> Token {
         Token {
             kind: self.kind,
-            value: self.value[start_offset..end_offset].to_string(),
+            value: Arc::from(&self.value[start_offset..end_offset]),
             start: self.start + start_offset,
             end: self.start + end_offset,
             column: self.column + start_offset,
@@ -126,7 +126,7 @@ impl Token {
     ///
     /// let token = Token {
     ///     kind: Kind::Word,
-    ///     value: ":black".to_string(),
+    ///     value: ":black".into(),
     ///     start: 5,
     ///     end: 11,
     ///     column: 6,
@@ -135,21 +135,21 @@ impl Token {
     /// let (colon, value) = token.split(1, Kind::Colon, Kind::Word);
     ///
     /// assert_eq!(colon.kind, Kind::Colon);
-    /// assert_eq!(colon.value, ":");
+    /// assert_eq!(&*colon.value, ":");
     /// assert_eq!(colon.start, 5);
     /// assert_eq!(colon.end, 6);
     ///
     /// assert!(value.is_some());
     /// let value_token = value.unwrap();
     /// assert_eq!(value_token.kind, Kind::Word);
-    /// assert_eq!(value_token.value, "black");
+    /// assert_eq!(&*value_token.value, "black");
     /// assert_eq!(value_token.start, 6);
     /// assert_eq!(value_token.end, 11);
     /// ```
     pub fn split(&self, split_index: usize, first_kind: Kind, second_kind: Kind) -> (Token, Option<Token>) {
         let first_token = Token {
             kind: first_kind,
-            value: self.value[..split_index].to_string(),
+            value: Arc::from(&self.value[..split_index]),
             start: self.start,
             end: self.start + split_index,
             column: self.column,
@@ -158,7 +158,7 @@ impl Token {
         let second_token = match self.value.len() {
             len if len > split_index => Some(Token {
                 kind: second_kind,
-                value: self.value[split_index..].to_string(),
+                value: Arc::from(&self.value[split_index..]),
                 start: self.start + split_index,
                 end: self.end,
                 column: self.column + split_index,
@@ -233,11 +233,21 @@ impl Deref for Tokens {
     }
 }
 
+/// A saved position in a [`Tokenizer`] that can be restored with [`Tokenizer::rewind`].
+///
+/// Created by [`Tokenizer::checkpoint`]; used to implement lookahead without cloning.
+#[derive(Debug)]
+pub struct Checkpoint {
+    index: usize,
+    prev_value: Option<Arc<str>>,
+    lines_len: usize,
+}
+
 /// Converts a CSS source string into a stream of [`Token`]s.
 ///
 /// `Tokenizer` implements [`Iterator`]`<Item = Token>`, so tokens can be
-/// consumed one at a time.  For lookahead, use [`Tokenizer::into_peekable`] or
-/// [`Tokenizer::into_multipeek`].
+/// consumed one at a time.  For lookahead, use [`Tokenizer::checkpoint`] /
+/// [`Tokenizer::rewind`] / [`Tokenizer::peek`] instead of cloning.
 ///
 /// # Example
 /// ```
@@ -246,14 +256,13 @@ impl Deref for Tokens {
 /// let mut tokenizer = Tokenizer::new("a { color: red }");
 /// let first = tokenizer.next().unwrap();
 /// assert_eq!(first.kind, Kind::Word);
-/// assert_eq!(first.value, "a");
+/// assert_eq!(&*first.value, "a");
 /// ```
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub struct Tokenizer {
-    css: String,
-    letters: Vec<char>,
+    css: Arc<str>,
     /// Value of the most recently produced token, used for `url(` detection.
-    prev_value: Option<String>,
+    prev_value: Option<Arc<str>>,
     /// Current byte index into the source (advances as tokens are produced).
     pub index: usize,
     /// Line-tracking state; updated whenever a newline is encountered.
@@ -263,14 +272,12 @@ pub struct Tokenizer {
 impl Tokenizer {
     /// Creates a new `Tokenizer` for the given CSS source string.
     pub fn new(css: impl Into<String>) -> Self {
-        let css = css.into();
-        let mut letters = Vec::with_capacity(css.len());
-        letters.extend(css.chars());
+        let css_string: String = css.into();
+        let css: Arc<str> = Arc::from(css_string.as_str());
 
         return Self {
             css,
             index: 0,
-            letters,
             prev_value: None,
             lines: Lines::new(),
         };
@@ -289,7 +296,7 @@ impl Tokenizer {
     /// use postcss_rs_tokenizer::Tokenizer;
     ///
     /// let mut peekable = Tokenizer::new("a b c").into_peekable();
-    /// assert_eq!(peekable.peek().map(|t| &t.value), Some(&"a".to_string()));
+    /// assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
     /// ```
     pub fn into_peekable(self) -> PeekableTokenizer {
         PeekableTokenizer::new(self)
@@ -303,11 +310,45 @@ impl Tokenizer {
     /// use postcss_rs_tokenizer::Tokenizer;
     ///
     /// let mut multi = Tokenizer::new("a b c").into_multipeek();
-    /// assert_eq!(multi.peek().map(|t| &t.value), Some(&"a".to_string()));
-    /// assert_eq!(multi.peek().map(|t| &t.value), Some(&" ".to_string()));
+    /// assert_eq!(multi.peek().map(|t| t.value.as_ref()), Some("a"));
+    /// assert_eq!(multi.peek().map(|t| t.value.as_ref()), Some(" "));
     /// ```
     pub fn into_multipeek(self) -> MultiPeekTokenizer {
         MultiPeekTokenizer::new(self)
+    }
+
+    /// Save the current tokenizer position so it can be restored with [`rewind`].
+    ///
+    /// Use `checkpoint` / `rewind` / `peek` instead of `clone` for lookahead —
+    /// the checkpoint saves only `O(1)` state rather than copying the full line
+    /// table.
+    ///
+    /// [`rewind`]: Tokenizer::rewind
+    pub fn checkpoint(&self) -> Checkpoint {
+        Checkpoint {
+            index: self.index,
+            prev_value: self.prev_value.clone(),
+            lines_len: self.lines.len(),
+        }
+    }
+
+    /// Restore the tokenizer to a position saved by [`checkpoint`].
+    ///
+    /// [`checkpoint`]: Tokenizer::checkpoint
+    pub fn rewind(&mut self, cp: Checkpoint) {
+        self.index = cp.index;
+        self.prev_value = cp.prev_value;
+        self.lines.truncate(cp.lines_len);
+    }
+
+    /// Return the next token without consuming it.
+    ///
+    /// Equivalent to saving a checkpoint, calling `next`, and rewinding.
+    pub fn peek(&mut self) -> Option<Token> {
+        let cp = self.checkpoint();
+        let token = self.next();
+        self.rewind(cp);
+        token
     }
 
     fn create(&mut self, length: usize, kind: Kind) -> Token {
@@ -317,16 +358,16 @@ impl Tokenizer {
         let index = end + 1;
         let value = &self.css[start..index];
 
-        for (length, letter) in value.chars().enumerate() {
-            if Newline::test(&letter) {
-                self.lines.increment(start + length)
+        for (i, &b) in value.as_bytes().iter().enumerate() {
+            if Newline::test(b) {
+                self.lines.increment(start + i)
             }
         }
 
         self.index = index;
 
-        let value = value.to_string();
-        self.prev_value = Some(value.clone());
+        let value: Arc<str> = Arc::from(value);
+        self.prev_value = Some(Arc::clone(&value));
 
         return Token {
             start,
@@ -342,129 +383,126 @@ impl Iterator for Tokenizer {
     type Item = Token;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let letters = &self.letters[self.index..];
-        let letter = self.letters.get(self.index)?;
+        let bytes = self.css.as_bytes();
+        let remaining = &bytes[self.index..];
+        let byte = *remaining.first()?;
+        let next = remaining.get(1).copied().unwrap_or(0);
 
-        let next = match self.letters.get(self.index + 1) {
-            Some(value) => value,
-            None => NULL_CHARACTER,
-        };
-
-        match letter {
-            letter if Whitespace::test(letter) => {
-                let length = Whitespace::tokenize(letters);
+        match byte {
+            b if Whitespace::test(b) => {
+                let length = Whitespace::tokenize(remaining);
                 let token = self.create(length, Kind::Space);
 
                 return Some(token);
             }
 
-            letter if AtWord::test(letter, next) => {
-                let length = AtWord::tokenize(letters);
+            b if AtWord::test(b, next) => {
+                let length = AtWord::tokenize(remaining);
                 let token = self.create(length, Kind::AtWord);
 
                 return Some(token);
             }
 
-            letter if Word::test(letter, next) => {
-                let length = Word::tokenize(letters);
+            b if Word::test(b, next) => {
+                let length = Word::tokenize(remaining);
                 let token = self.create(length, Kind::Word);
 
                 return Some(token);
             }
 
-            letter if Bracket::test(letter, next, self.prev()) => {
-                let length = Bracket::tokenize(letters);
+            b if Bracket::test(b, next, self.prev()) => {
+                let length = Bracket::tokenize(remaining);
                 let token = self.create(length, Kind::Brackets);
 
                 return Some(token);
             }
 
-            letter if OpenCurly::test(letter) => {
-                let length = OpenCurly::tokenize(letters);
+            b if OpenCurly::test(b) => {
+                let length = OpenCurly::tokenize(remaining);
                 let token = self.create(length, Kind::OpenCurly);
 
                 return Some(token);
             }
 
-            letter if CloseCurly::test(letter) => {
-                let length = CloseCurly::tokenize(letters);
+            b if CloseCurly::test(b) => {
+                let length = CloseCurly::tokenize(remaining);
                 let token = self.create(length, Kind::CloseCurly);
 
                 return Some(token);
             }
 
-            letter if OpenSquare::test(letter) => {
-                let length = OpenSquare::tokenize(letters);
+            b if OpenSquare::test(b) => {
+                let length = OpenSquare::tokenize(remaining);
                 let token = self.create(length, Kind::OpenSquare);
 
                 return Some(token);
             }
 
-            letter if CloseSquare::test(letter) => {
-                let length = CloseSquare::tokenize(letters);
+            b if CloseSquare::test(b) => {
+                let length = CloseSquare::tokenize(remaining);
                 let token = self.create(length, Kind::CloseSquare);
 
                 return Some(token);
             }
 
-            letter if OpenCurvy::test(letter) => {
-                let length = OpenCurvy::tokenize(letters);
+            b if OpenCurvy::test(b) => {
+                let length = OpenCurvy::tokenize(remaining);
                 let token = self.create(length, Kind::OpenCurvy);
 
                 return Some(token);
             }
 
-            letter if CloseCurvy::test(letter) => {
-                let length = CloseCurvy::tokenize(letters);
+            b if CloseCurvy::test(b) => {
+                let length = CloseCurvy::tokenize(remaining);
                 let token = self.create(length, Kind::CloseCurvy);
 
                 return Some(token);
             }
 
-            letter if Semicolon::test(letter) => {
-                let length = Semicolon::tokenize(letters);
+            b if Semicolon::test(b) => {
+                let length = Semicolon::tokenize(remaining);
                 let token = self.create(length, Kind::Semicolon);
 
                 return Some(token);
             }
 
-            letter if Colon::test(letter) => {
-                let length = Colon::tokenize(letters);
+            b if Colon::test(b) => {
+                let length = Colon::tokenize(remaining);
                 let token = self.create(length, Kind::Colon);
 
                 return Some(token);
             }
 
-            letter if Comment::test(letter, next) => {
-                let length = Comment::tokenize(&letters[2..]);
+            b if Comment::test(b, next) => {
+                let length = Comment::tokenize(&remaining[2..]);
                 let token = self.create(length + 3, Kind::Comment);
 
                 return Some(token);
             }
 
-            letter if Escape::test(letter) => {
-                let length = Escape::tokenize(letters);
+            b if Escape::test(b) => {
+                let length = Escape::tokenize(remaining);
                 let token = self.create(length, Kind::Word);
 
                 return Some(token);
             }
 
-            letter if SingleString::test(letter) => {
-                let length = SingleString::tokenize(letters);
+            b if SingleString::test(b) => {
+                let length = SingleString::tokenize(remaining);
                 let token = self.create(length, Kind::String);
 
                 return Some(token);
             }
 
-            letter if DoubleString::test(letter) => {
-                let length = DoubleString::tokenize(letters);
+            b if DoubleString::test(b) => {
+                let length = DoubleString::tokenize(remaining);
                 let token = self.create(length, Kind::String);
 
                 return Some(token);
             }
 
             _ => {
-                let length = Word::tokenize(letters);
+                let length = Word::tokenize(remaining);
                 let token = self.create(length, Kind::Word);
 
                 return Some(token);
@@ -489,14 +527,14 @@ impl Iterator for Tokenizer {
 /// let mut peekable = PeekableTokenizer::new(tokenizer);
 ///
 /// // Peek at the next token without consuming it
-/// assert_eq!(peekable.peek().map(|t| &t.value), Some(&"a".to_string()));
+/// assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
 /// // Peek again returns the same token
-/// assert_eq!(peekable.peek().map(|t| &t.value), Some(&"a".to_string()));
+/// assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
 ///
 /// // Now consume it
-/// assert_eq!(peekable.next().map(|t| t.value), Some("a".to_string()));
+/// assert_eq!(peekable.next().map(|t| t.value.to_string()).as_deref(), Some("a"));
 /// // Next token is a space
-/// assert_eq!(peekable.peek().map(|t| &t.value), Some(&" ".to_string()));
+/// assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some(" "));
 /// ```
 pub struct PeekableTokenizer {
     inner: std::iter::Peekable<Tokenizer>,
@@ -551,7 +589,7 @@ impl Iterator for PeekableTokenizer {
 ///
 /// // Reset and consume normally
 /// peekable.reset_peek();
-/// assert_eq!(peekable.next().unwrap().value, "a");
+/// assert_eq!(&*peekable.next().unwrap().value, "a");
 /// ```
 pub struct MultiPeekTokenizer {
     inner: MultiPeek<Tokenizer>,
@@ -618,7 +656,7 @@ mod tests {
                 kind: Kind::Space,
                 start: 0,
                 end: 3,
-                value: "\r\n \t".to_string(),
+                value: "\r\n \t".into(),
                 column: 1,
             }],
         )
@@ -632,7 +670,7 @@ mod tests {
                 kind: Kind::Word,
                 start: 0,
                 end: 1,
-                value: "ab".to_string(),
+                value: "ab".into(),
                 column: 1,
             }]
         );
@@ -647,14 +685,14 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 1,
-                    value: "aa".to_string(),
+                    value: "aa".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 4,
-                    value: "!bb".to_string(),
+                    value: "!bb".into(),
                     column: 3,
                 }
             ]
@@ -670,21 +708,21 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 0,
-                    value: "a".to_string(),
+                    value: "a".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 1,
                     end: 3,
-                    value: " \n ".to_string(),
+                    value: " \n ".into(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 4,
                     end: 4,
-                    value: "b".to_string(),
+                    value: "b".into(),
                     column: 2,
                 }
             ]
@@ -700,28 +738,28 @@ mod tests {
                     kind: Kind::OpenCurly,
                     start: 0,
                     end: 0,
-                    value: "{".to_string(),
+                    value: "{".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Colon,
                     start: 1,
                     end: 1,
-                    value: ":".to_string(),
+                    value: ":".into(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Semicolon,
                     start: 2,
                     end: 2,
-                    value: ";".to_string(),
+                    value: ";".into(),
                     column: 3,
                 },
                 Token {
                     kind: Kind::CloseCurly,
                     start: 3,
                     end: 3,
-                    value: "}".to_string(),
+                    value: "}".into(),
                     column: 4,
                 }
             ]
@@ -737,42 +775,42 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 1,
-                    value: "\\(".to_string(),
+                    value: "\\(".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 3,
-                    value: "\\{".to_string(),
+                    value: "\\{".into(),
                     column: 3,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 4,
                     end: 5,
-                    value: "\\\"".to_string(),
+                    value: "\\\"".into(),
                     column: 5,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 6,
                     end: 7,
-                    value: "\\@".to_string(),
+                    value: "\\@".into(),
                     column: 7,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 8,
                     end: 9,
-                    value: "\\\\".to_string(),
+                    value: "\\\\".into(),
                     column: 9,
                 },
                 Token {
                     kind: Kind::String,
                     start: 10,
                     end: 11,
-                    value: "\"\"".to_string(),
+                    value: "\"\"".into(),
                     column: 11,
                 }
             ]
@@ -788,14 +826,14 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 3,
-                    value: "\\\\\\\\".to_string(),
+                    value: "\\\\\\\\".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::OpenCurly,
                     start: 4,
                     end: 4,
-                    value: "{".to_string(),
+                    value: "{".into(),
                     column: 5,
                 }
             ]
@@ -810,7 +848,7 @@ mod tests {
                 kind: Kind::Brackets,
                 start: 0,
                 end: 3,
-                value: "(ab)".to_string(),
+                value: "(ab)".into(),
                 column: 1,
             }]
         )
@@ -825,28 +863,28 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 0,
-                    value: "a".to_string(),
+                    value: "a".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::OpenSquare,
                     start: 1,
                     end: 1,
-                    value: "[".to_string(),
+                    value: "[".into(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 3,
-                    value: "bc".to_string(),
+                    value: "bc".into(),
                     column: 3,
                 },
                 Token {
                     kind: Kind::CloseSquare,
                     start: 4,
                     end: 4,
-                    value: "]".to_string(),
+                    value: "]".into(),
                     column: 5,
                 }
             ]
@@ -863,112 +901,112 @@ mod tests {
                     kind: Kind::OpenCurvy,
                     start: 0,
                     end: 0,
-                    value: "(".to_string(),
+                    value: "(".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 1,
                     end: 2,
-                    value: "()".to_string(),
+                    value: "()".into(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 3,
                     end: 3,
-                    value: ")".to_string(),
+                    value: ")".into(),
                     column: 4,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 4,
                     end: 4,
-                    value: "(".to_string(),
+                    value: "(".into(),
                     column: 5,
                 },
                 Token {
                     kind: Kind::String,
                     start: 5,
                     end: 6,
-                    value: "\"\"".to_string(),
+                    value: "\"\"".into(),
                     column: 6,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 7,
                     end: 7,
-                    value: ")".to_string(),
+                    value: ")".into(),
                     column: 8,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 8,
                     end: 8,
-                    value: "(".to_string(),
+                    value: "(".into(),
                     column: 9,
                 },
                 Token {
                     kind: Kind::Comment,
                     start: 9,
                     end: 12,
-                    value: "/**/".to_string(),
+                    value: "/**/".into(),
                     column: 10,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 13,
                     end: 13,
-                    value: ")".to_string(),
+                    value: ")".into(),
                     column: 14,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 14,
                     end: 14,
-                    value: "(".to_string(),
+                    value: "(".into(),
                     column: 15,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 15,
                     end: 16,
-                    value: "\\\\".to_string(),
+                    value: "\\\\".into(),
                     column: 16,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 17,
                     end: 17,
-                    value: ")".to_string(),
+                    value: ")".into(),
                     column: 18,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 18,
                     end: 18,
-                    value: "(".to_string(),
+                    value: "(".into(),
                     column: 19,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 19,
                     end: 19,
-                    value: "\n".to_string(),
+                    value: "\n".into(),
                     column: 20,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 20,
                     end: 20,
-                    value: ")".to_string(),
+                    value: ")".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 21,
                     end: 21,
-                    value: "(".to_string(),
+                    value: "(".into(),
                     column: 2,
                 },
             ]
@@ -984,14 +1022,14 @@ mod tests {
                     kind: Kind::String,
                     start: 0,
                     end: 2,
-                    value: "'\"'".to_string(),
+                    value: "'\"'".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::String,
                     start: 3,
                     end: 6,
-                    value: "\"\\\"\"".to_string(),
+                    value: "\"\\\"\"".into(),
                     column: 4,
                 }
             ]
@@ -1006,7 +1044,7 @@ mod tests {
                 kind: Kind::String,
                 start: 0,
                 end: 3,
-                value: "\"\\\\\"".to_string(),
+                value: "\"\\\\\"".into(),
                 column: 1,
             }]
         )
@@ -1021,14 +1059,14 @@ mod tests {
                     kind: Kind::String,
                     start: 0,
                     end: 3,
-                    value: "\"\n\n\"".to_string(),
+                    value: "\"\n\n\"".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::String,
                     start: 4,
                     end: 7,
-                    value: "\"\n\n\"".to_string(),
+                    value: "\"\n\n\"".into(),
                     column: 2,
                 }
             ]
@@ -1044,14 +1082,14 @@ mod tests {
                     kind: Kind::AtWord,
                     start: 0,
                     end: 4,
-                    value: "@word".to_string(),
+                    value: "@word".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 5,
                     end: 5,
-                    value: " ".to_string(),
+                    value: " ".into(),
                     column: 6,
                 }
             ]
@@ -1067,56 +1105,56 @@ mod tests {
                     kind: Kind::AtWord,
                     start: 0,
                     end: 3,
-                    value: "@one".to_string(),
+                    value: "@one".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::OpenCurly,
                     start: 4,
                     end: 4,
-                    value: "{".to_string(),
+                    value: "{".into(),
                     column: 5,
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 5,
                     end: 8,
-                    value: "@two".to_string(),
+                    value: "@two".into(),
                     column: 6,
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 9,
                     end: 10,
-                    value: "()".to_string(),
+                    value: "()".into(),
                     column: 10,
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 11,
                     end: 16,
-                    value: "@three".to_string(),
+                    value: "@three".into(),
                     column: 12,
                 },
                 Token {
                     kind: Kind::String,
                     start: 17,
                     end: 18,
-                    value: "\"\"".to_string(),
+                    value: "\"\"".into(),
                     column: 18,
                 },
                 Token {
                     kind: Kind::AtWord,
                     start: 19,
                     end: 23,
-                    value: "@four".to_string(),
+                    value: "@four".into(),
                     column: 20,
                 },
                 Token {
                     kind: Kind::Semicolon,
                     start: 24,
                     end: 24,
-                    value: ";".to_string(),
+                    value: ";".into(),
                     column: 25,
                 }
             ]
@@ -1132,14 +1170,14 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 2,
-                    value: "url".to_string(),
+                    value: "url".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Brackets,
                     start: 3,
                     end: 8,
-                    value: "(/*\\))".to_string(),
+                    value: "(/*\\))".into(),
                     column: 4,
                 }
             ]
@@ -1156,28 +1194,28 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 2,
-                    value: "url".to_string(),
+                    value: "url".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::OpenCurvy,
                     start: 3,
                     end: 3,
-                    value: "(".to_string(),
+                    value: "(".into(),
                     column: 4,
                 },
                 Token {
                     kind: Kind::String,
                     start: 4,
                     end: 6,
-                    value: "\")\"".to_string(),
+                    value: "\")\"".into(),
                     column: 5,
                 },
                 Token {
                     kind: Kind::CloseCurvy,
                     start: 7,
                     end: 7,
-                    value: ")".to_string(),
+                    value: ")".into(),
                     column: 8,
                 }
             ]
@@ -1192,7 +1230,7 @@ mod tests {
                 kind: Kind::AtWord,
                 start: 0,
                 end: 0,
-                value: "@".to_string(),
+                value: "@".into(),
                 column: 1,
             }]
         )
@@ -1206,7 +1244,7 @@ mod tests {
                 kind: Kind::Comment,
                 start: 0,
                 end: 8,
-                value: "/* a\nb */".to_string(),
+                value: "/* a\nb */".into(),
                 column: 1,
             }]
         )
@@ -1221,21 +1259,21 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 0,
-                    value: "a".to_string(),
+                    value: "a".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Comment,
                     start: 1,
                     end: 7,
-                    value: "/* \n */".to_string(),
+                    value: "/* \n */".into(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 8,
                     end: 8,
-                    value: "b".to_string(),
+                    value: "b".into(),
                     column: 4,
                 },
             ]
@@ -1251,21 +1289,21 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 0,
-                    value: "a".to_string(),
+                    value: "a".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 1,
                     end: 1,
-                    value: "\u{000C}".to_string(),
+                    value: "\u{000C}".into(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 2,
-                    value: "b".to_string(),
+                    value: "b".into(),
                     column: 3,
                 }
             ]
@@ -1281,35 +1319,35 @@ mod tests {
                     kind: Kind::Word,
                     start: 0,
                     end: 0,
-                    value: "a".to_string(),
+                    value: "a".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 1,
                     end: 1,
-                    value: "\r".to_string(),
+                    value: "\r".into(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 2,
                     end: 2,
-                    value: "b".to_string(),
+                    value: "b".into(),
                     column: 1,
                 },
                 Token {
                     kind: Kind::Space,
                     start: 3,
                     end: 4,
-                    value: "\r\n".to_string(),
+                    value: "\r\n".into(),
                     column: 2,
                 },
                 Token {
                     kind: Kind::Word,
                     start: 5,
                     end: 5,
-                    value: "c".to_string(),
+                    value: "c".into(),
                     column: 1,
                 },
             ]
@@ -1332,182 +1370,182 @@ mod tests {
                     start: 0,
                     end: 0,
                     kind: Kind::Word,
-                    value: "a".to_string(),
+                    value: "a".into(),
                     column: 1
                 },
                 Token {
                     start: 1,
                     end: 1,
                     kind: Kind::Space,
-                    value: " ".to_string(),
+                    value: " ".into(),
                     column: 2
                 },
                 Token {
                     start: 2,
                     end: 2,
                     kind: Kind::OpenCurly,
-                    value: "{".to_string(),
+                    value: "{".into(),
                     column: 3
                 },
                 Token {
                     start: 3,
                     end: 5,
                     kind: Kind::Space,
-                    value: "\n  ".to_string(),
+                    value: "\n  ".into(),
                     column: 4
                 },
                 Token {
                     start: 6,
                     end: 12,
                     kind: Kind::Word,
-                    value: "content".to_string(),
+                    value: "content".into(),
                     column: 3
                 },
                 Token {
                     start: 13,
                     end: 13,
                     kind: Kind::Colon,
-                    value: ":".to_string(),
+                    value: ":".into(),
                     column: 10
                 },
                 Token {
                     start: 14,
                     end: 14,
                     kind: Kind::Space,
-                    value: " ".to_string(),
+                    value: " ".into(),
                     column: 11
                 },
                 Token {
                     start: 15,
                     end: 17,
                     kind: Kind::String,
-                    value: "\"a\"".to_string(),
+                    value: "\"a\"".into(),
                     column: 12
                 },
                 Token {
                     start: 18,
                     end: 18,
                     kind: Kind::Semicolon,
-                    value: ";".to_string(),
+                    value: ";".into(),
                     column: 15
                 },
                 Token {
                     start: 19,
                     end: 21,
                     kind: Kind::Space,
-                    value: "\n  ".to_string(),
+                    value: "\n  ".into(),
                     column: 16
                 },
                 Token {
                     start: 22,
                     end: 26,
                     kind: Kind::Word,
-                    value: "width".to_string(),
+                    value: "width".into(),
                     column: 3
                 },
                 Token {
                     start: 27,
                     end: 27,
                     kind: Kind::Colon,
-                    value: ":".to_string(),
+                    value: ":".into(),
                     column: 8
                 },
                 Token {
                     start: 28,
                     end: 28,
                     kind: Kind::Space,
-                    value: " ".to_string(),
+                    value: " ".into(),
                     column: 9
                 },
                 Token {
                     start: 29,
                     end: 32,
                     kind: Kind::Word,
-                    value: "calc".to_string(),
+                    value: "calc".into(),
                     column: 10
                 },
                 Token {
                     start: 33,
                     end: 38,
                     kind: Kind::Brackets,
-                    value: "(1px;)".to_string(),
+                    value: "(1px;)".into(),
                     column: 14
                 },
                 Token {
                     start: 39,
                     end: 41,
                     kind: Kind::Space,
-                    value: "\n  ".to_string(),
+                    value: "\n  ".into(),
                     column: 20
                 },
                 Token {
                     start: 42,
                     end: 42,
                     kind: Kind::CloseCurly,
-                    value: "}".to_string(),
+                    value: "}".into(),
                     column: 3
                 },
                 Token {
                     start: 43,
                     end: 43,
                     kind: Kind::Space,
-                    value: "\n".to_string(),
+                    value: "\n".into(),
                     column: 4
                 },
                 Token {
                     start: 44,
                     end: 61,
                     kind: Kind::Comment,
-                    value: "/* small screen */".to_string(),
+                    value: "/* small screen */".into(),
                     column: 1
                 },
                 Token {
                     start: 62,
                     end: 62,
                     kind: Kind::Space,
-                    value: "\n".to_string(),
+                    value: "\n".into(),
                     column: 19
                 },
                 Token {
                     start: 63,
                     end: 68,
                     kind: Kind::AtWord,
-                    value: "@media".to_string(),
+                    value: "@media".into(),
                     column: 1
                 },
                 Token {
                     start: 69,
                     end: 69,
                     kind: Kind::Space,
-                    value: " ".to_string(),
+                    value: " ".into(),
                     column: 7
                 },
                 Token {
                     start: 70,
                     end: 75,
                     kind: Kind::Word,
-                    value: "screen".to_string(),
+                    value: "screen".into(),
                     column: 8
                 },
                 Token {
                     start: 76,
                     end: 76,
                     kind: Kind::Space,
-                    value: " ".to_string(),
+                    value: " ".into(),
                     column: 14
                 },
                 Token {
                     start: 77,
                     end: 77,
                     kind: Kind::OpenCurly,
-                    value: "{".to_string(),
+                    value: "{".into(),
                     column: 15
                 },
                 Token {
                     start: 78,
                     end: 78,
                     kind: Kind::CloseCurly,
-                    value: "}".to_string(),
+                    value: "}".into(),
                     column: 16
                 }
             ]
@@ -1525,8 +1563,8 @@ mod tests {
         // Test the convenience method
         let mut peekable = Tokenizer::new("a b c").into_peekable();
 
-        assert_eq!(peekable.peek().map(|t| &t.value), Some(&"a".to_string()));
-        assert_eq!(peekable.next().map(|t| t.value), Some("a".to_string()));
+        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
+        assert_eq!(peekable.next().map(|t| t.value.to_string()), Some("a".to_string()));
     }
 
     #[test]
@@ -1535,12 +1573,12 @@ mod tests {
         let mut multi = Tokenizer::new("a b c").into_multipeek();
 
         // Peek ahead multiple times
-        assert_eq!(multi.peek().map(|t| &t.value), Some(&"a".to_string()));
-        assert_eq!(multi.peek().map(|t| &t.value), Some(&" ".to_string()));
-        assert_eq!(multi.peek().map(|t| &t.value), Some(&"b".to_string()));
+        assert_eq!(multi.peek().map(|t| t.value.as_ref()), Some("a"));
+        assert_eq!(multi.peek().map(|t| t.value.as_ref()), Some(" "));
+        assert_eq!(multi.peek().map(|t| t.value.as_ref()), Some("b"));
 
         multi.reset_peek();
-        assert_eq!(multi.next().map(|t| t.value), Some("a".to_string()));
+        assert_eq!(multi.next().map(|t| t.value.to_string()), Some("a".to_string()));
     }
 
     #[test]
@@ -1549,19 +1587,16 @@ mod tests {
         let mut peekable = PeekableTokenizer::new(tokenizer);
 
         // Peek at next token without consuming
-        let peeked = peekable.peek().map(|t| t.value.clone());
-        assert_eq!(peeked, Some("a".to_string()));
+        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
 
         // Peek again should return the same token (not advance)
-        let peeked_again = peekable.peek().map(|t| t.value.clone());
-        assert_eq!(peeked_again, Some("a".to_string()));
+        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
 
         // Now consume the token
-        let consumed = peekable.next().map(|t| t.value);
-        assert_eq!(consumed, Some("a".to_string()));
+        assert_eq!(peekable.next().map(|t| t.value.to_string()), Some("a".to_string()));
 
         // Peek at the next token (space)
-        assert_eq!(peekable.peek().map(|t| t.value.as_str()), Some(" "));
+        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some(" "));
     }
 
     #[test]
@@ -1570,22 +1605,18 @@ mod tests {
         let mut peekable = MultiPeekTokenizer::new(tokenizer);
 
         // Peek at first token without consuming
-        let peeked = peekable.peek().map(|t| t.value.clone());
-        assert_eq!(peeked, Some("a".to_string()));
+        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
 
         // Peek again advances to next token
-        let peeked_again = peekable.peek().map(|t| t.value.clone());
-        assert_eq!(peeked_again, Some(" ".to_string()));
+        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some(" "));
 
         // Reset and peek from start again
         peekable.reset_peek();
-        let peeked_reset = peekable.peek().map(|t| t.value.clone());
-        assert_eq!(peeked_reset, Some("a".to_string()));
+        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
 
         // Now consume the token
         peekable.reset_peek();
-        let consumed = peekable.next().map(|t| t.value);
-        assert_eq!(consumed, Some("a".to_string()));
+        assert_eq!(peekable.next().map(|t| t.value.to_string()), Some("a".to_string()));
     }
 
     #[test]
@@ -1594,16 +1625,16 @@ mod tests {
         let mut peekable = MultiPeekTokenizer::new(tokenizer);
 
         // Peek ahead multiple times
-        assert_eq!(peekable.peek().map(|t| t.value.as_str()), Some("a"));
-        assert_eq!(peekable.peek().map(|t| t.value.as_str()), Some(" "));
-        assert_eq!(peekable.peek().map(|t| t.value.as_str()), Some("b"));
-        assert_eq!(peekable.peek().map(|t| t.value.as_str()), Some(" "));
-        assert_eq!(peekable.peek().map(|t| t.value.as_str()), Some("c"));
+        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
+        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some(" "));
+        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("b"));
+        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some(" "));
+        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("c"));
 
         // Reset and consume tokens normally
         peekable.reset_peek();
-        assert_eq!(peekable.next().map(|t| t.value), Some("a".to_string()));
-        assert_eq!(peekable.next().map(|t| t.value), Some(" ".to_string()));
-        assert_eq!(peekable.next().map(|t| t.value), Some("b".to_string()));
+        assert_eq!(peekable.next().map(|t| t.value.to_string()), Some("a".to_string()));
+        assert_eq!(peekable.next().map(|t| t.value.to_string()), Some(" ".to_string()));
+        assert_eq!(peekable.next().map(|t| t.value.to_string()), Some("b".to_string()));
     }
 }

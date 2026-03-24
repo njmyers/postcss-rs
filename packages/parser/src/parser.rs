@@ -53,7 +53,7 @@ impl<'a> Parser<'a> {
 
                 // Handle words - could be rules or root-level declarations
                 Kind::Word => {
-                    match Self::classify(&tokenizer) {
+                    match Self::classify(&mut tokenizer) {
                         RootStatementType::Declaration => {
                             let (node, terminator) =
                                 crate::Declaration::create(token, &mut tokenizer, &spaces);
@@ -99,12 +99,8 @@ impl<'a> Parser<'a> {
     /// Classify a Word token as either a declaration or rule by peeking ahead.
     /// - Declaration: `prop: value;` - word + colon + value + semicolon
     /// - Rule: `selector::pseudo {` - word + colon + more tokens + opening brace
-    fn classify(tokenizer: &Tokenizer) -> RootStatementType {
-        // Create a peekable iterator for efficient next-token peeking
-        let mut peekable = tokenizer.clone().into_peekable();
-
-        // No colon after word means it's definitely a rule
-        let Some(next) = peekable.peek() else {
+    fn classify(tokenizer: &mut Tokenizer) -> RootStatementType {
+        let Some(next) = tokenizer.peek() else {
             return RootStatementType::Rule;
         };
 
@@ -115,41 +111,38 @@ impl<'a> Parser<'a> {
     }
 
     /// Scan ahead after a colon to find whether we hit `{` (rule) or `;` (declaration)
-    fn scan_for_terminator(tokenizer: &Tokenizer) -> RootStatementType {
-        // Create a multi-peek iterator for efficient lookahead
-        let mut peekable = tokenizer.clone().into_multipeek();
-
+    fn scan_for_terminator(tokenizer: &mut Tokenizer) -> RootStatementType {
+        let cp = tokenizer.checkpoint();
         let mut paren_depth = 0;
         let mut square_depth = 0;
-
-        // Peek through tokens looking for terminator (max 1000 tokens)
-        for _ in 0..1000 {
-            let token = match peekable.peek() {
-                Some(t) => t.clone(),
-                None => return RootStatementType::Declaration,
-            };
-
-            match token.kind {
-                Kind::OpenCurly if paren_depth == 0 && square_depth == 0 => {
-                    return RootStatementType::Rule;
+        let result = (|| {
+            for _ in 0..1000 {
+                let token = match tokenizer.next() {
+                    Some(t) => t,
+                    None => return RootStatementType::Declaration,
+                };
+                match token.kind {
+                    Kind::OpenCurly if paren_depth == 0 && square_depth == 0 => {
+                        return RootStatementType::Rule;
+                    }
+                    Kind::Semicolon if paren_depth == 0 && square_depth == 0 => {
+                        return RootStatementType::Declaration;
+                    }
+                    Kind::Brackets if token.value.starts_with('(') => paren_depth += 1,
+                    Kind::Brackets if token.value.starts_with('[') => square_depth += 1,
+                    Kind::Brackets if token.value.starts_with(')') && paren_depth > 0 => {
+                        paren_depth -= 1
+                    }
+                    Kind::Brackets if token.value.starts_with(']') && square_depth > 0 => {
+                        square_depth -= 1
+                    }
+                    _ => {}
                 }
-                Kind::Semicolon if paren_depth == 0 && square_depth == 0 => {
-                    return RootStatementType::Declaration;
-                }
-                Kind::Brackets if token.value.starts_with('(') => paren_depth += 1,
-                Kind::Brackets if token.value.starts_with('[') => square_depth += 1,
-                Kind::Brackets if token.value.starts_with(')') && paren_depth > 0 => {
-                    paren_depth -= 1
-                }
-                Kind::Brackets if token.value.starts_with(']') && square_depth > 0 => {
-                    square_depth -= 1
-                }
-                _ => {}
             }
-        }
-
-        // If we scanned 1000 tokens without finding a terminator, assume declaration
-        RootStatementType::Declaration
+            RootStatementType::Declaration
+        })();
+        tokenizer.rewind(cp);
+        result
     }
 
     fn clean(css: &str) -> Result<&str, Utf8Error> {

@@ -27,17 +27,12 @@ impl RuleWord {
     pub fn collect_and_combine(first_token: Token, tokenizer: &mut Tokenizer) -> Token {
         let mut tokens = vec![first_token];
 
-        // Create a peekable view to check upcoming tokens
-        // We'll peek to decide whether to consume
-        let temp = tokenizer.clone();
-        let mut peekable = temp.into_peekable();
-
         // Collect tokens that are part of the property name (Word and Brackets)
         // Stop when we encounter:
         // 1. A Word token starting with ':' (declaration value, not property name)
         // 2. A colon directly (Kind::Colon)
         // 3. Anything else (space, open brace, etc.)
-        while let Some(next) = peekable.peek() {
+        while let Some(next) = tokenizer.peek() {
             match next.kind {
                 Kind::Word => {
                     // Check if this Word starts with ':' - if so, it's the start of the value
@@ -45,13 +40,9 @@ impl RuleWord {
                     if next.value.starts_with(':') {
                         break;
                     }
-                    // Part of property name - consume from both peekable and original tokenizer
-                    peekable.next();
                     tokens.push(tokenizer.next().unwrap());
                 }
                 Kind::Brackets => {
-                    // Part of property name - consume from both peekable and original tokenizer
-                    peekable.next();
                     tokens.push(tokenizer.next().unwrap());
                 }
                 _ => {
@@ -81,7 +72,7 @@ impl RuleWord {
             kind: Kind::Word,
             start: tokens[0].start,
             end: tokens.last().unwrap().end,
-            value: combined_value,
+            value: combined_value.into(),
             column: tokens[0].column,
         }
     }
@@ -99,7 +90,7 @@ mod tests {
 
         let result = RuleWord::collect_and_combine(first_token.clone(), &mut tokenizer);
 
-        assert_eq!(result.value, "color");
+        assert_eq!(&*result.value, "color");
         assert_eq!(result.start, first_token.start);
         assert_eq!(result.end, first_token.end);
     }
@@ -116,7 +107,7 @@ mod tests {
         let result = RuleWord::collect_and_combine(first_token, &mut tokenizer);
 
         // Should combine both Word tokens
-        assert_eq!(result.value, "\\62 olor");
+        assert_eq!(&*result.value, "\\62 olor");
         assert_eq!(result.kind, Kind::Word);
     }
 
@@ -127,12 +118,12 @@ mod tests {
 
         let first_token = tokenizer.next().unwrap();
         assert_eq!(first_token.kind, Kind::Word);
-        assert_eq!(first_token.value, "color");
+        assert_eq!(&*first_token.value, "color");
 
         let result = RuleWord::collect_and_combine(first_token.clone(), &mut tokenizer);
 
         // Should only include "color", not the colon
-        assert_eq!(result.value, "color");
+        assert_eq!(&*result.value, "color");
 
         // Next token should be the colon
         let next = tokenizer.next().unwrap();

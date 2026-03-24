@@ -75,7 +75,7 @@ impl Raw {
     ///     kind: Kind::Space,
     ///     start: 0,
     ///     end: 1,
-    ///     value: "\n".to_string(),
+    ///     value: "\n".into(),
     ///     column: 0,
     /// });
     ///
@@ -266,7 +266,7 @@ mod tests {
     use postcss_rs_tokenizer::{Kind, Token};
 
     fn space_token(value: &str) -> Token {
-        Token { kind: Kind::Space, value: value.to_string(), start: 0, end: value.len(), column: 1 }
+        Token { kind: Kind::Space, value: value.into(), start: 0, end: value.len(), column: 1 }
     }
 
     // ---- Raw tests ----

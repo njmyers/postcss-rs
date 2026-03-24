@@ -69,7 +69,7 @@ mod tests {
     fn comment_token(value: &str) -> Token {
         Token {
             kind: Kind::Comment,
-            value: value.to_string(),
+            value: value.into(),
             start: 0,
             end: value.len(),
             column: 1,

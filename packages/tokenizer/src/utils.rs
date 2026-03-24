@@ -18,26 +18,23 @@ pub fn back(index: usize) -> usize {
     return index - 1;
 }
 
-/// Unwraps an `Option<usize>` position, falling back to `letters.len()`.
+/// Unwraps an `Option<usize>` position, falling back to `len`.
 ///
-/// When a search through a character slice produces `None` (i.e. the pattern
-/// was not found before the end of the slice), this function returns the length
-/// of the slice to indicate "end of input".
+/// When a search through a byte slice produces `None` (i.e. the pattern
+/// was not found before the end of the slice), this function returns `len`
+/// to indicate "end of input".
 ///
 /// # Examples
 /// ```
 /// use postcss_rs_tokenizer::utils::unwrap_position;
-/// let chars: Vec<char> = "hello".chars().collect();
-/// assert_eq!(unwrap_position(Some(2), &chars), 2);
-/// assert_eq!(unwrap_position(None, &chars), 5);
+/// assert_eq!(unwrap_position(Some(2), 5), 2);
+/// assert_eq!(unwrap_position(None, 5), 5);
 /// ```
-pub fn unwrap_position(result: Option<usize>, letters: &[char]) -> usize {
-    let position = match result {
+pub fn unwrap_position(result: Option<usize>, len: usize) -> usize {
+    match result {
         Some(value) => value,
-        None => letters.len(),
-    };
-
-    return position;
+        None => len,
+    }
 }
 
 #[cfg(test)]
@@ -58,20 +55,17 @@ mod tests {
 
     #[test]
     fn test_unwrap_position_some() {
-        let chars: Vec<char> = "hello".chars().collect();
-        assert_eq!(unwrap_position(Some(0), &chars), 0);
-        assert_eq!(unwrap_position(Some(3), &chars), 3);
+        assert_eq!(unwrap_position(Some(0), 5), 0);
+        assert_eq!(unwrap_position(Some(3), 5), 3);
     }
 
     #[test]
     fn test_unwrap_position_none_returns_length() {
-        let chars: Vec<char> = "hello".chars().collect();
-        assert_eq!(unwrap_position(None, &chars), 5);
+        assert_eq!(unwrap_position(None, 5), 5);
     }
 
     #[test]
     fn test_unwrap_position_empty_slice() {
-        let chars: Vec<char> = Vec::new();
-        assert_eq!(unwrap_position(None, &chars), 0);
+        assert_eq!(unwrap_position(None, 0), 0);
     }
 }
