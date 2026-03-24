@@ -72,7 +72,7 @@ impl RuleWord {
             kind: Kind::Word,
             start: tokens[0].start,
             end: tokens.last().unwrap().end,
-            value: combined_value,
+            value: combined_value.into(),
             column: tokens[0].column,
         }
     }
@@ -90,7 +90,7 @@ mod tests {
 
         let result = RuleWord::collect_and_combine(first_token.clone(), &mut tokenizer);
 
-        assert_eq!(result.value, "color");
+        assert_eq!(&*result.value, "color");
         assert_eq!(result.start, first_token.start);
         assert_eq!(result.end, first_token.end);
     }
@@ -107,7 +107,7 @@ mod tests {
         let result = RuleWord::collect_and_combine(first_token, &mut tokenizer);
 
         // Should combine both Word tokens
-        assert_eq!(result.value, "\\62 olor");
+        assert_eq!(&*result.value, "\\62 olor");
         assert_eq!(result.kind, Kind::Word);
     }
 
@@ -118,12 +118,12 @@ mod tests {
 
         let first_token = tokenizer.next().unwrap();
         assert_eq!(first_token.kind, Kind::Word);
-        assert_eq!(first_token.value, "color");
+        assert_eq!(&*first_token.value, "color");
 
         let result = RuleWord::collect_and_combine(first_token.clone(), &mut tokenizer);
 
         // Should only include "color", not the colon
-        assert_eq!(result.value, "color");
+        assert_eq!(&*result.value, "color");
 
         // Next token should be the colon
         let next = tokenizer.next().unwrap();

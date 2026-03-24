@@ -99,7 +99,7 @@ impl Declaration {
                     break;
                 }
                 // Space with newline ends declaration when not open
-                Kind::Space if peeked.value == characters::NEWLINE && !statement.is_open() => break,
+                Kind::Space if peeked.value.as_ref() == characters::NEWLINE && !statement.is_open() => break,
 
                 // Space with newline followed by comment or CloseCurly ends declaration
                 Kind::Space if peeked.value.starts_with(characters::NEWLINE) && !statement.is_open() => {
@@ -327,11 +327,11 @@ impl Declaration {
             match tokenizer.next() {
                 None => break,
                 Some(t) if matches!(t.kind, Kind::Space | Kind::Comment) => {
-                    raw_parts.push(t.value);
+                    raw_parts.push(t.value.to_string());
                     continue;
                 }
                 Some(t) if t.kind == Kind::Word && t.value.eq_ignore_ascii_case("important") => {
-                    raw_parts.push(t.value);
+                    raw_parts.push(t.value.to_string());
                     // Tokens already consumed — no rewind needed
                     let raw = Self::build_important_raw(&raw_parts.join(""), tokenizer);
                     return (ImportantResult::Found(raw), bang_pos);

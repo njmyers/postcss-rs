@@ -185,7 +185,7 @@ impl Rule {
 
     /// Check if a token is a newline character
     fn is_newline(token: &Token) -> bool {
-        token.kind == Kind::Space && (token.value == "\n" || token.value == "\r\n")
+        token.kind == Kind::Space && (token.value.as_ref() == "\n" || token.value.as_ref() == "\r\n")
     }
 
     /// Peek ahead to determine if the next non-space token indicates a nested rule
