@@ -158,6 +158,8 @@ const LARGE_CSS = Array.from({ length: 50 }, (_, i) => `
 }
 `).join('\n');
 
+const processor = postcss();
+
 // ─── Benchmarks ───────────────────────────────────────────────────────────────
 
 describe('Small CSS (~200 bytes)', () => {
@@ -169,8 +171,12 @@ describe('Small CSS (~200 bytes)', () => {
     parseSync(SMALL_CSS);
   });
 
-  bench('postcss (JS)', () => {
-    postcss.parse(SMALL_CSS);
+  bench('postcss async (JS)', async () => {
+    (await processor.process(SMALL_CSS, { from: undefined }).async()).root;
+  });
+
+  bench('postcss sync (JS)', () => {
+    processor.process(SMALL_CSS, { from: undefined }).sync().root;
   });
 });
 
@@ -183,8 +189,12 @@ describe('Medium CSS (~2 KB)', () => {
     parseSync(MEDIUM_CSS);
   });
 
-  bench('postcss (JS)', () => {
-    postcss.parse(MEDIUM_CSS);
+  bench('postcss async (JS)', async () => {
+    (await processor.process(MEDIUM_CSS, { from: undefined }).async()).root;
+  });
+
+  bench('postcss sync (JS)', () => {
+    processor.process(MEDIUM_CSS, { from: undefined }).sync().root;
   });
 });
 
@@ -197,7 +207,11 @@ describe('Large CSS (~20 KB)', () => {
     parseSync(LARGE_CSS);
   });
 
-  bench('postcss (JS)', () => {
-    postcss.parse(LARGE_CSS);
+  bench('postcss async (JS)', async () => {
+    (await processor.process(LARGE_CSS, { from: undefined }).async()).root;
+  });
+
+  bench('postcss sync (JS)', () => {
+    processor.process(LARGE_CSS, { from: undefined }).sync().root;
   });
 });
