@@ -1,3 +1,4 @@
+use crate::bytes::{ASTERISK, FORWARD_SLASH};
 use crate::utils;
 
 /// Tokenizer for CSS block comments (`/* ... */`).
@@ -20,19 +21,19 @@ impl Comment {
 
     /// Returns `true` if the two bytes form the start of a CSS comment (`/*`).
     pub fn test(current: u8, next: u8) -> bool {
-        return current == b'/' && next == b'*';
+        return current == FORWARD_SLASH && next == ASTERISK;
     }
 
     /// Returns `true` if the two bytes form the end of a CSS comment (`*/`).
     fn test_end(current: u8, next: u8) -> bool {
-        return current == b'*' && next == b'/';
+        return current == ASTERISK && next == FORWARD_SLASH;
     }
 
     /// Returns `true` if the byte is a forward slash (`/`).
     ///
     /// Used when disambiguating between a comment start (`/*`) and a lone `/`.
     pub fn is_forward_slash(byte: u8) -> bool {
-        return byte == b'/';
+        return byte == FORWARD_SLASH;
     }
 }
 

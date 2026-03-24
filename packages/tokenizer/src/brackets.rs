@@ -1,3 +1,8 @@
+use crate::bytes::{
+    BACKSLASH, CARRIAGE_RETURN, CLOSE_CURLY, CLOSE_PAREN, CLOSE_SQUARE, DOUBLE_QUOTE, FORM_FEED,
+    FORWARD_SLASH, NEWLINE, NULL_BYTE, OPEN_CURLY, OPEN_PAREN, OPEN_SQUARE, SINGLE_QUOTE, SPACE,
+    TAB, VERTICAL_TAB,
+};
 use crate::escape::Escape;
 use crate::utils;
 
@@ -41,8 +46,8 @@ impl BracketState {
         // Update string state if character is not escaped
         if !is_escaped {
             match letter {
-                b'"' => next.in_double_string = !next.in_double_string,
-                b'\'' => next.in_single_string = !next.in_single_string,
+                DOUBLE_QUOTE => next.in_double_string = !next.in_double_string,
+                SINGLE_QUOTE => next.in_single_string = !next.in_single_string,
                 _ => {}
             }
         }
@@ -55,17 +60,17 @@ impl BracketState {
 
         // Update depth based on bracket type
         match letter {
-            b'(' => next.curvy_depth += 1,
-            b')' => next.curvy_depth -= 1,
-            b'{' => next.curly_depth += 1,
-            b'}' => next.curly_depth -= 1,
-            b'[' => next.square_depth += 1,
-            b']' => next.square_depth -= 1,
+            OPEN_PAREN => next.curvy_depth += 1,
+            CLOSE_PAREN => next.curvy_depth -= 1,
+            OPEN_CURLY => next.curly_depth += 1,
+            CLOSE_CURLY => next.curly_depth -= 1,
+            OPEN_SQUARE => next.square_depth += 1,
+            CLOSE_SQUARE => next.square_depth -= 1,
             _ => {}
         }
 
         // Check if we found the closing bracket
-        let result = if letter == b')'
+        let result = if letter == CLOSE_PAREN
             && next.curvy_depth < 0  // Found more ) than (
             && next.curly_depth == 0 // All {} are balanced
             && next.square_depth == 0
@@ -84,31 +89,31 @@ pub struct Bracket;
 impl Bracket {
     /// Return whether a byte sequence starts a bracketed token `(`
     pub fn test(current: u8, next: u8, prev: Option<&str>) -> bool {
-        if current != b'(' {
+        if current != OPEN_PAREN {
             return false;
         }
 
         if Self::is_prev_url_token(prev) {
             return !matches!(
                 next,
-                b'\'' | b'"' | b' ' | b'\n' | b'\t' | b'\x0B' | b'\x0C' | b'\r'
+                SINGLE_QUOTE | DOUBLE_QUOTE | SPACE | NEWLINE | TAB | VERTICAL_TAB | FORM_FEED | CARRIAGE_RETURN
             );
         }
 
         return !matches!(
             next,
-            b'(' | b'\'' | b'"' | b' ' | b'\n' | b'\t' | b'/' | b'\\' | b'\x0B' | b'\x0C' | b'\r' | 0
+            OPEN_PAREN | SINGLE_QUOTE | DOUBLE_QUOTE | SPACE | NEWLINE | TAB | FORWARD_SLASH | BACKSLASH | VERTICAL_TAB | FORM_FEED | CARRIAGE_RETURN | NULL_BYTE
         );
     }
 
     /// Return whether a byte is a single opening parenthesis token `(`
     pub fn is_opening_token(byte: u8) -> bool {
-        byte == b'('
+        byte == OPEN_PAREN
     }
 
     /// Return whether a byte is a single closing parenthesis token `)`
     pub fn is_closing_token(byte: u8) -> bool {
-        byte == b')'
+        byte == CLOSE_PAREN
     }
 
     /// Tokenize the bracketed statement contained within brackets like `(word)`.

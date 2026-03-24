@@ -1,10 +1,12 @@
+use crate::bytes::{CLOSE_CURLY, CLOSE_PAREN, CLOSE_SQUARE, COLON, OPEN_CURLY, OPEN_PAREN, OPEN_SQUARE, SEMICOLON};
+
 /// Tokenizer for the opening curly brace (`{`).
 pub struct OpenCurly;
 
 impl OpenCurly {
     /// Returns `true` if `byte` is an opening curly brace (`{`).
     pub fn test(byte: u8) -> bool {
-        byte == b'{'
+        byte == OPEN_CURLY
     }
 
     /// Single-byte token; always returns `0`.
@@ -19,7 +21,7 @@ pub struct CloseCurly;
 impl CloseCurly {
     /// Returns `true` if `byte` is a closing curly brace (`}`).
     pub fn test(byte: u8) -> bool {
-        byte == b'}'
+        byte == CLOSE_CURLY
     }
 
     /// Single-byte token; always returns `0`.
@@ -34,7 +36,7 @@ pub struct OpenSquare;
 impl OpenSquare {
     /// Returns `true` if `byte` is an opening square bracket (`[`).
     pub fn test(byte: u8) -> bool {
-        byte == b'['
+        byte == OPEN_SQUARE
     }
 
     /// Single-byte token; always returns `0`.
@@ -49,7 +51,7 @@ pub struct CloseSquare;
 impl CloseSquare {
     /// Returns `true` if `byte` is a closing square bracket (`]`).
     pub fn test(byte: u8) -> bool {
-        byte == b']'
+        byte == CLOSE_SQUARE
     }
 
     /// Single-byte token; always returns `0`.
@@ -64,7 +66,7 @@ pub struct OpenCurvy;
 impl OpenCurvy {
     /// Returns `true` if `byte` is an opening parenthesis (`(`).
     pub fn test(byte: u8) -> bool {
-        byte == b'('
+        byte == OPEN_PAREN
     }
 
     /// Single-byte token; always returns `0`.
@@ -79,7 +81,7 @@ pub struct CloseCurvy;
 impl CloseCurvy {
     /// Returns `true` if `byte` is a closing parenthesis (`)`).
     pub fn test(byte: u8) -> bool {
-        byte == b')'
+        byte == CLOSE_PAREN
     }
 
     /// Single-byte token; always returns `0`.
@@ -94,7 +96,7 @@ pub struct Semicolon;
 impl Semicolon {
     /// Returns `true` if `byte` is a semicolon (`;`).
     pub fn test(byte: u8) -> bool {
-        byte == b';'
+        byte == SEMICOLON
     }
 
     /// Single-byte token; always returns `0`.
@@ -109,7 +111,7 @@ pub struct Colon;
 impl Colon {
     /// Returns `true` if `byte` is a colon (`:`).
     pub fn test(byte: u8) -> bool {
-        byte == b':'
+        byte == COLON
     }
 
     /// Single-byte token; always returns `0`.

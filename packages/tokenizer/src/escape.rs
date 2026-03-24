@@ -1,3 +1,4 @@
+use crate::bytes::BACKSLASH;
 use crate::utils;
 
 use std::cmp;
@@ -54,7 +55,7 @@ pub struct Escape;
 impl Escape {
     /// Return whether a byte is a backslash `\`
     pub fn test(byte: u8) -> bool {
-        return byte == b'\\';
+        return byte == BACKSLASH;
     }
 
     /// Tokenize the "word" created by escape sequences like `\(`, `\\`, or `\62 `.
