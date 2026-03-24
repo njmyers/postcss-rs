@@ -90,10 +90,7 @@ impl Declaration {
             statement.push(value_token);
         }
 
-        // Create peekable once outside the loop for efficiency
-        let mut peekable = tokenizer.clone().into_peekable();
-
-        while let Some(peeked) = peekable.peek() {
+        while let Some(peeked) = tokenizer.peek() {
             // Check if this token should end value processing without being consumed
             match peeked.kind {
                 // CloseCurly ends declaration without being consumed (belongs to parent)
@@ -121,8 +118,7 @@ impl Declaration {
                 _ => {}
             };
 
-            // Consume the token from both peekable and original tokenizer
-            peekable.next();
+            // Consume the token from the tokenizer
             let token = tokenizer.next().unwrap();
 
             terminator.process(&token);
@@ -212,11 +208,10 @@ impl Declaration {
         // Handle trailing space before CloseCurly
         // If we broke due to CloseCurly, there may be a trailing space to handle
         if terminator.ended_by == Some(Kind::CloseCurly) {
-            let mut peekable = tokenizer.clone().into_peekable();
-            if let Some(space_token) = peekable.peek() {
+            if let Some(space_token) = tokenizer.peek() {
                 if space_token.kind == Kind::Space {
                     // Add the trailing space to pending_spaces for the value
-                    pending_spaces.push(space_token.clone());
+                    pending_spaces.push(space_token);
                 }
             }
         }
@@ -268,8 +263,7 @@ impl Declaration {
 
         // Now consume the trailing space if present so the rule parser doesn't see it
         if terminator.ended_by == Some(Kind::CloseCurly) {
-            let mut peekable = tokenizer.clone().into_peekable();
-            if let Some(space_token) = peekable.peek() {
+            if let Some(space_token) = tokenizer.peek() {
                 if space_token.kind == Kind::Space {
                     tokenizer.next(); // Consume the space
                 }
@@ -320,7 +314,6 @@ impl Declaration {
         bang_pos: usize,
     ) -> (ImportantResult, usize) {
         let mut raw_parts = vec![initial.to_string()];
-        let mut peek_count = 0;
 
         // Already complete if after_bang is "important"
         if after_bang.eq_ignore_ascii_case("important") {
@@ -328,32 +321,26 @@ impl Declaration {
             return (ImportantResult::Found(raw), bang_pos);
         }
 
-        // Create multipeek once and reuse it for efficiency
-        let mut multi = tokenizer.clone().into_multipeek();
+        let cp = tokenizer.checkpoint();
 
-        while let Some(next) = multi.peek() {
-            peek_count += 1;
-
-            match next.kind {
-                Kind::Space | Kind::Comment => {
-                    raw_parts.push(next.value.clone());
+        loop {
+            match tokenizer.next() {
+                None => break,
+                Some(t) if matches!(t.kind, Kind::Space | Kind::Comment) => {
+                    raw_parts.push(t.value);
                     continue;
                 }
-                Kind::Word if next.value.eq_ignore_ascii_case("important") => {
-                    raw_parts.push(next.value.clone());
-
-                    // Consume all peeked tokens
-                    for _ in 0..peek_count {
-                        tokenizer.next();
-                    }
-
+                Some(t) if t.kind == Kind::Word && t.value.eq_ignore_ascii_case("important") => {
+                    raw_parts.push(t.value);
+                    // Tokens already consumed — no rewind needed
                     let raw = Self::build_important_raw(&raw_parts.join(""), tokenizer);
                     return (ImportantResult::Found(raw), bang_pos);
                 }
-                _ => return (ImportantResult::NotImportant, 0),
+                _ => break,
             }
         }
 
+        tokenizer.rewind(cp);
         (ImportantResult::NotImportant, 0)
     }
 
@@ -361,8 +348,7 @@ impl Declaration {
     fn build_important_raw(base: &str, tokenizer: &mut Tokenizer) -> String {
         let mut raw = base.to_string();
 
-        let mut peekable = tokenizer.clone().into_peekable();
-        if let Some(trailing) = peekable.peek() {
+        if let Some(trailing) = tokenizer.peek() {
             if trailing.kind == Kind::Space {
                 raw.push_str(&trailing.value);
                 tokenizer.next();
@@ -382,16 +368,17 @@ impl Declaration {
 
     /// Return the kind of the token after the next one (skips one token ahead).
     /// Used to look past the current peeked token to detect terminators.
-    fn peek_second_kind(tokenizer: &Tokenizer) -> Option<Kind> {
-        let mut multi = tokenizer.clone().into_multipeek();
-        multi.peek(); // skip current token
-        multi.peek().map(|t| t.kind)
+    fn peek_second_kind(tokenizer: &mut Tokenizer) -> Option<Kind> {
+        let cp = tokenizer.checkpoint();
+        tokenizer.next(); // skip current token
+        let kind = tokenizer.next().map(|t| t.kind);
+        tokenizer.rewind(cp);
+        kind
     }
 
     /// Check if the next token is an opening bracket `(`.
-    fn next_is_open_bracket(tokenizer: &Tokenizer) -> bool {
-        let mut peekable = tokenizer.clone().into_peekable();
-        matches!(peekable.peek(), Some(t) if t.kind == Kind::Brackets && t.value.starts_with('('))
+    fn next_is_open_bracket(tokenizer: &mut Tokenizer) -> bool {
+        matches!(tokenizer.peek(), Some(t) if t.kind == Kind::Brackets && t.value.starts_with('('))
     }
 
     /// Extract IE hack prefix (* or _) from property name

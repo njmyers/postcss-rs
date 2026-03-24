@@ -75,11 +75,9 @@ impl Rule {
                             node.source.end = Some(crate::Source::create_end(tokenizer));
 
                             // Consume trailing spaces and add to 'between'
-                            let mut peekable = tokenizer.clone().into_peekable();
-                            while let Some(peeked) = peekable.peek() {
+                            while let Some(peeked) = tokenizer.peek() {
                                 match peeked.kind {
                                     Kind::Space => {
-                                        peekable.next(); // Advance peekable
                                         let space_token = tokenizer.next().unwrap();
                                         node.raws.between.push(&space_token);
                                     }
@@ -137,52 +135,44 @@ impl Rule {
     ///   - Just ";": offset points AT the newline
     ///   - " ;": offset points AFTER the newline (without consuming it)
     fn consume_trailing_semicolon(tokenizer: &mut Tokenizer) -> Option<(crate::Source, String)> {
-        let mut peekable = tokenizer.clone().into_peekable();
+        let cp = tokenizer.checkpoint();
         let mut has_space_before = false;
-        let mut tokens_to_consume = 0;
         let mut own_semicolon = String::new();
 
-        // Consume any spaces before semicolon
-        while let Some(token) = peekable.peek() {
-            match token.kind {
-                Kind::Space if !Self::is_newline(token) => {
-                    has_space_before = true;
-                    own_semicolon.push_str(&token.value);
-                    peekable.next();
-                    tokens_to_consume += 1;
-                }
-                _ => break,
+        // Consume any non-newline spaces before semicolon
+        while let Some(token) = tokenizer.peek() {
+            if token.kind == Kind::Space && !Self::is_newline(&token) {
+                has_space_before = true;
+                own_semicolon.push_str(&token.value);
+                tokenizer.next();
+            } else {
+                break;
             }
         }
 
         // Check for semicolon and extract its column
-        let semicolon_col = match peekable.peek() {
+        let semicolon_col = match tokenizer.peek() {
             Some(token) if token.kind == Kind::Semicolon => {
-                // Columns are 1-indexed in PostCSS
                 let column = std::cmp::max(1, token.column);
                 own_semicolon.push(';');
-                peekable.next(); // Advance past semicolon
-                tokens_to_consume += 1;
+                tokenizer.next(); // consume semicolon
                 column
             }
-            _ => return None, // No trailing semicolon found
+            _ => {
+                tokenizer.rewind(cp);
+                return None;
+            }
         };
 
         // Check if next token is newline (peek, don't consume)
         let newline_len = if has_space_before {
-            peekable
-                .peek()
-                .filter(|t| Self::is_newline(t))
-                .map(|t| t.value.len())
-                .unwrap_or(0)
+            match tokenizer.peek() {
+                Some(t) if Self::is_newline(&t) => t.value.len(),
+                _ => 0,
+            }
         } else {
             0
         };
-
-        // Consume the spaces and semicolon from the actual tokenizer
-        for _ in 0..tokens_to_consume {
-            tokenizer.next();
-        }
 
         let source = crate::Source {
             offset: tokenizer.index + newline_len,
@@ -199,20 +189,19 @@ impl Rule {
     }
 
     /// Peek ahead to determine if the next non-space token indicates a nested rule
-    fn peek_for_nested_rule(tokenizer: &Tokenizer) -> bool {
-        let mut multi = tokenizer.clone().into_multipeek();
-
-        // Skip spaces and look for the next significant token
-        while let Some(token) = multi.peek() {
-            match token.kind {
-                Kind::Space => continue, // Found space, keep looking
-                Kind::OpenCurly => return true, // Found opening brace - it's a nested rule
-                Kind::Brackets if token.value.starts_with('{') => return true, // Brackets starting with '{'
-                _ => return false, // Found anything else - it's a declaration
+    fn peek_for_nested_rule(tokenizer: &mut Tokenizer) -> bool {
+        let cp = tokenizer.checkpoint();
+        let result = loop {
+            match tokenizer.next() {
+                None => break false,
+                Some(t) if t.kind == Kind::Space => continue,
+                Some(t) if t.kind == Kind::OpenCurly => break true,
+                Some(t) if t.kind == Kind::Brackets && t.value.starts_with('{') => break true,
+                _ => break false,
             }
-        }
-
-        false // No more tokens - it's a declaration
+        };
+        tokenizer.rewind(cp);
+        result
     }
 }
 
@@ -223,27 +212,30 @@ impl Selector {
     const EMPTY_SELECTOR: &'static str = "";
 
     /// Check if there are selector tokens ahead, skipping over spaces
-    fn has_selector_tokens_ahead(tokenizer: &Tokenizer) -> bool {
-        let mut multi = tokenizer.clone().into_multipeek();
-
-        while let Some(token) = multi.peek() {
-            match token.kind {
-                Kind::Space => continue,
-                Kind::Word
-                | Kind::Colon
-                | Kind::Brackets
-                | Kind::OpenSquare
-                | Kind::CloseSquare
-                | Kind::String
-                | Kind::Semicolon
-                | Kind::OpenCurvy
-                | Kind::CloseCurvy
-                | Kind::Comment => return true,
-                _ => return false,
+    fn has_selector_tokens_ahead(tokenizer: &mut Tokenizer) -> bool {
+        let cp = tokenizer.checkpoint();
+        let result = loop {
+            match tokenizer.next() {
+                None => break false,
+                Some(t) if t.kind == Kind::Space => continue,
+                Some(t) if matches!(
+                    t.kind,
+                    Kind::Word
+                    | Kind::Colon
+                    | Kind::Brackets
+                    | Kind::OpenSquare
+                    | Kind::CloseSquare
+                    | Kind::String
+                    | Kind::Semicolon
+                    | Kind::OpenCurvy
+                    | Kind::CloseCurvy
+                    | Kind::Comment
+                ) => break true,
+                _ => break false,
             }
-        }
-
-        false
+        };
+        tokenizer.rewind(cp);
+        result
     }
 
     /// A builder struct used for creating a rule selector.
@@ -292,11 +284,9 @@ impl Selector {
                     statement.push_raw_only(token);
 
                     // Consume following spaces and push to both raw and clean
-                    let mut peekable = tokenizer.clone().into_peekable();
-                    while let Some(next) = peekable.peek() {
+                    while let Some(next) = tokenizer.peek() {
                         match next.kind {
                             Kind::Space => {
-                                peekable.next(); // Advance peekable
                                 let space = tokenizer.next().unwrap();
                                 statement.push(space);
                             }

@@ -233,11 +233,21 @@ impl Deref for Tokens {
     }
 }
 
+/// A saved position in a [`Tokenizer`] that can be restored with [`Tokenizer::rewind`].
+///
+/// Created by [`Tokenizer::checkpoint`]; used to implement lookahead without cloning.
+#[derive(Debug)]
+pub struct Checkpoint {
+    index: usize,
+    prev_value: Option<String>,
+    lines_len: usize,
+}
+
 /// Converts a CSS source string into a stream of [`Token`]s.
 ///
 /// `Tokenizer` implements [`Iterator`]`<Item = Token>`, so tokens can be
-/// consumed one at a time.  For lookahead, use [`Tokenizer::into_peekable`] or
-/// [`Tokenizer::into_multipeek`].
+/// consumed one at a time.  For lookahead, use [`Tokenizer::checkpoint`] /
+/// [`Tokenizer::rewind`] / [`Tokenizer::peek`] instead of cloning.
 ///
 /// # Example
 /// ```
@@ -305,6 +315,40 @@ impl Tokenizer {
     /// ```
     pub fn into_multipeek(self) -> MultiPeekTokenizer {
         MultiPeekTokenizer::new(self)
+    }
+
+    /// Save the current tokenizer position so it can be restored with [`rewind`].
+    ///
+    /// Use `checkpoint` / `rewind` / `peek` instead of `clone` for lookahead —
+    /// the checkpoint saves only `O(1)` state rather than copying the full line
+    /// table.
+    ///
+    /// [`rewind`]: Tokenizer::rewind
+    pub fn checkpoint(&self) -> Checkpoint {
+        Checkpoint {
+            index: self.index,
+            prev_value: self.prev_value.clone(),
+            lines_len: self.lines.len(),
+        }
+    }
+
+    /// Restore the tokenizer to a position saved by [`checkpoint`].
+    ///
+    /// [`checkpoint`]: Tokenizer::checkpoint
+    pub fn rewind(&mut self, cp: Checkpoint) {
+        self.index = cp.index;
+        self.prev_value = cp.prev_value;
+        self.lines.truncate(cp.lines_len);
+    }
+
+    /// Return the next token without consuming it.
+    ///
+    /// Equivalent to saving a checkpoint, calling `next`, and rewinding.
+    pub fn peek(&mut self) -> Option<Token> {
+        let cp = self.checkpoint();
+        let token = self.next();
+        self.rewind(cp);
+        token
     }
 
     fn create(&mut self, length: usize, kind: Kind) -> Token {
