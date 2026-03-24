@@ -46,6 +46,19 @@ pub mod postcss {
         return AsyncTask::new(AsyncParseTask { css, _from: from });
     }
 
+    /// Synchronous version of parse(). Blocks the event loop while parsing.
+    /// Faster than parse() for small/medium CSS because it avoids the
+    /// Promise + thread-pool round-trip overhead (~0.05–0.1 ms per call).
+    #[napi]
+    pub fn parse_sync(css: String, _from: Option<String>) -> Result<String> {
+        let mut parser = Parser::new(&css).unwrap();
+        let node = parser.parse();
+        let mut buf = Vec::with_capacity(css.len() * 5);
+        sonic_rs::to_writer(&mut buf, &node)
+            .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+        return Ok(unsafe { String::from_utf8_unchecked(buf) });
+    }
+
     #[napi]
     pub fn stringify(json: String) -> Result<String> {
         let node: Node = serde_json::from_str(&json)

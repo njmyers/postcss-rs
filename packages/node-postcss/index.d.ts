@@ -2,5 +2,11 @@
 /* eslint-disable */
 export declare namespace postcss {
   export function parse(css: string, from?: string | undefined | null): Promise<unknown>
+  /**
+   * Synchronous version of parse(). Blocks the event loop while parsing.
+   * Faster than parse() for small/medium CSS because it avoids the
+   * Promise + thread-pool round-trip overhead (~0.05–0.1 ms per call).
+   */
+  export function parseSync(css: string, from?: string | undefined | null): string
   export function stringify(json: string): string
 }

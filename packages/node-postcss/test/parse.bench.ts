@@ -5,7 +5,7 @@
  */
 
 import { bench, describe } from 'vitest';
-import { parse } from '../src/index';
+import { parse, parseSync } from '../src/index';
 import postcss from 'postcss';
 
 // ─── CSS Fixtures ────────────────────────────────────────────────────────────
@@ -161,8 +161,12 @@ const LARGE_CSS = Array.from({ length: 50 }, (_, i) => `
 // ─── Benchmarks ───────────────────────────────────────────────────────────────
 
 describe('Small CSS (~200 bytes)', () => {
-  bench('postcss-rs (Rust)', async () => {
+  bench('postcss-rs async (Rust)', async () => {
     await parse(SMALL_CSS);
+  });
+
+  bench('postcss-rs sync (Rust)', () => {
+    parseSync(SMALL_CSS);
   });
 
   bench('postcss (JS)', () => {
@@ -171,8 +175,12 @@ describe('Small CSS (~200 bytes)', () => {
 });
 
 describe('Medium CSS (~2 KB)', () => {
-  bench('postcss-rs (Rust)', async () => {
+  bench('postcss-rs async (Rust)', async () => {
     await parse(MEDIUM_CSS);
+  });
+
+  bench('postcss-rs sync (Rust)', () => {
+    parseSync(MEDIUM_CSS);
   });
 
   bench('postcss (JS)', () => {
@@ -181,8 +189,12 @@ describe('Medium CSS (~2 KB)', () => {
 });
 
 describe('Large CSS (~20 KB)', () => {
-  bench('postcss-rs (Rust)', async () => {
+  bench('postcss-rs async (Rust)', async () => {
     await parse(LARGE_CSS);
+  });
+
+  bench('postcss-rs sync (Rust)', () => {
+    parseSync(LARGE_CSS);
   });
 
   bench('postcss (JS)', () => {

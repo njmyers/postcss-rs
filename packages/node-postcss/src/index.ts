@@ -28,6 +28,7 @@ const bindings = require(path.join(__dirname, '../index.js')) as {
   postcss: {
     // Returns a JSON string; caller does JSON.parse() + buildNode()
     parse: (css: string, from?: string | null) => Promise<string>;
+    parseSync: (css: string, from?: string | null) => string;
     stringify: (json: string) => string;
   };
 };
@@ -185,22 +186,22 @@ export async function parse(css: string, opts: ParseOptions = {}): Promise<Root>
 }
 
 /**
- * Synchronous parse (uses blocking Rust parser)
+ * Synchronous parse (blocks the event loop)
  *
- * Note: For large files, prefer the async parse() function.
- * This blocks the event loop during parsing.
+ * Faster than parse() for small/medium CSS because it skips the
+ * Promise + libuv thread-pool round-trip (~0.05–0.1 ms overhead).
+ * For large files (>10 KB) prefer the async parse() to avoid
+ * blocking the event loop for several milliseconds.
  *
  * @param css - CSS source code to parse
  * @param opts - Parse options
  * @returns PostCSS Root instance
  */
 export function parseSync(css: string, opts: ParseOptions = {}): Root {
-  // TODO: Implement sync version when Rust binding supports it
-  // For now, throw an error
-  throw new Error(
-    'parseSync is not yet implemented. ' +
-    'Please use async parse() instead: await parse(css, opts)'
-  );
+  const jsonStr = bindings.postcss.parseSync(css, opts.from ?? null);
+  const rustObj = JSON.parse(jsonStr);
+  const input   = new postcss.Input(css, { from: opts.from });
+  return buildNode(rustObj, input, undefined) as Root;
 }
 
 /**
