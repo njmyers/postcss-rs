@@ -411,14 +411,18 @@ mod tests {
                 Token::Some,
                 Token::Seq { len: Some(0) },
                 Token::SeqEnd,
-                // Sources serialises as a compact 3-element sequence
-                // [offset, line, column] when end is None.
                 Token::Str("source"),
-                Token::Seq { len: Some(3) },
-                Token::U64(0), // start.offset
-                Token::U64(1), // start.line
-                Token::U64(1), // start.column
-                Token::SeqEnd,
+                Token::Struct { name: "Sources", len: 1 },
+                Token::Str("start"),
+                Token::Struct { name: "Source", len: 3 },
+                Token::Str("offset"),
+                Token::U64(0),
+                Token::Str("line"),
+                Token::U64(1),
+                Token::Str("column"),
+                Token::U64(1),
+                Token::StructEnd,
+                Token::StructEnd,
                 Token::MapEnd,
             ],
         );
