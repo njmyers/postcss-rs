@@ -13,6 +13,7 @@ import {
   parseMsgpackRustOnlySync, parseMsgpackDecodeOnlySync,
 } from '../src/index';
 import postcss from 'postcss';
+import { unpack as msgpackrUnpack } from 'msgpackr';
 
 // ─── CSS Fixtures ────────────────────────────────────────────────────────────
 
@@ -176,6 +177,7 @@ describe('Small CSS (~200 bytes)', () => {
   bench('[raw] FB decode only',             () => { parseFbDecodeOnlySync(SMALL_CSS); });
   bench('[raw] Msgpack buffer only',        () => { parseMsgpackRustOnlySync(SMALL_CSS); });
   bench('[raw] Msgpack decode only',        () => { parseMsgpackDecodeOnlySync(SMALL_CSS); });
+  bench('[raw] Msgpackr decode only',       () => { msgpackrUnpack(parseMsgpackRustOnlySync(SMALL_CSS)); });
 
   // ── full e2e ──
   bench('postcss-rs JSON sync',             () => { parseSync(SMALL_CSS); });
@@ -196,6 +198,7 @@ describe('Medium CSS (~2 KB)', () => {
   bench('[raw] FB decode only',             () => { parseFbDecodeOnlySync(MEDIUM_CSS); });
   bench('[raw] Msgpack buffer only',        () => { parseMsgpackRustOnlySync(MEDIUM_CSS); });
   bench('[raw] Msgpack decode only',        () => { parseMsgpackDecodeOnlySync(MEDIUM_CSS); });
+  bench('[raw] Msgpackr decode only',       () => { msgpackrUnpack(parseMsgpackRustOnlySync(MEDIUM_CSS)); });
 
   // ── full e2e ──
   bench('postcss-rs JSON sync',             () => { parseSync(MEDIUM_CSS); });
@@ -216,6 +219,7 @@ describe('Large CSS (~20 KB)', () => {
   bench('[raw] FB decode only',             () => { parseFbDecodeOnlySync(LARGE_CSS); });
   bench('[raw] Msgpack buffer only',        () => { parseMsgpackRustOnlySync(LARGE_CSS); });
   bench('[raw] Msgpack decode only',        () => { parseMsgpackDecodeOnlySync(LARGE_CSS); });
+  bench('[raw] Msgpackr decode only',       () => { msgpackrUnpack(parseMsgpackRustOnlySync(LARGE_CSS)); });
 
   // ── full e2e ──
   bench('postcss-rs JSON sync',             () => { parseSync(LARGE_CSS); });
