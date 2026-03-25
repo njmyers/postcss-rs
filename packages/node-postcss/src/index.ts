@@ -125,17 +125,12 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
   // raws is always serialised by Rust (at minimum as `{}`).
   node.raws = json.raws;
 
-  // Unpack the compact source array [so, sl, sc, eo?, el?, ec?] produced by Rust.
-  // 6 elements when end is present (most nodes), 3 when end is absent
-  // (e.g. statement at-rules terminated by their parent's closing brace).
+  // Attach input to the source object produced by Rust.
   // Attaching input here eliminates the separate root.walk pass.
   const s = json.source;
-  node.source = s.length > 3
-    ? { start: { offset: s[0], line: s[1], column: s[2] },
-        end:   { offset: s[3], line: s[4], column: s[5] },
-        input }
-    : { start: { offset: s[0], line: s[1], column: s[2] },
-        input };
+  node.source = s.end
+    ? { start: s.start, end: s.end, input }
+    : { start: s.start, input };
 
   if (parent !== undefined) node.parent = parent;
 
