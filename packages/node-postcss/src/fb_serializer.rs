@@ -16,13 +16,23 @@ pub use gen::css_ast as fb;
 /// Returns the completed buffer as a `Vec<u8>`.  The buffer is
 /// self-contained: it starts at byte 0 and the root object is at the
 /// offset stored at the last 4 bytes (standard FlatBuffers framing).
-pub fn to_flatbuffer(root: &Node) -> Vec<u8> {
-    // Pre-allocate ~5× the typical JSON size.  FlatBuffers buffers are
-    // usually smaller than JSON but we reuse the same heuristic.
-    let mut fbb = FlatBufferBuilder::with_capacity(512);
+///
+/// `css_len` is the byte length of the original CSS source and is used
+/// to size the initial allocation.  FlatBuffers output is typically 2–4×
+/// the CSS source size; we use 3× as a conservative estimate to avoid
+/// reallocation-driven copies during the backwards-building phase.
+pub fn to_flatbuffer(root: &Node, css_len: usize) -> Vec<u8> {
+    let capacity = (css_len * 3).max(4096);
+    let mut fbb = FlatBufferBuilder::with_capacity(capacity);
     let root_offset = build_node(&mut fbb, root);
     fbb.finish(root_offset, None);
-    fbb.finished_data().to_vec()
+    // collapse() returns the internal Vec<u8> and the head offset where
+    // valid data begins; drain the unused prefix so the Vec starts at
+    // byte 0 (same layout as finished_data().to_vec() but without the
+    // extra allocation).
+    let (mut buf, head) = fbb.collapse();
+    buf.drain(..head);
+    buf
 }
 
 /// Recursively build a `Node` table, bottom-up.

@@ -48,7 +48,7 @@ impl Task for AsyncParseFbTask {
     fn compute(&mut self) -> Result<Self::Output> {
         let mut parser = Parser::new(&self.css).unwrap();
         let node = parser.parse();
-        return Ok(fb_serializer::to_flatbuffer(&node));
+        return Ok(fb_serializer::to_flatbuffer(&node, self.css.len()));
     }
 
     fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
@@ -86,7 +86,7 @@ pub mod postcss {
     pub fn parse_fb_sync(css: String, _from: Option<String>) -> Result<Buffer> {
         let mut parser = Parser::new(&css).unwrap();
         let node = parser.parse();
-        return Ok(fb_serializer::to_flatbuffer(&node).into());
+        return Ok(fb_serializer::to_flatbuffer(&node, css.len()).into());
     }
 
     /// Async FlatBuffers parse.
