@@ -41,6 +41,26 @@ pub struct AsyncParseFbTask {
     css: String,
 }
 
+pub struct AsyncParseMsgpackTask {
+    css: String,
+}
+
+impl Task for AsyncParseMsgpackTask {
+    type Output = Vec<u8>;
+    type JsValue = napi::bindgen_prelude::Buffer;
+
+    fn compute(&mut self) -> Result<Self::Output> {
+        let mut parser = Parser::new(&self.css).unwrap();
+        let node = parser.parse();
+        rmp_serde::to_vec_named(&node)
+            .map_err(|e| napi::Error::from_reason(e.to_string()))
+    }
+
+    fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
+        return Ok(output.into());
+    }
+}
+
 impl Task for AsyncParseFbTask {
     type Output = Vec<u8>;
     type JsValue = napi::bindgen_prelude::Buffer;
@@ -93,6 +113,22 @@ pub mod postcss {
     #[napi]
     pub fn parse_fb(css: String, _from: Option<String>) -> AsyncTask<AsyncParseFbTask> {
         return AsyncTask::new(AsyncParseFbTask { css });
+    }
+
+    /// Synchronous MessagePack parse. Returns a raw Buffer of MessagePack bytes.
+    #[napi]
+    pub fn parse_msgpack_sync(css: String, _from: Option<String>) -> Result<Buffer> {
+        let mut parser = Parser::new(&css).unwrap();
+        let node = parser.parse();
+        rmp_serde::to_vec_named(&node)
+            .map(|v| v.into())
+            .map_err(|e| napi::Error::from_reason(e.to_string()))
+    }
+
+    /// Async MessagePack parse.
+    #[napi]
+    pub fn parse_msgpack(css: String, _from: Option<String>) -> AsyncTask<AsyncParseMsgpackTask> {
+        return AsyncTask::new(AsyncParseMsgpackTask { css });
     }
 
     #[napi]

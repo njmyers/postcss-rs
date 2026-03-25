@@ -23,6 +23,7 @@ import type { Root, Plugin, Processor, ProcessOptions } from 'postcss';
 import * as path from 'path';
 import { ByteBuffer } from 'flatbuffers';
 import { Node as FbNode } from './css-ast/node.js';
+import { decode as msgpackDecode } from '@msgpack/msgpack';
 
 // Load Rust native bindings via the napi-rs v3 generated loader
 // __dirname is dist/, index.js is in the package root (one level up)
@@ -35,6 +36,9 @@ const bindings = require(path.join(__dirname, '../index.js')) as {
     // FlatBuffers variants — return a raw Buffer instead of a JSON string
     parseFbSync: (css: string, from?: string | null) => Buffer;
     parseFb: (css: string, from?: string | null) => Promise<Buffer>;
+    // MessagePack variants — return a raw Buffer of MessagePack bytes
+    parseMsgpackSync: (css: string, from?: string | null) => Buffer;
+    parseMsgpack: (css: string, from?: string | null) => Promise<Buffer>;
   };
 };
 
@@ -253,6 +257,27 @@ function buildNodeFb(fb: FbNode, input: postcss.Input, parent: any): any {
   return node;
 }
 
+/**
+ * Synchronous MessagePack parse — no JSON involved.
+ * msgpack decode gives a plain object tree, so reuses the same buildNode path as JSON.
+ */
+export function parseMsgpackSync(css: string, opts: ParseOptions = {}): Root {
+  const buf = bindings.postcss.parseMsgpackSync(css, opts.from ?? null);
+  const rustObj = msgpackDecode(buf) as any;
+  const input = new postcss.Input(css, { from: opts.from });
+  return buildNode(rustObj, input, undefined) as Root;
+}
+
+/**
+ * Async MessagePack parse.
+ */
+export async function parseMsgpack(css: string, opts: ParseOptions = {}): Promise<Root> {
+  const buf = await bindings.postcss.parseMsgpack(css, opts.from ?? null);
+  const rustObj = msgpackDecode(buf) as any;
+  const input = new postcss.Input(css, { from: opts.from });
+  return buildNode(rustObj, input, undefined) as Root;
+}
+
 // ─── Raw (no tree-walk) variants for benchmarking ─────────────────────────────
 // These expose only the Rust parse + serialisation cost, with NO JS tree walk.
 
@@ -276,6 +301,16 @@ export function parseFbDecodeOnlySync(css: string, opts: ParseOptions = {}): FbN
   const buf = bindings.postcss.parseFbSync(css, opts.from ?? null);
   const bb  = new ByteBuffer(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
   return FbNode.getRootAsNode(bb);
+}
+
+/** Rust parse → MessagePack buffer only (no decode, no buildNode) */
+export function parseMsgpackRustOnlySync(css: string, opts: ParseOptions = {}): Buffer {
+  return bindings.postcss.parseMsgpackSync(css, opts.from ?? null);
+}
+
+/** Rust parse → MessagePack decode only (no buildNode tree walk) */
+export function parseMsgpackDecodeOnlySync(css: string, opts: ParseOptions = {}): any {
+  return msgpackDecode(bindings.postcss.parseMsgpackSync(css, opts.from ?? null));
 }
 
 export interface ParseOptions {
