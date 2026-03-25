@@ -2,11 +2,10 @@
 #![allow(clippy::needless_return)]
 
 mod fb_serializer;
+mod direct_builder;
 
 use napi_derive::napi;
-
-use napi::{Env, Result, Task};
-
+use napi::{Env, JsObject, Result, Task};
 use postcss_rs_parser::{Node, Parser};
 use postcss_rs_stringifier::{Stringifier, StringifyOptions};
 
@@ -129,6 +128,16 @@ pub mod postcss {
     #[napi]
     pub fn parse_msgpack(css: String, _from: Option<String>) -> AsyncTask<AsyncParseMsgpackTask> {
         return AsyncTask::new(AsyncParseMsgpackTask { css });
+    }
+
+    /// Direct NAPI V8 object construction — no serialization at all.
+    ///
+    /// `ctx` must be a JS object with:
+    ///   makeRoot, makeRule, makeDecl, makeAtRule, makeComment  (factory fns)
+    ///   input  (postcss.Input instance)
+    #[napi]
+    pub fn parse_direct_sync(env: Env, css: String, ctx: JsObject) -> Result<JsObject> {
+        direct_builder::build(&env, &css, &ctx)
     }
 
     #[napi]

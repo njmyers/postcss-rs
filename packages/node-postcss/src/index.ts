@@ -39,6 +39,8 @@ const bindings = require(path.join(__dirname, '../index.js')) as {
     // MessagePack variants — return a raw Buffer of MessagePack bytes
     parseMsgpackSync: (css: string, from?: string | null) => Buffer;
     parseMsgpack: (css: string, from?: string | null) => Promise<Buffer>;
+    // Direct V8 object construction — no serialization at all
+    parseDirectSync: (css: string, ctx: object) => any;
   };
 };
 
@@ -311,6 +313,25 @@ export function parseMsgpackRustOnlySync(css: string, opts: ParseOptions = {}): 
 /** Rust parse → MessagePack decode only (no buildNode tree walk) */
 export function parseMsgpackDecodeOnlySync(css: string, opts: ParseOptions = {}): any {
   return msgpackDecode(bindings.postcss.parseMsgpackSync(css, opts.from ?? null));
+}
+
+// Factory functions passed to the Rust direct builder.
+// Each returns a PostCSS-prototype-correct object so that Rust can set
+// properties on it without ever needing to call `new ClassName()` from JS.
+const makeRoot    = () => { const o = Object.create(RootProto);    o[isClean] = false; o[my] = true; o.raws = {}; o.nodes = []; return o; };
+const makeRule    = () => { const o = Object.create(RuleProto);    o[isClean] = false; o[my] = true; o.raws = {}; o.nodes = []; return o; };
+const makeDecl    = () => { const o = Object.create(DeclProto);    o[isClean] = false; o[my] = true; o.raws = {};              return o; };
+const makeAtRule  = () => { const o = Object.create(AtRuleProto);  o[isClean] = false; o[my] = true; o.raws = {}; o.nodes = []; return o; };
+const makeComment = () => { const o = Object.create(CommentProto); o[isClean] = false; o[my] = true; o.raws = {};              return o; };
+
+/**
+ * Direct NAPI parse — Rust constructs V8 PostCSS objects directly,
+ * with no serialization format (no JSON / FlatBuffers / MessagePack).
+ */
+export function parseDirectSync(css: string, opts: ParseOptions = {}): Root {
+  const input = new postcss.Input(css, { from: opts.from });
+  const ctx = { makeRoot, makeRule, makeDecl, makeAtRule, makeComment, input };
+  return bindings.postcss.parseDirectSync(css, ctx) as Root;
 }
 
 export interface ParseOptions {

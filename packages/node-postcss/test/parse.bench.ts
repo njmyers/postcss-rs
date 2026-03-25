@@ -11,6 +11,7 @@ import {
   parseRustOnlySync, parseJsonOnlySync,
   parseFbRustOnlySync, parseFbDecodeOnlySync,
   parseMsgpackRustOnlySync, parseMsgpackDecodeOnlySync,
+  parseDirectSync,
 } from '../src/index';
 import postcss from 'postcss';
 import { unpack as msgpackrUnpack } from 'msgpackr';
@@ -186,6 +187,7 @@ describe('Small CSS (~200 bytes)', () => {
   bench('postcss-rs JSON async',            async () => { await parse(SMALL_CSS); });
   bench('postcss-rs FB async',              async () => { await parseFb(SMALL_CSS); });
   bench('postcss-rs Msgpack async',         async () => { await parseMsgpack(SMALL_CSS); });
+  bench('postcss-rs Direct sync',           () => { parseDirectSync(SMALL_CSS); });
   bench('postcss sync (JS)',                () => { processor.process(SMALL_CSS, { from: undefined }).sync().root; });
   bench('postcss async (JS)',               async () => { (await processor.process(SMALL_CSS, { from: undefined }).async()).root; });
 });
@@ -207,6 +209,7 @@ describe('Medium CSS (~2 KB)', () => {
   bench('postcss-rs JSON async',            async () => { await parse(MEDIUM_CSS); });
   bench('postcss-rs FB async',              async () => { await parseFb(MEDIUM_CSS); });
   bench('postcss-rs Msgpack async',         async () => { await parseMsgpack(MEDIUM_CSS); });
+  bench('postcss-rs Direct sync',           () => { parseDirectSync(MEDIUM_CSS); });
   bench('postcss sync (JS)',                () => { processor.process(MEDIUM_CSS, { from: undefined }).sync().root; });
   bench('postcss async (JS)',               async () => { (await processor.process(MEDIUM_CSS, { from: undefined }).async()).root; });
 });
@@ -228,6 +231,7 @@ describe('Large CSS (~20 KB)', () => {
   bench('postcss-rs JSON async',            async () => { await parse(LARGE_CSS); });
   bench('postcss-rs FB async',              async () => { await parseFb(LARGE_CSS); });
   bench('postcss-rs Msgpack async',         async () => { await parseMsgpack(LARGE_CSS); });
+  bench('postcss-rs Direct sync',           () => { parseDirectSync(LARGE_CSS); });
   bench('postcss sync (JS)',                () => { processor.process(LARGE_CSS, { from: undefined }).sync().root; });
   bench('postcss async (JS)',               async () => { (await processor.process(LARGE_CSS, { from: undefined }).async()).root; });
 });
