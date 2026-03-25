@@ -253,6 +253,31 @@ function buildNodeFb(fb: FbNode, input: postcss.Input, parent: any): any {
   return node;
 }
 
+// ─── Raw (no tree-walk) variants for benchmarking ─────────────────────────────
+// These expose only the Rust parse + serialisation cost, with NO JS tree walk.
+
+/** Rust parse → JSON string only (no JSON.parse, no buildNode) */
+export function parseRustOnlySync(css: string, opts: ParseOptions = {}): string {
+  return bindings.postcss.parseSync(css, opts.from ?? null);
+}
+
+/** Rust parse → JSON.parse only (no buildNode) */
+export function parseJsonOnlySync(css: string, opts: ParseOptions = {}): any {
+  return JSON.parse(bindings.postcss.parseSync(css, opts.from ?? null));
+}
+
+/** Rust parse → FlatBuffers Buffer only (no ByteBuffer decode, no buildNodeFb) */
+export function parseFbRustOnlySync(css: string, opts: ParseOptions = {}): Buffer {
+  return bindings.postcss.parseFbSync(css, opts.from ?? null);
+}
+
+/** Rust parse → FlatBuffers decode only (no buildNodeFb tree walk) */
+export function parseFbDecodeOnlySync(css: string, opts: ParseOptions = {}): FbNode {
+  const buf = bindings.postcss.parseFbSync(css, opts.from ?? null);
+  const bb  = new ByteBuffer(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
+  return FbNode.getRootAsNode(bb);
+}
+
 export interface ParseOptions {
   from?: string;
   map?: any;
