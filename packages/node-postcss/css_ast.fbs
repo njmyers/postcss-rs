@@ -1,0 +1,54 @@
+// FlatBuffers schema for the postcss-rs CSS AST.
+//
+// All fields are optional (absent = default value) so we only pay for what's
+// actually present.  Strings are FlatBuffers offsets — zero-cost when absent.
+//
+// Field order determines VTable slot IDs (slot 0 → voffset 4, slot 1 → 6, …).
+// Never reorder or remove fields; only append.
+
+namespace css_ast;
+
+table Node {
+  // Node type discriminant: 0=root 1=rule 2=decl 3=atrule 4=comment
+  t:           int8;
+
+  // Source-start (always present)
+  ss_off:      uint32;
+  ss_line:     uint32;
+  ss_col:      uint32;
+
+  // Source-end (valid only when has_end = true)
+  has_end:     bool;
+  se_off:      uint32;
+  se_line:     uint32;
+  se_col:      uint32;
+
+  // raws — only non-null fields are written to the buffer
+  r_before:          string;
+  r_between:         string;
+  r_after:           string;
+  r_after_name:      string;
+  r_semicolon:       int8 = -1;   // -1 = absent, 0 = false, 1 = true
+  r_left:            string;
+  r_right:           string;
+  r_important:       string;
+  r_own_semicolon:   string;
+  r_value_value:     string;
+  r_value_raw:       string;
+  r_selector_value:  string;
+  r_selector_raw:    string;
+
+  // Type-specific payload (only the relevant fields are non-null per node)
+  selector:    string;   // rule
+  prop:        string;   // decl
+  value:       string;   // decl
+  important:   bool;     // decl
+  name:        string;   // atrule
+  params:      string;   // atrule
+  text:        string;   // comment
+
+  // Children (absent for leaf nodes)
+  nodes:       [Node];
+}
+
+root_type Node;

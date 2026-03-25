@@ -25,6 +25,7 @@
     "version": "napi version"
   },
   "dependencies": {
+    "flatbuffers": "^25.9.23",
     "postcss": "^8.4.0"
   },
   "devDependencies": {

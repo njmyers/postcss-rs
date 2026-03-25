@@ -13,6 +13,7 @@ postcss-rs-parser = { path = "../parser" }
 postcss-rs-stringifier = { path = "../stringifier" }
 serde_json = "1.0"
 sonic-rs   = "0.5"
+flatbuffers = "24.3.25"
 
 [build-dependencies]
 napi-build = "2"

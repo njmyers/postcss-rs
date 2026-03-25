@@ -2,6 +2,13 @@
 /* eslint-disable */
 export declare namespace postcss {
   export function parse(css: string, from?: string | undefined | null): Promise<unknown>
+  /** Async FlatBuffers parse. */
+  export function parseFb(css: string, from?: string | undefined | null): Promise<unknown>
+  /**
+   * Synchronous FlatBuffers parse. Returns a raw Buffer instead of a JSON
+   * string, allowing the JS side to skip JSON.parse() entirely.
+   */
+  export function parseFbSync(css: string, from?: string | undefined | null): Buffer
   /**
    * Synchronous version of parse(). Blocks the event loop while parsing.
    * Faster than parse() for small/medium CSS because it avoids the

@@ -1,6 +1,8 @@
 #![deny(clippy::all)]
 #![allow(clippy::needless_return)]
 
+mod fb_serializer;
+
 use napi_derive::napi;
 
 use napi::{Env, Result, Task};
@@ -35,9 +37,28 @@ impl Task for AsyncParseTask {
     }
 }
 
+pub struct AsyncParseFbTask {
+    css: String,
+}
+
+impl Task for AsyncParseFbTask {
+    type Output = Vec<u8>;
+    type JsValue = napi::bindgen_prelude::Buffer;
+
+    fn compute(&mut self) -> Result<Self::Output> {
+        let mut parser = Parser::new(&self.css).unwrap();
+        let node = parser.parse();
+        return Ok(fb_serializer::to_flatbuffer(&node));
+    }
+
+    fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
+        return Ok(output.into());
+    }
+}
+
 #[napi]
 pub mod postcss {
-    use napi::bindgen_prelude::AsyncTask;
+    use napi::bindgen_prelude::{AsyncTask, Buffer};
 
     pub use super::*;
 
@@ -57,6 +78,21 @@ pub mod postcss {
         sonic_rs::to_writer(&mut buf, &node)
             .map_err(|e| napi::Error::from_reason(e.to_string()))?;
         return Ok(unsafe { String::from_utf8_unchecked(buf) });
+    }
+
+    /// Synchronous FlatBuffers parse. Returns a raw Buffer instead of a JSON
+    /// string, allowing the JS side to skip JSON.parse() entirely.
+    #[napi]
+    pub fn parse_fb_sync(css: String, _from: Option<String>) -> Result<Buffer> {
+        let mut parser = Parser::new(&css).unwrap();
+        let node = parser.parse();
+        return Ok(fb_serializer::to_flatbuffer(&node).into());
+    }
+
+    /// Async FlatBuffers parse.
+    #[napi]
+    pub fn parse_fb(css: String, _from: Option<String>) -> AsyncTask<AsyncParseFbTask> {
+        return AsyncTask::new(AsyncParseFbTask { css });
     }
 
     #[napi]

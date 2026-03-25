@@ -21,6 +21,8 @@
 import * as postcss from 'postcss';
 import type { Root, Plugin, Processor, ProcessOptions } from 'postcss';
 import * as path from 'path';
+import { ByteBuffer } from 'flatbuffers';
+import { Node as FbNode } from './css-ast/node.js';
 
 // Load Rust native bindings via the napi-rs v3 generated loader
 // __dirname is dist/, index.js is in the package root (one level up)
@@ -30,6 +32,9 @@ const bindings = require(path.join(__dirname, '../index.js')) as {
     parse: (css: string, from?: string | null) => Promise<string>;
     parseSync: (css: string, from?: string | null) => string;
     stringify: (json: string) => string;
+    // FlatBuffers variants — return a raw Buffer instead of a JSON string
+    parseFbSync: (css: string, from?: string | null) => Buffer;
+    parseFb: (css: string, from?: string | null) => Promise<Buffer>;
   };
 };
 
@@ -148,6 +153,106 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
   return node;
 }
 
+/**
+ * Build a PostCSS node tree from a FlatBuffers buffer produced by Rust.
+ *
+ * Like buildNode() but reads from a FlatBuffers ByteBuffer instead of a
+ * plain JS object, skipping JSON.parse() entirely.
+ */
+function buildNodeFb(fb: FbNode, input: postcss.Input, parent: any): any {
+  const t = fb.t();
+  let node: any;
+
+  switch (t) {
+    case 0: {
+      node = Object.create(RootProto);
+      node.raws = {}; node[isClean] = false; node[my] = true;
+      node.type = 'root'; node.nodes = [];
+      break;
+    }
+    case 1: {
+      node = Object.create(RuleProto);
+      node.raws = {}; node[isClean] = false; node[my] = true;
+      node.type = 'rule'; node.nodes = [];
+      node.selector = fb.selector();
+      break;
+    }
+    case 2: {
+      node = Object.create(DeclProto);
+      node.raws = {}; node[isClean] = false; node[my] = true;
+      node.type = 'decl';
+      node.prop  = fb.prop();
+      node.value = fb.value();
+      if (fb.important()) node.important = true;
+      break;
+    }
+    case 3: {
+      node = Object.create(AtRuleProto);
+      node.raws = {}; node[isClean] = false; node[my] = true;
+      node.type = 'atrule';
+      node.name   = fb.name();
+      node.params = fb.params() ?? '';
+      break;
+    }
+    case 4: {
+      node = Object.create(CommentProto);
+      node.raws = {}; node[isClean] = false; node[my] = true;
+      node.type = 'comment';
+      node.text = fb.text();
+      break;
+    }
+    default:
+      throw new Error(`Unknown FlatBuffers node type: ${t}`);
+  }
+
+  // Raws
+  const raws: any = {};
+  const rBefore = fb.rBefore(); if (rBefore !== null) raws.before = rBefore;
+  const rBetween = fb.rBetween(); if (rBetween !== null) raws.between = rBetween;
+  const rAfter = fb.rAfter(); if (rAfter !== null) raws.after = rAfter;
+  const rAfterName = fb.rAfterName(); if (rAfterName !== null) raws.afterName = rAfterName;
+  const rSemi = fb.rSemicolon();
+  if (rSemi !== -1) raws.semicolon = rSemi === 1;
+  const rLeft = fb.rLeft(); if (rLeft !== null) raws.left = rLeft;
+  const rRight = fb.rRight(); if (rRight !== null) raws.right = rRight;
+  const rImp = fb.rImportant(); if (rImp !== null) raws.important = rImp;
+  const rOwnSemi = fb.rOwnSemicolon(); if (rOwnSemi !== null) raws.ownSemicolon = rOwnSemi;
+  const rvv = fb.rValueValue(); const rvr = fb.rValueRaw();
+  if (rvv !== null || rvr !== null) {
+    raws.value = {} as any;
+    if (rvv !== null) raws.value.value = rvv;
+    if (rvr !== null) raws.value.raw = rvr;
+  }
+  const rsv = fb.rSelectorValue(); const rsr = fb.rSelectorRaw();
+  if (rsv !== null || rsr !== null) {
+    raws.selector = {} as any;
+    if (rsv !== null) raws.selector.value = rsv;
+    if (rsr !== null) raws.selector.raw = rsr;
+  }
+  node.raws = raws;
+
+  // Source
+  const start = { offset: fb.ssOff(), line: fb.ssLine(), column: fb.ssCol() };
+  node.source = fb.hasEnd()
+    ? { start, end: { offset: fb.seOff(), line: fb.seLine(), column: fb.seCol() }, input }
+    : { start, input };
+
+  if (parent !== undefined) node.parent = parent;
+
+  // Children
+  const len = fb.nodesLength();
+  if (len > 0) {
+    const built = new Array(len);
+    const child = new FbNode();
+    for (let i = 0; i < len; i++) {
+      built[i] = buildNodeFb(fb.nodes(i, child)!, input, node);
+    }
+    node.nodes = built;
+  }
+
+  return node;
+}
+
 export interface ParseOptions {
   from?: string;
   map?: any;
@@ -197,6 +302,28 @@ export function parseSync(css: string, opts: ParseOptions = {}): Root {
   const rustObj = JSON.parse(jsonStr);
   const input   = new postcss.Input(css, { from: opts.from });
   return buildNode(rustObj, input, undefined) as Root;
+}
+
+/**
+ * Synchronous FlatBuffers parse — no JSON involved.
+ */
+export function parseFbSync(css: string, opts: ParseOptions = {}): Root {
+  const buf = bindings.postcss.parseFbSync(css, opts.from ?? null);
+  const bb  = new ByteBuffer(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
+  const fb  = FbNode.getRootAsNode(bb);
+  const input = new postcss.Input(css, { from: opts.from });
+  return buildNodeFb(fb, input, undefined) as Root;
+}
+
+/**
+ * Async FlatBuffers parse — no JSON involved.
+ */
+export async function parseFb(css: string, opts: ParseOptions = {}): Promise<Root> {
+  const buf = await bindings.postcss.parseFb(css, opts.from ?? null);
+  const bb  = new ByteBuffer(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
+  const fb  = FbNode.getRootAsNode(bb);
+  const input = new postcss.Input(css, { from: opts.from });
+  return buildNodeFb(fb, input, undefined) as Root;
 }
 
 /**
