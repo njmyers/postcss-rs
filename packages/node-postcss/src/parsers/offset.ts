@@ -15,7 +15,7 @@ import * as path from 'path';
 
 // ─── Bindings ─────────────────────────────────────────────────────────────────
 
-const bindings = require(path.join(__dirname, '../index.js')) as {
+const bindings = require(path.join(__dirname, '../../index.js')) as {
   postcss: {
     parseOffsetsSync: (css: string, from?: string | null) => Buffer;
     nodeSlotLayout: () => NodeSlotLayout;
