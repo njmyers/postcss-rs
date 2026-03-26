@@ -91,11 +91,6 @@ const _STRIDE_CHECK: () = assert!(std::mem::size_of::<NodeSlot>() / 4 == 25);
 
 // ── internal ──────────────────────────────────────────────────────────────────
 
-struct Entry<'a> {
-    node: &'a Node,
-    parent_idx: u32,
-}
-
 /// Serializes a PostCSS AST into the compact offset-array binary format.
 ///
 /// # Buffer layout
@@ -113,17 +108,27 @@ pub struct OffsetSerializer;
 impl OffsetSerializer {
     /// Serialize `root` into the offset-array binary format.
     pub fn serialize(root: &Node, _css: &str) -> Vec<u8> {
-        let mut entries: Vec<Entry<'_>> = Vec::new();
-        Self::collect(root, ABSENT, &mut entries);
-
-        let n = entries.len();
-        let mut slots: Vec<NodeSlot> = Vec::with_capacity(n);
+        let mut slots: Vec<NodeSlot> = Vec::new();
         let mut string_table: Vec<u8> = Vec::new();
+        Self::visit(root, ABSENT, &mut slots, &mut string_table);
 
-        for entry in &entries {
-            let node = entry.node;
-            let ss = &node.source.start;
-            let src_start = ss.offset as u32;
+        let count_bytes = (slots.len() as u32).to_le_bytes();
+        let slots_bytes: &[u8] = bytemuck::cast_slice(&slots);
+        let mut out = Vec::with_capacity(4 + slots_bytes.len() + string_table.len());
+        out.extend_from_slice(&count_bytes);
+        out.extend_from_slice(slots_bytes);
+        out.extend_from_slice(&string_table);
+        out
+    }
+
+    /// DFS pre-order traversal: build and push each node's slot, then recurse.
+    /// `my_idx = slots.len()` before the push gives the stable index used as
+    /// `parent_idx` for all direct children.
+    fn visit(node: &Node, parent_idx: u32, slots: &mut Vec<NodeSlot>, string_table: &mut Vec<u8>) {
+        let my_idx = slots.len() as u32;
+
+        let ss = &node.source.start;
+        let src_start = ss.offset as u32;
 
             let (source_end_off, source_end_line, source_end_col, src_end) =
                 if let Some(se) = &node.source.end {
@@ -146,7 +151,7 @@ impl OffsetSerializer {
 
             let mut slot = NodeSlot {
                 type_tag:           0,
-                parent_idx:         entry.parent_idx,
+                parent_idx,
                 source_start_off:   src_start,
                 source_start_line:  ss.line as u32,
                 source_start_col:   ss.column as u32,
@@ -309,25 +314,11 @@ impl OffsetSerializer {
                 }
             }
 
-            slots.push(slot);
-        }
+        slots.push(slot);
 
-        // Build output: [node_count u32 LE][NodeSlot × n bytes][string table]
-        let count_bytes = (n as u32).to_le_bytes();
-        let slots_bytes: &[u8] = bytemuck::cast_slice(&slots);
-        let mut out = Vec::with_capacity(4 + slots_bytes.len() + string_table.len());
-        out.extend_from_slice(&count_bytes);
-        out.extend_from_slice(slots_bytes);
-        out.extend_from_slice(&string_table);
-        out
-    }
-
-    fn collect<'a>(node: &'a Node, parent: u32, entries: &mut Vec<Entry<'a>>) {
-        let my_idx = entries.len() as u32;
-        entries.push(Entry { node, parent_idx: parent });
         if let Some(children) = &node.nodes {
             for child in children {
-                Self::collect(child, my_idx, entries);
+                Self::visit(child, my_idx, slots, string_table);
             }
         }
     }
