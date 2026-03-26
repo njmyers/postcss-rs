@@ -13,37 +13,37 @@ use postcss_rs_tokenizer::Tokens;
 /// A `BracketDepth` tracker is kept in sync so callers can test whether the
 /// current position is inside a nested bracket group ([`Statement::is_open`]).
 #[derive(PartialEq, Eq, Debug)]
-pub struct Statement {
+pub struct Statement<'src> {
     /// Tracks the nesting depth of `{`, `[`, and `(` bracket pairs.
     pub brackets: BracketDepth,
     /// Raw token sequence (includes comments).
-    pub values: Tokens,
+    pub values: Tokens<'src>,
     /// Clean token sequence (comments excluded via [`Statement::push_raw_only`]).
-    pub values_clean: Tokens,
+    pub values_clean: Tokens<'src>,
 }
 
-impl Statement {
+impl<'src> Statement<'src> {
     /// Creates a new, empty `Statement`.
     pub fn new() -> Self {
         return Self::default();
     }
 
     /// Pushes an opening bracket token, updating the bracket depth.
-    pub fn open(&mut self, token: Token) {
+    pub fn open(&mut self, token: Token<'src>) {
         self.brackets.process(&token);
         self.values_clean.push(token.clone());
         self.values.push(token);
     }
 
     /// Pushes a closing bracket token, updating the bracket depth.
-    pub fn close(&mut self, token: Token) {
+    pub fn close(&mut self, token: Token<'src>) {
         self.brackets.process(&token);
         self.values_clean.push(token.clone());
         self.values.push(token);
     }
 
     /// Pushes a token to both the raw and clean sequences.
-    pub fn push(&mut self, token: Token) {
+    pub fn push(&mut self, token: Token<'src>) {
         self.brackets.process(&token);
         self.values_clean.push(token.clone());
         self.values.push(token);
@@ -53,7 +53,7 @@ impl Statement {
     ///
     /// Used for inline comment tokens that must be preserved in the raw output
     /// but stripped from the semantic value.
-    pub fn push_raw_only(&mut self, token: Token) {
+    pub fn push_raw_only(&mut self, token: Token<'src>) {
         self.brackets.process(&token);
         self.values.push(token);
     }
@@ -75,7 +75,7 @@ impl Statement {
 
     /// Collect and remove trailing space tokens, returning them as a string
     pub fn collect_trailing_spaces(&mut self) -> String {
-        let mut spaces = Vec::new();
+        let mut spaces: Vec<&str> = Vec::new();
 
         // Collect from values (raw) - in reverse order
         while let Some(last) = self.values.last() {
@@ -102,14 +102,14 @@ impl Statement {
 
     /// Push a sliced portion of a token to both values and values_clean
     /// Preserves accurate source positions from the original token
-    pub fn push_token_slice(&mut self, token: &Token, start: usize, end: usize) {
+    pub fn push_token_slice(&mut self, token: &Token<'src>, start: usize, end: usize) {
         let sliced = token.slice(start, end);
         self.values_clean.push(sliced.clone());
         self.values.push(sliced);
     }
 }
 
-impl Default for Statement {
+impl<'src> Default for Statement<'src> {
     fn default() -> Self {
         return Self {
             brackets: BracketDepth::new(),
@@ -119,7 +119,7 @@ impl Default for Statement {
     }
 }
 
-impl fmt::Display for Statement {
+impl<'src> fmt::Display for Statement<'src> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         return write!(formatter, "{}", self.values);
     }
@@ -209,8 +209,8 @@ mod tests {
     use super::*;
     use postcss_rs_tokenizer::{Kind, Token};
 
-    fn make_token(kind: Kind, value: &str) -> Token {
-        Token { kind, value: value.into(), start: 0, end: value.len(), column: 1 }
+    fn make_token<'a>(kind: Kind, value: &'a str) -> Token<'a> {
+        Token { kind, value, start: 0, end: value.len(), column: 1 }
     }
 
     // ---- BracketDepth tests ----

@@ -17,7 +17,7 @@ impl Comment {
     /// `token` is the raw comment token (value like `"/* text */"`).
     /// `spaces` are any whitespace tokens that appear before the comment in the
     /// source; they are placed in `raws.before`.
-    pub fn create(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
+    pub fn create(token: Token<'_>, tokenizer: &mut Tokenizer<'_>, spaces: &[Token<'_>]) -> Node {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
         builder.ensure_empty_before();
 
@@ -66,10 +66,10 @@ mod tests {
     use crate::Data;
     use postcss_rs_tokenizer::{Kind, Tokenizer};
 
-    fn comment_token(value: &str) -> Token {
+    fn comment_token<'a>(value: &'a str) -> Token<'a> {
         Token {
             kind: Kind::Comment,
-            value: value.into(),
+            value,
             start: 0,
             end: value.len(),
             column: 1,

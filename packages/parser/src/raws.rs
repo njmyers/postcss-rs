@@ -75,13 +75,13 @@ impl Raw {
     ///     kind: Kind::Space,
     ///     start: 0,
     ///     end: 1,
-    ///     value: "\n".into(),
+    ///     value: "\n",
     ///     column: 0,
     /// });
     ///
     /// assert_eq!(&raw, &"\n");
     /// ```
-    pub fn push(&mut self, token: &Token) {
+    pub fn push(&mut self, token: &Token<'_>) {
         self.push_str(&token.value);
     }
 
@@ -104,7 +104,7 @@ impl Raw {
         };
     }
 
-    pub fn push_tokens(&mut self, tokens: &[Token]) {
+    pub fn push_tokens(&mut self, tokens: &[Token<'_>]) {
         for token in tokens {
             self.push(token);
         }
@@ -265,8 +265,8 @@ mod tests {
     use super::*;
     use postcss_rs_tokenizer::{Kind, Token};
 
-    fn space_token(value: &str) -> Token {
-        Token { kind: Kind::Space, value: value.into(), start: 0, end: value.len(), column: 1 }
+    fn space_token<'a>(value: &'a str) -> Token<'a> {
+        Token { kind: Kind::Space, value, start: 0, end: value.len(), column: 1 }
     }
 
     // ---- Raw tests ----
