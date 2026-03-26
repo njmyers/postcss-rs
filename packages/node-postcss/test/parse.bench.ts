@@ -167,31 +167,34 @@ const LARGE_CSS = Array.from({ length: 50 }, (_, i) => `
 
 const processor = postcss();
 
-// ─── Suite factory ────────────────────────────────────────────────────────────
+// ─── Suite factories ──────────────────────────────────────────────────────────
 
-function makeSuite(name: string, css: string) {
+function makeRawSuite(name: string, css: string) {
   return b.suite(
-    name,
+    `${name} — raw (Rust only, no tree walk)`,
+    b.add('JSON string only',     () => { parseRustOnlySync(css); }),
+    b.add('JSON.parse only',      () => { parseJsonOnlySync(css); }),
+    b.add('FB buffer only',       () => { parseFbRustOnlySync(css); }),
+    b.add('FB decode only',       () => { parseFbDecodeOnlySync(css); }),
+    b.add('Msgpack buffer only',  () => { parseMsgpackRustOnlySync(css); }),
+    b.add('Msgpack decode only',  () => { parseMsgpackDecodeOnlySync(css); }),
+    b.add('Msgpackr decode only', () => { msgpackrUnpack(parseMsgpackRustOnlySync(css)); }),
+    b.cycle(),
+    b.complete(),
+  );
+}
 
-    // ── raw: Rust side only (no JS tree walk) ─────────────────────────────
-    b.add('[raw] JSON string only',     () => { parseRustOnlySync(css); }),
-    b.add('[raw] JSON.parse only',      () => { parseJsonOnlySync(css); }),
-    b.add('[raw] FB buffer only',       () => { parseFbRustOnlySync(css); }),
-    b.add('[raw] FB decode only',       () => { parseFbDecodeOnlySync(css); }),
-    b.add('[raw] Msgpack buffer only',  () => { parseMsgpackRustOnlySync(css); }),
-    b.add('[raw] Msgpack decode only',  () => { parseMsgpackDecodeOnlySync(css); }),
-    b.add('[raw] Msgpackr decode only', () => { msgpackrUnpack(parseMsgpackRustOnlySync(css)); }),
-
-    // ── full e2e ──────────────────────────────────────────────────────────
-    b.add('postcss-rs JSON sync',    () => { parseSync(css); }),
-    b.add('postcss-rs FB sync',      () => { parseFbSync(css); }),
-    b.add('postcss-rs Msgpack sync', () => { parseMsgpackSync(css); }),
-    b.add('postcss-rs JSON async',   async () => { await parse(css); }),
-    b.add('postcss-rs FB async',     async () => { await parseFb(css); }),
-    b.add('postcss-rs Msgpack async',async () => { await parseMsgpack(css); }),
-    b.add('postcss sync (JS)',        () => { processor.process(css, { from: undefined }).sync().root; }),
-    b.add('postcss async (JS)',       async () => { (await processor.process(css, { from: undefined }).async()).root; }),
-
+function makeE2eSuite(name: string, css: string) {
+  return b.suite(
+    `${name} — e2e (full parse → PostCSS AST)`,
+    b.add('postcss-rs JSON sync',     () => { parseSync(css); }),
+    b.add('postcss-rs FB sync',       () => { parseFbSync(css); }),
+    b.add('postcss-rs Msgpack sync',  () => { parseMsgpackSync(css); }),
+    b.add('postcss-rs JSON async',    async () => { await parse(css); }),
+    b.add('postcss-rs FB async',      async () => { await parseFb(css); }),
+    b.add('postcss-rs Msgpack async', async () => { await parseMsgpack(css); }),
+    b.add('postcss sync (JS)',         () => { processor.process(css, { from: undefined }).sync().root; }),
+    b.add('postcss async (JS)',        async () => { (await processor.process(css, { from: undefined }).async()).root; }),
     b.cycle(),
     b.complete(),
   );
@@ -199,7 +202,10 @@ function makeSuite(name: string, css: string) {
 
 // ─── Run suites sequentially ─────────────────────────────────────────────────
 
-makeSuite('Small CSS (~200 bytes)', SMALL_CSS)
-  .then(() => makeSuite('Medium CSS (~2 KB)', MEDIUM_CSS))
-  .then(() => makeSuite('Large CSS (~20 KB)', LARGE_CSS))
+makeRawSuite('Small (~200 B)', SMALL_CSS)
+  .then(() => makeE2eSuite('Small (~200 B)', SMALL_CSS))
+  .then(() => makeRawSuite('Medium (~2 KB)', MEDIUM_CSS))
+  .then(() => makeE2eSuite('Medium (~2 KB)', MEDIUM_CSS))
+  .then(() => makeRawSuite('Large (~20 KB)', LARGE_CSS))
+  .then(() => makeE2eSuite('Large (~20 KB)', LARGE_CSS))
   .catch((err: Error) => { console.error(err); process.exit(1); });
