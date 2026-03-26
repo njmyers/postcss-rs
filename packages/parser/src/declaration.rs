@@ -31,9 +31,9 @@ impl Declaration {
     /// semicolon or closing brace and returns both the resulting [`Node`] and
     /// the [`StatementTerminator`] that ended parsing.
     pub fn create(
-        prop: Token,
-        tokenizer: &mut Tokenizer,
-        spaces: &[Token],
+        prop: Token<'_>,
+        tokenizer: &mut Tokenizer<'_>,
+        spaces: &[Token<'_>],
     ) -> (Node, StatementTerminator) {
         let mut builder = NodeBuilder::new(&prop, tokenizer, spaces);
         builder.ensure_empty_before();
@@ -99,7 +99,7 @@ impl Declaration {
                     break;
                 }
                 // Space with newline ends declaration when not open
-                Kind::Space if peeked.value.as_ref() == characters::NEWLINE && !statement.is_open() => break,
+                Kind::Space if peeked.value == characters::NEWLINE && !statement.is_open() => break,
 
                 // Space with newline followed by comment or CloseCurly ends declaration
                 Kind::Space if peeked.value.starts_with(characters::NEWLINE) && !statement.is_open() => {
@@ -283,7 +283,7 @@ impl Declaration {
 
     /// Check if a word token contains !important pattern
     /// Returns (ImportantResult, bang_position)
-    fn check_important(word: &str, tokenizer: &mut Tokenizer) -> (ImportantResult, usize) {
+    fn check_important(word: &str, tokenizer: &mut Tokenizer<'_>) -> (ImportantResult, usize) {
         // Find the position of ! in the word
         let Some(bang_pos) = word.find('!') else {
             return (ImportantResult::NotImportant, 0);
@@ -310,7 +310,7 @@ impl Declaration {
     fn collect_multitoken_important(
         initial: &str,
         after_bang: &str,
-        tokenizer: &mut Tokenizer,
+        tokenizer: &mut Tokenizer<'_>,
         bang_pos: usize,
     ) -> (ImportantResult, usize) {
         let mut raw_parts = vec![initial.to_string()];
@@ -345,7 +345,7 @@ impl Declaration {
     }
 
     /// Build the final important raw string, including trailing space if present
-    fn build_important_raw(base: &str, tokenizer: &mut Tokenizer) -> String {
+    fn build_important_raw(base: &str, tokenizer: &mut Tokenizer<'_>) -> String {
         let mut raw = base.to_string();
 
         if let Some(trailing) = tokenizer.peek() {
@@ -368,7 +368,7 @@ impl Declaration {
 
     /// Return the kind of the token after the next one (skips one token ahead).
     /// Used to look past the current peeked token to detect terminators.
-    fn peek_second_kind(tokenizer: &mut Tokenizer) -> Option<Kind> {
+    fn peek_second_kind(tokenizer: &mut Tokenizer<'_>) -> Option<Kind> {
         let cp = tokenizer.checkpoint();
         tokenizer.next(); // skip current token
         let kind = tokenizer.next().map(|t| t.kind);
@@ -377,7 +377,7 @@ impl Declaration {
     }
 
     /// Check if the next token is an opening bracket `(`.
-    fn next_is_open_bracket(tokenizer: &mut Tokenizer) -> bool {
+    fn next_is_open_bracket(tokenizer: &mut Tokenizer<'_>) -> bool {
         matches!(tokenizer.peek(), Some(t) if t.kind == Kind::Brackets && t.value.starts_with('('))
     }
 

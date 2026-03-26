@@ -24,7 +24,7 @@ impl RuleWord {
     ///
     /// # Returns
     /// A combined Token representing the property name
-    pub fn collect_and_combine(first_token: Token, tokenizer: &mut Tokenizer) -> Token {
+    pub fn collect_and_combine<'src>(first_token: Token<'src>, tokenizer: &mut Tokenizer<'src>) -> Token<'src> {
         let mut tokens = vec![first_token];
 
         // Collect tokens that are part of the property name (Word and Brackets)
@@ -62,18 +62,30 @@ impl RuleWord {
     }
 
     /// Combine multiple Word tokens into a single token.
-    fn combine_tokens(tokens: Vec<Token>) -> Token {
-        let mut combined_value = String::new();
-        for t in &tokens {
-            combined_value.push_str(&t.value);
-        }
+    /// Since consecutive tokens are contiguous slices of the same source string,
+    /// the combined value is just the slice spanning from the first to the last token.
+    fn combine_tokens<'src>(tokens: Vec<Token<'src>>) -> Token<'src> {
+        // All tokens are contiguous slices of the same source string.
+        // Reconstruct the combined slice using pointer arithmetic.
+        let first = &tokens[0];
+        let last = tokens.last().unwrap();
+        // SAFETY: first.value and last.value are both subslices of the same
+        // source &'src str, produced by the Tokenizer. Consecutive tokens are
+        // laid out contiguously in memory, so the range [first.value.as_ptr(),
+        // last.value.as_ptr() + last.value.len()) is a valid UTF-8 sub-slice.
+        let combined_value: &'src str = unsafe {
+            let ptr = first.value.as_ptr();
+            let len = (last.value.as_ptr() as usize + last.value.len())
+                - first.value.as_ptr() as usize;
+            std::str::from_utf8_unchecked(std::slice::from_raw_parts(ptr, len))
+        };
 
         Token {
             kind: Kind::Word,
-            start: tokens[0].start,
-            end: tokens.last().unwrap().end,
-            value: combined_value.into(),
-            column: tokens[0].column,
+            start: first.start,
+            end: last.end,
+            value: combined_value,
+            column: first.column,
         }
     }
 }
@@ -90,7 +102,7 @@ mod tests {
 
         let result = RuleWord::collect_and_combine(first_token.clone(), &mut tokenizer);
 
-        assert_eq!(&*result.value, "color");
+        assert_eq!(result.value, "color");
         assert_eq!(result.start, first_token.start);
         assert_eq!(result.end, first_token.end);
     }
@@ -107,7 +119,7 @@ mod tests {
         let result = RuleWord::collect_and_combine(first_token, &mut tokenizer);
 
         // Should combine both Word tokens
-        assert_eq!(&*result.value, "\\62 olor");
+        assert_eq!(result.value, "\\62 olor");
         assert_eq!(result.kind, Kind::Word);
     }
 
@@ -118,12 +130,12 @@ mod tests {
 
         let first_token = tokenizer.next().unwrap();
         assert_eq!(first_token.kind, Kind::Word);
-        assert_eq!(&*first_token.value, "color");
+        assert_eq!(first_token.value, "color");
 
         let result = RuleWord::collect_and_combine(first_token.clone(), &mut tokenizer);
 
         // Should only include "color", not the colon
-        assert_eq!(&*result.value, "color");
+        assert_eq!(result.value, "color");
 
         // Next token should be the colon
         let next = tokenizer.next().unwrap();

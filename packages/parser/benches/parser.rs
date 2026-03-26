@@ -66,10 +66,46 @@ fn bench_parse_all_fixtures_combined(c: &mut Criterion) {
     group.finish();
 }
 
+fn make_large_css() -> String {
+    (0..50).map(|i| format!(
+        ".component-{i} {{\
+            \n  display: flex;\
+            \n  flex-direction: column;\
+            \n  padding: {p0}px {p1}px;\
+            \n  margin: {m}px;\
+            \n  background-color: hsl({h}, 60%, 95%);\
+            \n  border: 1px solid hsl({h}, 40%, 80%);\
+            \n  border-radius: {br}px;\
+            \n  font-size: {fs}px;\
+            \n  color: hsl({h}, 40%, 20%);\
+            \n  transition: all 0.2s ease;\
+            \n}}\
+            \n.component-{i}:hover {{\
+            \n  background-color: hsl({h}, 60%, 88%);\
+            \n  transform: translateY(-2px);\
+            \n}}\
+            \n@media (max-width: {mq}px) {{\
+            \n  .component-{i} {{ padding: 8px; }}\
+            \n}}\n",
+        i=i, p0=8+i, p1=16+i, m=4+i, h=i*7, br=4+(i%8), fs=12+(i%6), mq=320+i*10,
+    )).collect()
+}
+
+fn bench_parse_large_synthetic(c: &mut Criterion) {
+    let large_css = make_large_css();
+    let mut group = c.benchmark_group("parse");
+    group.throughput(Throughput::Bytes(large_css.len() as u64));
+    group.bench_function("large-synthetic", |b| {
+        b.iter(|| parse(black_box(&large_css)))
+    });
+    group.finish();
+}
+
 criterion_group!(
     benches,
     bench_parse_small,
     bench_parse_fixtures,
     bench_parse_all_fixtures_combined,
+    bench_parse_large_synthetic,
 );
 criterion_main!(benches);

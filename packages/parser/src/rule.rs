@@ -28,7 +28,7 @@ pub struct Rule {
 }
 
 impl Rule {
-    pub fn create(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
+    pub fn create(token: Token<'_>, tokenizer: &mut Tokenizer<'_>, spaces: &[Token<'_>]) -> Node {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
         let selector = Selector::create(token, tokenizer, &mut builder);
 
@@ -122,7 +122,7 @@ impl Rule {
         return Self { selector };
     }
 
-    fn create_comment(token: Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Node {
+    fn create_comment(token: Token<'_>, tokenizer: &mut Tokenizer<'_>, spaces: &[Token<'_>]) -> Node {
         return crate::Comment::create(token, tokenizer, spaces);
     }
 
@@ -134,7 +134,7 @@ impl Rule {
     /// - Offset behavior:
     ///   - Just ";": offset points AT the newline
     ///   - " ;": offset points AFTER the newline (without consuming it)
-    fn consume_trailing_semicolon(tokenizer: &mut Tokenizer) -> Option<(crate::Source, String)> {
+    fn consume_trailing_semicolon(tokenizer: &mut Tokenizer<'_>) -> Option<(crate::Source, String)> {
         let cp = tokenizer.checkpoint();
         let mut has_space_before = false;
         let mut own_semicolon = String::new();
@@ -184,12 +184,12 @@ impl Rule {
     }
 
     /// Check if a token is a newline character
-    fn is_newline(token: &Token) -> bool {
-        token.kind == Kind::Space && (token.value.as_ref() == "\n" || token.value.as_ref() == "\r\n")
+    fn is_newline(token: &Token<'_>) -> bool {
+        token.kind == Kind::Space && (token.value == "\n" || token.value == "\r\n")
     }
 
     /// Peek ahead to determine if the next non-space token indicates a nested rule
-    fn peek_for_nested_rule(tokenizer: &mut Tokenizer) -> bool {
+    fn peek_for_nested_rule(tokenizer: &mut Tokenizer<'_>) -> bool {
         let cp = tokenizer.checkpoint();
         let result = loop {
             match tokenizer.next() {
@@ -212,7 +212,7 @@ impl Selector {
     const EMPTY_SELECTOR: &'static str = "";
 
     /// Check if there are selector tokens ahead, skipping over spaces
-    fn has_selector_tokens_ahead(tokenizer: &mut Tokenizer) -> bool {
+    fn has_selector_tokens_ahead(tokenizer: &mut Tokenizer<'_>) -> bool {
         let cp = tokenizer.checkpoint();
         let result = loop {
             match tokenizer.next() {
@@ -239,7 +239,7 @@ impl Selector {
     }
 
     /// A builder struct used for creating a rule selector.
-    pub fn create(token: Token, tokenizer: &mut Tokenizer, builder: &mut NodeBuilder) -> String {
+    pub fn create(token: Token<'_>, tokenizer: &mut Tokenizer<'_>, builder: &mut NodeBuilder) -> String {
         if token.kind == Kind::OpenCurly {
             builder.ensure_empty_after();
             builder.ensure_empty_between();
