@@ -6,15 +6,11 @@
 
 import b from 'benny';
 import {
-  parse, parseSync, parseFb, parseFbSync,
-  parseMsgpack, parseMsgpackSync,
+  parse, parseSync,
   parseRustOnlySync, parseJsonOnlySync,
-  parseFbRustOnlySync, parseFbDecodeOnlySync,
-  parseMsgpackRustOnlySync, parseMsgpackDecodeOnlySync,
   parseOffsetsRustOnlySync, parseOffsetsSync,
 } from '../src/index';
 import postcss from 'postcss';
-import { unpack as msgpackrUnpack } from 'msgpackr';
 
 // ─── CSS Fixtures ────────────────────────────────────────────────────────────
 
@@ -173,14 +169,9 @@ const processor = postcss();
 function makeRawSuite(name: string, css: string) {
   return b.suite(
     `${name} — raw (Rust only, no tree walk)`,
-    b.add('JSON string only',      () => { parseRustOnlySync(css); }),
-    b.add('JSON.parse only',       () => { parseJsonOnlySync(css); }),
-    b.add('FB buffer only',        () => { parseFbRustOnlySync(css); }),
-    b.add('FB decode only',        () => { parseFbDecodeOnlySync(css); }),
-    b.add('Msgpack buffer only',   () => { parseMsgpackRustOnlySync(css); }),
-    b.add('Msgpack decode only',   () => { parseMsgpackDecodeOnlySync(css); }),
-    b.add('Msgpackr decode only',  () => { msgpackrUnpack(parseMsgpackRustOnlySync(css)); }),
-    b.add('Offsets buffer only',   () => { parseOffsetsRustOnlySync(css); }),
+    b.add('JSON string only',    () => { parseRustOnlySync(css); }),
+    b.add('JSON.parse only',     () => { parseJsonOnlySync(css); }),
+    b.add('Offsets buffer only', () => { parseOffsetsRustOnlySync(css); }),
     b.cycle(),
     b.complete(),
   );
@@ -189,15 +180,11 @@ function makeRawSuite(name: string, css: string) {
 function makeE2eSuite(name: string, css: string) {
   return b.suite(
     `${name} — e2e (full parse → PostCSS AST)`,
-    b.add('postcss-rs JSON sync',      () => { parseSync(css); }),
-    b.add('postcss-rs FB sync',        () => { parseFbSync(css); }),
-    b.add('postcss-rs Msgpack sync',   () => { parseMsgpackSync(css); }),
-    b.add('postcss-rs Offsets sync',   () => { parseOffsetsSync(css); }),
-    b.add('postcss-rs JSON async',     async () => { await parse(css); }),
-    b.add('postcss-rs FB async',       async () => { await parseFb(css); }),
-    b.add('postcss-rs Msgpack async',  async () => { await parseMsgpack(css); }),
-    b.add('postcss sync (JS)',          () => { processor.process(css, { from: undefined }).sync().root; }),
-    b.add('postcss async (JS)',         async () => { (await processor.process(css, { from: undefined }).async()).root; }),
+    b.add('postcss-rs JSON sync',    () => { parseSync(css); }),
+    b.add('postcss-rs Offsets sync', () => { parseOffsetsSync(css); }),
+    b.add('postcss-rs JSON async',   async () => { await parse(css); }),
+    b.add('postcss sync (JS)',        () => { processor.process(css, { from: undefined }).sync().root; }),
+    b.add('postcss async (JS)',       async () => { (await processor.process(css, { from: undefined }).async()).root; }),
     b.cycle(),
     b.complete(),
   );

@@ -2,17 +2,6 @@
 /* eslint-disable */
 export declare namespace postcss {
   export function parse(css: string, from?: string | undefined | null): Promise<unknown>
-  /** Async FlatBuffers parse. */
-  export function parseFb(css: string, from?: string | undefined | null): Promise<unknown>
-  /**
-   * Synchronous FlatBuffers parse. Returns a raw Buffer instead of a JSON
-   * string, allowing the JS side to skip JSON.parse() entirely.
-   */
-  export function parseFbSync(css: string, from?: string | undefined | null): Buffer
-  /** Async MessagePack parse. */
-  export function parseMsgpack(css: string, from?: string | undefined | null): Promise<unknown>
-  /** Synchronous MessagePack parse. Returns a raw Buffer of MessagePack bytes. */
-  export function parseMsgpackSync(css: string, from?: string | undefined | null): Buffer
   /**
    * Synchronous offset-array parse.  Returns a compact binary buffer
    * containing a flat `Uint32Array` of CSS byte offsets plus a UTF-8

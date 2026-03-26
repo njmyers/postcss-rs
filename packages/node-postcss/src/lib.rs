@@ -1,7 +1,6 @@
 #![deny(clippy::all)]
 #![allow(clippy::needless_return)]
 
-mod fb_serializer;
 mod offset_serializer;
 
 use napi_derive::napi;
@@ -36,45 +35,6 @@ impl Task for AsyncParseTask {
     }
 }
 
-pub struct AsyncParseFbTask {
-    css: String,
-}
-
-pub struct AsyncParseMsgpackTask {
-    css: String,
-}
-
-impl Task for AsyncParseMsgpackTask {
-    type Output = Vec<u8>;
-    type JsValue = napi::bindgen_prelude::Buffer;
-
-    fn compute(&mut self) -> Result<Self::Output> {
-        let mut parser = Parser::new(&self.css).unwrap();
-        let node = parser.parse();
-        rmp_serde::to_vec_named(&node)
-            .map_err(|e| napi::Error::from_reason(e.to_string()))
-    }
-
-    fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
-        return Ok(output.into());
-    }
-}
-
-impl Task for AsyncParseFbTask {
-    type Output = Vec<u8>;
-    type JsValue = napi::bindgen_prelude::Buffer;
-
-    fn compute(&mut self) -> Result<Self::Output> {
-        let mut parser = Parser::new(&self.css).unwrap();
-        let node = parser.parse();
-        return Ok(fb_serializer::to_flatbuffer(&node, self.css.len()));
-    }
-
-    fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
-        return Ok(output.into());
-    }
-}
-
 #[napi]
 pub mod postcss {
     use napi::bindgen_prelude::{AsyncTask, Buffer};
@@ -97,37 +57,6 @@ pub mod postcss {
         sonic_rs::to_writer(&mut buf, &node)
             .map_err(|e| napi::Error::from_reason(e.to_string()))?;
         return Ok(unsafe { String::from_utf8_unchecked(buf) });
-    }
-
-    /// Synchronous FlatBuffers parse. Returns a raw Buffer instead of a JSON
-    /// string, allowing the JS side to skip JSON.parse() entirely.
-    #[napi]
-    pub fn parse_fb_sync(css: String, _from: Option<String>) -> Result<Buffer> {
-        let mut parser = Parser::new(&css).unwrap();
-        let node = parser.parse();
-        return Ok(fb_serializer::to_flatbuffer(&node, css.len()).into());
-    }
-
-    /// Async FlatBuffers parse.
-    #[napi]
-    pub fn parse_fb(css: String, _from: Option<String>) -> AsyncTask<AsyncParseFbTask> {
-        return AsyncTask::new(AsyncParseFbTask { css });
-    }
-
-    /// Synchronous MessagePack parse. Returns a raw Buffer of MessagePack bytes.
-    #[napi]
-    pub fn parse_msgpack_sync(css: String, _from: Option<String>) -> Result<Buffer> {
-        let mut parser = Parser::new(&css).unwrap();
-        let node = parser.parse();
-        rmp_serde::to_vec_named(&node)
-            .map(|v| v.into())
-            .map_err(|e| napi::Error::from_reason(e.to_string()))
-    }
-
-    /// Async MessagePack parse.
-    #[napi]
-    pub fn parse_msgpack(css: String, _from: Option<String>) -> AsyncTask<AsyncParseMsgpackTask> {
-        return AsyncTask::new(AsyncParseMsgpackTask { css });
     }
 
     /// Synchronous offset-array parse.  Returns a compact binary buffer
