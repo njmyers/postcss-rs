@@ -3,21 +3,11 @@
 /// These measure:
 ///   - pure parse (postcss-rs-parser, no serialization)
 ///   - parse + JSON serialize   (sonic-rs)
-///   - parse + FlatBuffers      (flatbuffers)
-///   - parse + MessagePack      (rmp-serde)
 ///
 /// Run with:
 ///   cargo bench --target x86_64-unknown-linux-gnu -p postcss-rs-node-postcss
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use postcss_rs_parser::Parser;
-
-// Pull in the FlatBuffers serialiser without going through the NAPI lib.
-// The #[path] attribute is resolved relative to *this* file's directory
-// (benches/), so "../src/fb_serializer.rs" resolves to src/fb_serializer.rs.
-// The nested `#[path = "css_ast_generated.rs"]` inside that file is then
-// resolved relative to *its* own directory (src/), which is correct.
-#[path = "../src/fb_serializer.rs"]
-mod fb_serializer;
 
 // ── CSS Fixtures (same sizes as the TypeScript bench) ────────────────────────
 
@@ -192,7 +182,7 @@ fn bench_parse_only(c: &mut Criterion) {
     let large = make_large_css();
     let cases: &[(&str, &str)] = &[
         ("small  (~200 B)", SMALL_CSS),
-        ("medium (~2 KB)",  MEDIUM_CSS),
+        ("medium (~2 KB)", MEDIUM_CSS),
     ];
 
     let mut group = c.benchmark_group("parse_only");
@@ -221,7 +211,7 @@ fn bench_parse_json(c: &mut Criterion) {
     let large = make_large_css();
     let cases: &[(&str, &str)] = &[
         ("small  (~200 B)", SMALL_CSS),
-        ("medium (~2 KB)",  MEDIUM_CSS),
+        ("medium (~2 KB)", MEDIUM_CSS),
     ];
 
     let mut group = c.benchmark_group("parse_json");
@@ -252,73 +242,5 @@ fn bench_parse_json(c: &mut Criterion) {
     group.finish();
 }
 
-fn bench_parse_flatbuffers(c: &mut Criterion) {
-    let large = make_large_css();
-    let cases: &[(&str, &str)] = &[
-        ("small  (~200 B)", SMALL_CSS),
-        ("medium (~2 KB)",  MEDIUM_CSS),
-    ];
-
-    let mut group = c.benchmark_group("parse_flatbuffers");
-    for (label, css) in cases {
-        group.bench_with_input(BenchmarkId::from_parameter(label), css, |b, css| {
-            b.iter(|| {
-                let mut p = Parser::new(black_box(css)).unwrap();
-                let node = p.parse();
-                black_box(fb_serializer::to_flatbuffer(&node, css.len()))
-            })
-        });
-    }
-    group.bench_with_input(
-        BenchmarkId::from_parameter("large  (~20 KB)"),
-        &large,
-        |b, css| {
-            b.iter(|| {
-                let mut p = Parser::new(black_box(css)).unwrap();
-                let node = p.parse();
-                black_box(fb_serializer::to_flatbuffer(&node, css.len()))
-            })
-        },
-    );
-    group.finish();
-}
-
-fn bench_parse_msgpack(c: &mut Criterion) {
-    let large = make_large_css();
-    let cases: &[(&str, &str)] = &[
-        ("small  (~200 B)", SMALL_CSS),
-        ("medium (~2 KB)",  MEDIUM_CSS),
-    ];
-
-    let mut group = c.benchmark_group("parse_msgpack");
-    for (label, css) in cases {
-        group.bench_with_input(BenchmarkId::from_parameter(label), css, |b, css| {
-            b.iter(|| {
-                let mut p = Parser::new(black_box(css)).unwrap();
-                let node = p.parse();
-                black_box(rmp_serde::to_vec_named(&node).unwrap())
-            })
-        });
-    }
-    group.bench_with_input(
-        BenchmarkId::from_parameter("large  (~20 KB)"),
-        &large,
-        |b, css| {
-            b.iter(|| {
-                let mut p = Parser::new(black_box(css)).unwrap();
-                let node = p.parse();
-                black_box(rmp_serde::to_vec_named(&node).unwrap())
-            })
-        },
-    );
-    group.finish();
-}
-
-criterion_group!(
-    benches,
-    bench_parse_only,
-    bench_parse_json,
-    bench_parse_flatbuffers,
-    bench_parse_msgpack,
-);
+criterion_group!(benches, bench_parse_only, bench_parse_json);
 criterion_main!(benches);
