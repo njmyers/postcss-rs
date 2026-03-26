@@ -2,6 +2,7 @@
 #![allow(clippy::needless_return)]
 
 mod fb_serializer;
+mod offset_serializer;
 
 use napi_derive::napi;
 use napi::{Env, Result, Task};
@@ -127,6 +128,18 @@ pub mod postcss {
     #[napi]
     pub fn parse_msgpack(css: String, _from: Option<String>) -> AsyncTask<AsyncParseMsgpackTask> {
         return AsyncTask::new(AsyncParseMsgpackTask { css });
+    }
+
+    /// Synchronous offset-array parse.  Returns a compact binary buffer
+    /// containing a flat `Uint32Array` of CSS byte offsets plus a UTF-8
+    /// string table for any clean values that differ from their raw form.
+    /// The JS side reconstructs strings with `css.slice(start, end)` and
+    /// never needs to call `JSON.parse()`.
+    #[napi]
+    pub fn parse_offsets_sync(css: String, _from: Option<String>) -> Result<Buffer> {
+        let mut parser = Parser::new(&css).unwrap();
+        let node = parser.parse();
+        return Ok(offset_serializer::to_offset_array(&node, &css).into());
     }
 
     #[napi]

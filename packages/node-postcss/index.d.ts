@@ -14,6 +14,14 @@ export declare namespace postcss {
   /** Synchronous MessagePack parse. Returns a raw Buffer of MessagePack bytes. */
   export function parseMsgpackSync(css: string, from?: string | undefined | null): Buffer
   /**
+   * Synchronous offset-array parse.  Returns a compact binary buffer
+   * containing a flat `Uint32Array` of CSS byte offsets plus a UTF-8
+   * string table for any clean values that differ from their raw form.
+   * The JS side reconstructs strings with `css.slice(start, end)` and
+   * never needs to call `JSON.parse()`.
+   */
+  export function parseOffsetsSync(css: string, from?: string | undefined | null): Buffer
+  /**
    * Synchronous version of parse(). Blocks the event loop while parsing.
    * Faster than parse() for small/medium CSS because it avoids the
    * Promise + thread-pool round-trip overhead (~0.05–0.1 ms per call).

@@ -39,6 +39,8 @@ const bindings = require(path.join(__dirname, '../index.js')) as {
     // MessagePack variants — return a raw Buffer of MessagePack bytes
     parseMsgpackSync: (css: string, from?: string | null) => Buffer;
     parseMsgpack: (css: string, from?: string | null) => Promise<Buffer>;
+    // Offset-array variant — flat Uint32Array of CSS byte offsets + string table
+    parseOffsetsSync: (css: string, from?: string | null) => Buffer;
   };
 };
 
@@ -257,6 +259,178 @@ function buildNodeFb(fb: FbNode, input: postcss.Input, parent: any): any {
   return node;
 }
 
+// ─── Offset-array builder ─────────────────────────────────────────────────────
+
+const STRIDE  = 25;
+const ABSENT32 = 0xFFFF_FFFF;
+
+// Flag bit positions
+const FLAG_IMPORTANT       = 0x01;
+const FLAG_SEMI_PRESENT    = 0x02;
+const FLAG_SEMI_VALUE      = 0x04;
+const FLAG_HAS_CLEAN_STR   = 0x08;
+const FLAG_CLEAN_IS_FIELD2 = 0x10;
+const FLAG_HAS_NODES       = 0x20;
+
+/**
+ * Build a PostCSS node tree from the compact offset-array buffer produced
+ * by `parseOffsetsSync`.
+ *
+ * The buffer layout is:
+ *   [u32 node_count] [node_count × STRIDE u32s] [UTF-8 string table]
+ *
+ * Every string field is recovered with `css.slice(start, end)` — no JSON
+ * parsing and no per-string heap copies beyond what V8 already interns.
+ */
+function buildNodeFromOffsets(buf: Buffer, css: string, input: postcss.Input): Root {
+  // Align-safe Uint32Array view (host is LE on all Node.js platforms we target)
+  let view: Uint32Array;
+  if (buf.byteOffset % 4 === 0) {
+    view = new Uint32Array(buf.buffer, buf.byteOffset, buf.byteLength >>> 2);
+  } else {
+    const copy = new Uint8Array(buf.byteLength);
+    copy.set(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
+    view = new Uint32Array(copy.buffer);
+  }
+
+  const nodeCount = view[0];
+  const strTableBase = (1 + nodeCount * STRIDE) * 4;
+
+  // Pre-allocate the node array so parent-child wiring is O(n).
+  const nodes: any[] = new Array(nodeCount);
+
+  for (let i = 0; i < nodeCount; i++) {
+    const o = 1 + i * STRIDE;  // base index into view[]
+
+    const type      = view[o];
+    const parentIdx = view[o + 1];
+    const ssOff     = view[o + 2];
+    const ssLine    = view[o + 3];
+    const ssCol     = view[o + 4];
+    const seOff     = view[o + 5];
+    const seLine    = view[o + 6];
+    const seCol     = view[o + 7];
+    const f1s       = view[o + 8];
+    const f1e       = view[o + 9];
+    const f2s       = view[o + 10];
+    // const f2e    = view[o + 11];  // read only when needed below
+    const bfS       = view[o + 12];
+    const bfE       = view[o + 13];
+    const btS       = view[o + 14];
+    const btE       = view[o + 15];
+    const afS       = view[o + 16];
+    const afE       = view[o + 17];
+    const ex1S      = view[o + 18];
+    const ex1E      = view[o + 19];
+    const ex2S      = view[o + 20];
+    const ex2E      = view[o + 21];
+    const flags     = view[o + 22];
+    const clnS      = view[o + 23];
+    const clnE      = view[o + 24];
+
+    // ── Source ──────────────────────────────────────────────────────────────
+    const start = { offset: ssOff, line: ssLine, column: ssCol };
+    const source: any = seOff !== ABSENT32
+      ? { start, end: { offset: seOff, line: seLine, column: seCol }, input }
+      : { start, input };
+
+    // ── Raws (inline — no per-iteration closure allocations) ────────────────
+    const raws: any = {};
+    if (bfS !== ABSENT32) raws.before  = css.slice(bfS, bfE);
+    if (btS !== ABSENT32) raws.between = css.slice(btS, btE);
+    if (afS !== ABSENT32) raws.after   = css.slice(afS, afE);
+    if (flags & FLAG_SEMI_PRESENT) raws.semicolon = (flags & FLAG_SEMI_VALUE) !== 0;
+
+    let node: any;
+
+    switch (type) {
+      // ── Root ───────────────────────────────────────────────────────────────
+      case 0: {
+        node = Object.create(RootProto);
+        node.raws = {}; node[isClean] = false; node[my] = true;
+        node.type = 'root'; node.nodes = [];
+        break;
+      }
+
+      // ── Rule ───────────────────────────────────────────────────────────────
+      case 1: {
+        node = Object.create(RuleProto);
+        node.raws = {}; node[isClean] = false; node[my] = true;
+        node.type = 'rule'; node.nodes = [];
+        const rawSel = css.slice(f1s, f1e);
+        if (flags & FLAG_HAS_CLEAN_STR) {
+          const cleanSel = buf.toString('utf8', strTableBase + clnS, strTableBase + clnE);
+          node.selector = cleanSel;
+          raws.selector = { value: cleanSel, raw: rawSel };
+        } else {
+          node.selector = rawSel;
+        }
+        break;
+      }
+
+      // ── Declaration ────────────────────────────────────────────────────────
+      case 2: {
+        node = Object.create(DeclProto);
+        node.raws = {}; node[isClean] = false; node[my] = true;
+        node.type = 'decl';
+        node.prop = css.slice(f1s, f1e);
+        const rawVal = css.slice(f2s, view[o + 11]);
+        if (flags & FLAG_HAS_CLEAN_STR) {
+          const cleanVal = buf.toString('utf8', strTableBase + clnS, strTableBase + clnE);
+          node.value = cleanVal;
+          raws.value = { value: cleanVal, raw: rawVal };
+        } else {
+          node.value = rawVal;
+        }
+        if (flags & FLAG_IMPORTANT) node.important = true;
+        if (ex2S !== ABSENT32) raws.important = css.slice(ex2S, ex2E);
+        break;
+      }
+
+      // ── AtRule ─────────────────────────────────────────────────────────────
+      case 3: {
+        node = Object.create(AtRuleProto);
+        node.raws = {}; node[isClean] = false; node[my] = true;
+        node.type = 'atrule';
+        node.name   = css.slice(f1s, f1e);
+        node.params = f2s !== ABSENT32 ? css.slice(f2s, view[o + 11]) : '';
+        if (flags & FLAG_HAS_NODES) node.nodes = [];
+        if (ex1S !== ABSENT32) raws.afterName = css.slice(ex1S, ex1E);
+        break;
+      }
+
+      // ── Comment ────────────────────────────────────────────────────────────
+      case 4: {
+        node = Object.create(CommentProto);
+        node.raws = {}; node[isClean] = false; node[my] = true;
+        node.type = 'comment';
+        node.text = css.slice(f1s, f1e);
+        if (ex1S !== ABSENT32) raws.left  = css.slice(ex1S, ex1E);
+        if (ex2S !== ABSENT32) raws.right = css.slice(ex2S, ex2E);
+        break;
+      }
+
+      default:
+        throw new Error(`Unknown offset node type: ${type}`);
+    }
+
+    node.raws   = raws;
+    node.source = source;
+
+    // Wire into tree: O(n) pass using parent index stored in the flat array.
+    if (parentIdx !== ABSENT32) {
+      const parent = nodes[parentIdx];
+      if (parent.nodes === undefined) parent.nodes = [];
+      parent.nodes.push(node);
+      node.parent = parent;
+    }
+
+    nodes[i] = node;
+  }
+
+  return nodes[0] as Root;
+}
+
 /**
  * Synchronous MessagePack parse — no JSON involved.
  * msgpack decode gives a plain object tree, so reuses the same buildNode path as JSON.
@@ -311,6 +485,24 @@ export function parseMsgpackRustOnlySync(css: string, opts: ParseOptions = {}): 
 /** Rust parse → MessagePack decode only (no buildNode tree walk) */
 export function parseMsgpackDecodeOnlySync(css: string, opts: ParseOptions = {}): any {
   return msgpackDecode(bindings.postcss.parseMsgpackSync(css, opts.from ?? null));
+}
+
+/** Rust parse → offset-array Buffer only (no JS tree walk) */
+export function parseOffsetsRustOnlySync(css: string, opts: ParseOptions = {}): Buffer {
+  return bindings.postcss.parseOffsetsSync(css, opts.from ?? null);
+}
+
+/**
+ * Synchronous offset-array parse — no JSON or binary-format decode overhead.
+ *
+ * Rust emits a flat `Uint32Array` of CSS byte offsets; JS recovers every
+ * string field with `css.slice(start, end)` and wires up the PostCSS tree
+ * in a single linear pass over the array.
+ */
+export function parseOffsetsSync(css: string, opts: ParseOptions = {}): Root {
+  const buf   = bindings.postcss.parseOffsetsSync(css, opts.from ?? null);
+  const input = new postcss.Input(css, { from: opts.from });
+  return buildNodeFromOffsets(buf, css, input);
 }
 
 
