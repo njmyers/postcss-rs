@@ -34,7 +34,7 @@ impl Default for Source {
 }
 
 impl Source {
-    pub fn create_start(token: &Token, tokenizer: &Tokenizer) -> Self {
+    pub fn create_start(token: &Token<'_>, tokenizer: &Tokenizer<'_>) -> Self {
         return Self {
             offset: token.start,
             line: tokenizer.lines.value(),
@@ -42,7 +42,7 @@ impl Source {
         };
     }
 
-    pub fn create_end(tokenizer: &Tokenizer) -> Self {
+    pub fn create_end(tokenizer: &Tokenizer<'_>) -> Self {
         // PostCSS end positions: offset points AFTER last char, column points AT last char
         // PostCSS uses 1-indexed columns (minimum is 1)
         let column_index = if tokenizer.index > 0 {
@@ -201,7 +201,7 @@ pub struct NodeBuilder {
 }
 
 impl NodeBuilder {
-    pub fn new(token: &Token, tokenizer: &mut Tokenizer, spaces: &[Token]) -> Self {
+    pub fn new(token: &Token<'_>, tokenizer: &mut Tokenizer<'_>, spaces: &[Token<'_>]) -> Self {
         let mut node = Node::default();
         node.source.start = Source::create_start(token, tokenizer);
         node.raws.before.push_tokens(spaces);
@@ -269,7 +269,7 @@ impl NodeBuilder {
         self.node.raws.before.push_str("");
     }
 
-    pub fn before(&mut self, token: &Token) {
+    pub fn before(&mut self, token: &Token<'_>) {
         self.node.raws.before.push(token);
     }
 
@@ -281,7 +281,7 @@ impl NodeBuilder {
         self.node.raws.between.push_str("");
     }
 
-    pub fn between(&mut self, token: &Token) {
+    pub fn between(&mut self, token: &Token<'_>) {
         self.node.raws.between.push(token);
     }
 
@@ -289,7 +289,7 @@ impl NodeBuilder {
         self.node.raws.after.push_str("");
     }
 
-    pub fn after(&mut self, token: &Token) {
+    pub fn after(&mut self, token: &Token<'_>) {
         self.node.raws.after.push(token);
     }
 
@@ -297,7 +297,7 @@ impl NodeBuilder {
         self.node.raws.after_name.push_str("");
     }
 
-    pub fn after_name(&mut self, token: &Token) {
+    pub fn after_name(&mut self, token: &Token<'_>) {
         self.node.raws.after_name.push(token);
     }
 
@@ -313,7 +313,7 @@ impl NodeBuilder {
         self.node.raws.semicolon.set_true();
     }
 
-    pub fn build(mut self, tokenizer: &mut Tokenizer, after: &[Token]) -> Node {
+    pub fn build(mut self, tokenizer: &mut Tokenizer<'_>, after: &[Token<'_>]) -> Node {
         self.node.raws.after.push_tokens(after);
         self.node.source.end = Some(Source::create_end(tokenizer));
 
@@ -322,8 +322,8 @@ impl NodeBuilder {
 
     pub fn build_with_end_index(
         mut self,
-        tokenizer: &Tokenizer,
-        after: &[Token],
+        tokenizer: &Tokenizer<'_>,
+        after: &[Token<'_>],
         end_index: usize,
     ) -> Node {
         self.node.raws.after.push_tokens(after);
@@ -338,7 +338,7 @@ impl NodeBuilder {
         return self.node;
     }
 
-    pub fn build_root(mut self, tokenizer: &Tokenizer, after: &[Token]) -> Node {
+    pub fn build_root(mut self, tokenizer: &Tokenizer<'_>, after: &[Token<'_>]) -> Node {
         let semicolon = self.node.raws.semicolon.unwrap_or(false);
 
         if self.node.has_nodes() && !semicolon {
