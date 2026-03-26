@@ -9,6 +9,10 @@ export declare namespace postcss {
    * string, allowing the JS side to skip JSON.parse() entirely.
    */
   export function parseFbSync(css: string, from?: string | undefined | null): Buffer
+  /** Async MessagePack parse. */
+  export function parseMsgpack(css: string, from?: string | undefined | null): Promise<unknown>
+  /** Synchronous MessagePack parse. Returns a raw Buffer of MessagePack bytes. */
+  export function parseMsgpackSync(css: string, from?: string | undefined | null): Buffer
   /**
    * Synchronous version of parse(). Blocks the event loop while parsing.
    * Faster than parse() for small/medium CSS because it avoids the
