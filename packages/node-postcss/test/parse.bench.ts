@@ -11,7 +11,6 @@ import {
   parseRustOnlySync, parseJsonOnlySync,
   parseFbRustOnlySync, parseFbDecodeOnlySync,
   parseMsgpackRustOnlySync, parseMsgpackDecodeOnlySync,
-  parseDirectSync,
 } from '../src/index';
 import postcss from 'postcss';
 import { unpack as msgpackrUnpack } from 'msgpackr';
@@ -190,7 +189,6 @@ function makeSuite(name: string, css: string) {
     b.add('postcss-rs JSON async',   async () => { await parse(css); }),
     b.add('postcss-rs FB async',     async () => { await parseFb(css); }),
     b.add('postcss-rs Msgpack async',async () => { await parseMsgpack(css); }),
-    b.add('postcss-rs Direct sync',  () => { parseDirectSync(css); }),
     b.add('postcss sync (JS)',        () => { processor.process(css, { from: undefined }).sync().root; }),
     b.add('postcss async (JS)',       async () => { (await processor.process(css, { from: undefined }).async()).root; }),
 
