@@ -85,22 +85,6 @@ pub struct Token<'src> {
     pub column: usize,
 }
 
-impl<'de: 'src, 'src> Deserialize<'de> for Token<'src> {
-    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        #[derive(Deserialize)]
-        struct TokenHelper {
-            start: usize,
-            end: usize,
-            kind: Kind,
-            value: String,
-            column: usize,
-        }
-        let _ = TokenHelper::deserialize(deserializer)?;
-        Err(serde::de::Error::custom(
-            "Token<'src> cannot be deserialized (use owned Token representation)",
-        ))
-    }
-}
 
 impl<'src> fmt::Display for Token<'src> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
