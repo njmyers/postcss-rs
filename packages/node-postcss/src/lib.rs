@@ -1,7 +1,7 @@
 #![deny(clippy::all)]
 #![allow(clippy::needless_return)]
 
-mod offset_serializer;
+mod offset;
 
 use napi_derive::napi;
 use napi::{Env, Result, Task};
@@ -96,7 +96,7 @@ pub struct NodeSlotLayout {
 pub mod postcss {
     use napi::bindgen_prelude::{AsyncTask, Buffer};
     use std::mem::offset_of;
-    use crate::offset_serializer::{NodeSlot, STRIDE, Flags, NodeType, ABSENT};
+    use crate::offset::{NodeSlot, STRIDE, Flags, NodeType, ABSENT};
 
     pub use super::*;
 
@@ -127,7 +127,7 @@ pub mod postcss {
     pub fn parse_offsets_sync(css: String, _from: Option<String>) -> Result<Buffer> {
         let mut parser = Parser::new(&css).unwrap();
         let node = parser.parse();
-        return Ok(offset_serializer::to_offset_array(&node, &css).into());
+        return Ok(offset::OffsetSerializer::serialize(&node, &css).into());
     }
 
     #[napi]
