@@ -26,8 +26,84 @@ const bindings = require(path.join(__dirname, '../index.js')) as {
     stringify: (json: string) => string;
     // Offset-array variant — flat Uint32Array of CSS byte offsets + string table
     parseOffsetsSync: (css: string, from?: string | null) => Buffer;
+    // Layout descriptor — field indices derived from the Rust NodeSlot struct
+    nodeSlotLayout: () => NodeSlotLayout;
   };
 };
+
+// ─── NodeSlotLayout ──────────────────────────────────────────────────────────
+// Mirrors the Rust `NodeSlotLayout` napi object.  All idx_* fields are u32
+// slot indices (not byte offsets) within a single node's STRIDE-wide block.
+
+interface NodeSlotLayout {
+  // Node type constants
+  typeRoot: number; typeRule: number; typeDecl: number;
+  typeAtrule: number; typeComment: number;
+  // Layout
+  stride: number; absent: number;
+  // Slot indices
+  idxTypeTag: number; idxParentIdx: number;
+  idxSourceStartOff: number; idxSourceStartLine: number; idxSourceStartCol: number;
+  idxSourceEndOff: number; idxSourceEndLine: number; idxSourceEndCol: number;
+  idxField1Start: number; idxField1End: number;
+  idxField2Start: number; idxField2End: number;
+  idxRawsBeforeStart: number; idxRawsBeforeEnd: number;
+  idxRawsBetweenStart: number; idxRawsBetweenEnd: number;
+  idxRawsAfterStart: number; idxRawsAfterEnd: number;
+  idxRawsExtra1Start: number; idxRawsExtra1End: number;
+  idxRawsExtra2Start: number; idxRawsExtra2End: number;
+  idxFlags: number; idxCleanStart: number; idxCleanEnd: number;
+  // Flag bits
+  flagImportant: number; flagSemiPresent: number; flagSemiValue: number;
+  flagHasCleanStr: number; flagCleanIsField2: number; flagHasNodes: number;
+}
+
+// Fetch the layout once at module startup.  All field indices are derived from
+// the Rust NodeSlot struct via offset_of!, so they stay in sync automatically.
+const L: NodeSlotLayout = bindings.postcss.nodeSlotLayout();
+
+// Destructure into local constants for minimal property-lookup overhead in the
+// hot buildNodeFromOffsets loop.
+const STRIDE   = L.stride;
+const ABSENT32 = L.absent;
+
+const IDX_TYPE_TAG           = L.idxTypeTag;
+const IDX_PARENT_IDX         = L.idxParentIdx;
+const IDX_SOURCE_START_OFF   = L.idxSourceStartOff;
+const IDX_SOURCE_START_LINE  = L.idxSourceStartLine;
+const IDX_SOURCE_START_COL   = L.idxSourceStartCol;
+const IDX_SOURCE_END_OFF     = L.idxSourceEndOff;
+const IDX_SOURCE_END_LINE    = L.idxSourceEndLine;
+const IDX_SOURCE_END_COL     = L.idxSourceEndCol;
+const IDX_FIELD1_START       = L.idxField1Start;
+const IDX_FIELD1_END         = L.idxField1End;
+const IDX_FIELD2_START       = L.idxField2Start;
+const IDX_FIELD2_END         = L.idxField2End;
+const IDX_RAWS_BEFORE_START  = L.idxRawsBeforeStart;
+const IDX_RAWS_BEFORE_END    = L.idxRawsBeforeEnd;
+const IDX_RAWS_BETWEEN_START = L.idxRawsBetweenStart;
+const IDX_RAWS_BETWEEN_END   = L.idxRawsBetweenEnd;
+const IDX_RAWS_AFTER_START   = L.idxRawsAfterStart;
+const IDX_RAWS_AFTER_END     = L.idxRawsAfterEnd;
+const IDX_RAWS_EXTRA1_START  = L.idxRawsExtra1Start;
+const IDX_RAWS_EXTRA1_END    = L.idxRawsExtra1End;
+const IDX_RAWS_EXTRA2_START  = L.idxRawsExtra2Start;
+const IDX_RAWS_EXTRA2_END    = L.idxRawsExtra2End;
+const IDX_FLAGS              = L.idxFlags;
+const IDX_CLEAN_START        = L.idxCleanStart;
+const IDX_CLEAN_END          = L.idxCleanEnd;
+
+const FLAG_IMPORTANT       = L.flagImportant;
+const FLAG_SEMI_PRESENT    = L.flagSemiPresent;
+const FLAG_SEMI_VALUE      = L.flagSemiValue;
+const FLAG_HAS_CLEAN_STR   = L.flagHasCleanStr;
+const FLAG_HAS_NODES       = L.flagHasNodes;
+
+const TYPE_ROOT    = L.typeRoot;
+const TYPE_RULE    = L.typeRule;
+const TYPE_DECL    = L.typeDecl;
+const TYPE_ATRULE  = L.typeAtrule;
+const TYPE_COMMENT = L.typeComment;
 
 // Cache PostCSS class constructors at module level to avoid repeated property
 // lookups on the `postcss` namespace object inside the hot path.
@@ -120,15 +196,6 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
 
 // ─── Offset-array builder ─────────────────────────────────────────────────────
 
-const STRIDE   = 25;
-const ABSENT32 = 0xFFFF_FFFF;
-
-const FLAG_IMPORTANT       = 0x01;
-const FLAG_SEMI_PRESENT    = 0x02;
-const FLAG_SEMI_VALUE      = 0x04;
-const FLAG_HAS_CLEAN_STR   = 0x08;
-const FLAG_HAS_NODES       = 0x20;
-
 /**
  * Build a PostCSS node tree from the compact offset-array buffer produced
  * by `parseOffsetsSync`.
@@ -149,37 +216,38 @@ function buildNodeFromOffsets(buf: Buffer, css: string, input: postcss.Input): R
     view = new Uint32Array(copy.buffer);
   }
 
-  const nodeCount  = view[0];
+  const nodeCount    = view[0];
   const strTableBase = (1 + nodeCount * STRIDE) * 4;
   const nodes: any[] = new Array(nodeCount);
 
   for (let i = 0; i < nodeCount; i++) {
     const o = 1 + i * STRIDE;
 
-    const type      = view[o];
-    const parentIdx = view[o + 1];
-    const ssOff     = view[o + 2];
-    const ssLine    = view[o + 3];
-    const ssCol     = view[o + 4];
-    const seOff     = view[o + 5];
-    const seLine    = view[o + 6];
-    const seCol     = view[o + 7];
-    const f1s       = view[o + 8];
-    const f1e       = view[o + 9];
-    const f2s       = view[o + 10];
-    const bfS       = view[o + 12];
-    const bfE       = view[o + 13];
-    const btS       = view[o + 14];
-    const btE       = view[o + 15];
-    const afS       = view[o + 16];
-    const afE       = view[o + 17];
-    const ex1S      = view[o + 18];
-    const ex1E      = view[o + 19];
-    const ex2S      = view[o + 20];
-    const ex2E      = view[o + 21];
-    const flags     = view[o + 22];
-    const clnS      = view[o + 23];
-    const clnE      = view[o + 24];
+    const type      = view[o + IDX_TYPE_TAG];
+    const parentIdx = view[o + IDX_PARENT_IDX];
+    const ssOff     = view[o + IDX_SOURCE_START_OFF];
+    const ssLine    = view[o + IDX_SOURCE_START_LINE];
+    const ssCol     = view[o + IDX_SOURCE_START_COL];
+    const seOff     = view[o + IDX_SOURCE_END_OFF];
+    const seLine    = view[o + IDX_SOURCE_END_LINE];
+    const seCol     = view[o + IDX_SOURCE_END_COL];
+    const f1s       = view[o + IDX_FIELD1_START];
+    const f1e       = view[o + IDX_FIELD1_END];
+    const f2s       = view[o + IDX_FIELD2_START];
+    const f2e       = view[o + IDX_FIELD2_END];
+    const bfS       = view[o + IDX_RAWS_BEFORE_START];
+    const bfE       = view[o + IDX_RAWS_BEFORE_END];
+    const btS       = view[o + IDX_RAWS_BETWEEN_START];
+    const btE       = view[o + IDX_RAWS_BETWEEN_END];
+    const afS       = view[o + IDX_RAWS_AFTER_START];
+    const afE       = view[o + IDX_RAWS_AFTER_END];
+    const ex1S      = view[o + IDX_RAWS_EXTRA1_START];
+    const ex1E      = view[o + IDX_RAWS_EXTRA1_END];
+    const ex2S      = view[o + IDX_RAWS_EXTRA2_START];
+    const ex2E      = view[o + IDX_RAWS_EXTRA2_END];
+    const flags     = view[o + IDX_FLAGS];
+    const clnS      = view[o + IDX_CLEAN_START];
+    const clnE      = view[o + IDX_CLEAN_END];
 
     const start = { offset: ssOff, line: ssLine, column: ssCol };
     const source: any = seOff !== ABSENT32
@@ -195,13 +263,13 @@ function buildNodeFromOffsets(buf: Buffer, css: string, input: postcss.Input): R
     let node: any;
 
     switch (type) {
-      case 0: {
+      case TYPE_ROOT: {
         node = Object.create(RootProto);
         node.raws = {}; node[isClean] = false; node[my] = true;
         node.type = 'root'; node.nodes = [];
         break;
       }
-      case 1: {
+      case TYPE_RULE: {
         node = Object.create(RuleProto);
         node.raws = {}; node[isClean] = false; node[my] = true;
         node.type = 'rule'; node.nodes = [];
@@ -215,12 +283,12 @@ function buildNodeFromOffsets(buf: Buffer, css: string, input: postcss.Input): R
         }
         break;
       }
-      case 2: {
+      case TYPE_DECL: {
         node = Object.create(DeclProto);
         node.raws = {}; node[isClean] = false; node[my] = true;
         node.type = 'decl';
         node.prop = css.slice(f1s, f1e);
-        const rawVal = css.slice(f2s, view[o + 11]);
+        const rawVal = css.slice(f2s, f2e);
         if (flags & FLAG_HAS_CLEAN_STR) {
           const cleanVal = buf.toString('utf8', strTableBase + clnS, strTableBase + clnE);
           node.value = cleanVal;
@@ -232,17 +300,17 @@ function buildNodeFromOffsets(buf: Buffer, css: string, input: postcss.Input): R
         if (ex2S !== ABSENT32) raws.important = css.slice(ex2S, ex2E);
         break;
       }
-      case 3: {
+      case TYPE_ATRULE: {
         node = Object.create(AtRuleProto);
         node.raws = {}; node[isClean] = false; node[my] = true;
         node.type = 'atrule';
         node.name   = css.slice(f1s, f1e);
-        node.params = f2s !== ABSENT32 ? css.slice(f2s, view[o + 11]) : '';
+        node.params = f2s !== ABSENT32 ? css.slice(f2s, f2e) : '';
         if (flags & FLAG_HAS_NODES) node.nodes = [];
         if (ex1S !== ABSENT32) raws.afterName = css.slice(ex1S, ex1E);
         break;
       }
-      case 4: {
+      case TYPE_COMMENT: {
         node = Object.create(CommentProto);
         node.raws = {}; node[isClean] = false; node[my] = true;
         node.type = 'comment';

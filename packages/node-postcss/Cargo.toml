@@ -13,6 +13,7 @@ postcss-rs-parser = { path = "../parser" }
 postcss-rs-stringifier = { path = "../stringifier" }
 serde_json = "1.0"
 sonic-rs   = "0.5"
+bytemuck   = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

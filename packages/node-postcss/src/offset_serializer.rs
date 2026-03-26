@@ -1,10 +1,98 @@
+use bytemuck::{Pod, Zeroable};
 use postcss_rs_parser::{Data, Node, Raw};
 
-/// Number of u32 slots per node in the flat output array.
-pub const STRIDE: usize = 25;
-
 /// Sentinel value indicating an absent/null field.
-const ABSENT: u32 = u32::MAX;
+pub const ABSENT: u32 = u32::MAX;
+
+/// Flag bits stored in `NodeSlot::flags`.
+pub mod flags {
+    pub const IMPORTANT:       u32 = 0x01;
+    pub const SEMI_PRESENT:    u32 = 0x02;
+    pub const SEMI_VALUE:      u32 = 0x04;
+    pub const HAS_CLEAN_STR:   u32 = 0x08;
+    pub const CLEAN_IS_FIELD2: u32 = 0x10;
+    pub const HAS_NODES:       u32 = 0x20;
+}
+
+/// Node type tag values stored in `NodeSlot::type_tag`.
+pub mod node_type {
+    pub const ROOT:    u32 = 0;
+    pub const RULE:    u32 = 1;
+    pub const DECL:    u32 = 2;
+    pub const ATRULE:  u32 = 3;
+    pub const COMMENT: u32 = 4;
+}
+
+/// Flat binary representation of one PostCSS AST node.
+///
+/// `#[repr(C)]` guarantees stable field order; all fields are `u32` so there
+/// is no padding and `bytemuck::cast_slice` can convert `&[NodeSlot]` to
+/// `&[u8]` with zero copies.
+///
+/// Field layout (declaration order = u32 slot index, 0-based):
+///
+/// ```text
+///  0  type_tag           0=root 1=rule 2=decl 3=atrule 4=comment
+///  1  parent_idx         ABSENT for root / top-level nodes
+///  2  source_start_off   CSS byte offset (0-based)
+///  3  source_start_line  1-based line number
+///  4  source_start_col   1-based column number
+///  5  source_end_off     ABSENT if missing
+///  6  source_end_line
+///  7  source_end_col
+///  8  field1_start       selector_raw / prop / at_name / comment_text
+///  9  field1_end
+/// 10  field2_start       value_raw / at_params   (ABSENT if absent)
+/// 11  field2_end
+/// 12  raws_before_start  (ABSENT if absent)
+/// 13  raws_before_end
+/// 14  raws_between_start (ABSENT if absent)
+/// 15  raws_between_end
+/// 16  raws_after_start   (ABSENT if absent)
+/// 17  raws_after_end
+/// 18  raws_extra1_start  afterName (atrule) / left (comment)  (ABSENT if absent)
+/// 19  raws_extra1_end
+/// 20  raws_extra2_start  important_raw (decl) / right (comment)  (ABSENT if absent)
+/// 21  raws_extra2_end
+/// 22  flags              see `flags` module
+/// 23  clean_start        byte offset into string table (when HAS_CLEAN_STR set)
+/// 24  clean_end
+/// ```
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+pub struct NodeSlot {
+    pub type_tag:           u32,
+    pub parent_idx:         u32,
+    pub source_start_off:   u32,
+    pub source_start_line:  u32,
+    pub source_start_col:   u32,
+    pub source_end_off:     u32,
+    pub source_end_line:    u32,
+    pub source_end_col:     u32,
+    pub field1_start:       u32,
+    pub field1_end:         u32,
+    pub field2_start:       u32,
+    pub field2_end:         u32,
+    pub raws_before_start:  u32,
+    pub raws_before_end:    u32,
+    pub raws_between_start: u32,
+    pub raws_between_end:   u32,
+    pub raws_after_start:   u32,
+    pub raws_after_end:     u32,
+    pub raws_extra1_start:  u32,
+    pub raws_extra1_end:    u32,
+    pub raws_extra2_start:  u32,
+    pub raws_extra2_end:    u32,
+    pub flags:              u32,
+    pub clean_start:        u32,
+    pub clean_end:          u32,
+}
+
+/// Number of u32 slots per node — derived from the struct size at compile time.
+pub const STRIDE: usize = std::mem::size_of::<NodeSlot>() / 4;
+const _STRIDE_CHECK: () = assert!(std::mem::size_of::<NodeSlot>() / 4 == 25);
+
+// ── helpers ──────────────────────────────────────────────────────────────────
 
 struct Entry<'a> {
     node: &'a Node,
@@ -21,306 +109,236 @@ fn collect<'a>(node: &'a Node, parent: u32, entries: &mut Vec<Entry<'a>>) {
     }
 }
 
-/// Encode a `Raw` that **ends** at `end_pos` (e.g. `raws.before`, which
-/// occupies the bytes immediately before `source.start.offset`).
-///
-/// Returns `(start, end)` in CSS byte-offset space, or `(ABSENT, 0)` when
-/// the raw is absent (`Raw::None`).
+/// Raw that **ends** at `end_pos` (e.g. `raws.before`).
 #[inline]
 fn encode_ends_at(raw: &Raw, end_pos: u32) -> (u32, u32) {
     match raw.as_deref() {
-        None => (ABSENT, 0),
+        None    => (ABSENT, 0),
         Some(s) => (end_pos.saturating_sub(s.len() as u32), end_pos),
     }
 }
 
-/// Encode a `Raw` that **starts** at `start_pos` and extends forward.
-///
-/// Returns `(start, end)` in CSS byte-offset space, or `(ABSENT, 0)` when
-/// the raw is absent.
+/// Raw that **starts** at `start_pos` and extends forward.
 #[inline]
 fn encode_starts_at(raw: &Raw, start_pos: u32) -> (u32, u32) {
     match raw.as_deref() {
-        None => (ABSENT, 0),
+        None    => (ABSENT, 0),
         Some(s) => (start_pos, start_pos + s.len() as u32),
     }
 }
+
+// ── public entry point ────────────────────────────────────────────────────────
 
 /// Serialize a PostCSS AST to a compact binary buffer of byte offsets.
 ///
 /// # Buffer layout
 ///
 /// ```text
-/// [0..3]               u32 LE  node_count
-/// [4..4+n*STRIDE*4]    u32 LE  node_count × STRIDE u32 slots (see below)
-/// [4+n*STRIDE*4..]     UTF-8   string table (clean values when ≠ raw)
-/// ```
-///
-/// Each node occupies `STRIDE = 25` consecutive u32 slots:
-///
-/// ```text
-/// [0]  type  0=root 1=rule 2=decl 3=atrule 4=comment
-/// [1]  parent_idx  (ABSENT = root / no parent)
-/// [2]  source_start_offset
-/// [3]  source_start_line
-/// [4]  source_start_col
-/// [5]  source_end_offset   (ABSENT if absent)
-/// [6]  source_end_line     (0 if absent)
-/// [7]  source_end_col      (0 if absent)
-/// [8]  field1_start  selector_raw / prop / at_name / comment_text
-/// [9]  field1_end
-/// [10] field2_start  value_raw / at_params   (ABSENT if absent)
-/// [11] field2_end
-/// [12] raws_before_start   (ABSENT if absent)
-/// [13] raws_before_end
-/// [14] raws_between_start  (ABSENT if absent)
-/// [15] raws_between_end
-/// [16] raws_after_start    (ABSENT if absent)
-/// [17] raws_after_end
-/// [18] raws_extra1_start   afterName (atrule) / left (comment)  (ABSENT if absent)
-/// [19] raws_extra1_end
-/// [20] raws_extra2_start   important_raw (decl) / right (comment)  (ABSENT if absent)
-/// [21] raws_extra2_end
-/// [22] flags
-///        bit 0  important
-///        bit 1  semicolon_present
-///        bit 2  semicolon_value (only meaningful when bit 1 set)
-///        bit 3  has_clean_str  → slot[23..24] = byte range in string table
-///        bit 4  clean_is_field2  → clean string belongs to field2 (value), not field1 (selector)
-///        bit 5  has_nodes  → node carries a block / children array
-/// [23] clean_str_start  (byte offset into string table; valid when flag bit 3 set)
-/// [24] clean_str_end
+/// [0..3]              u32 LE  node_count
+/// [4 .. 4+n*100]      n × NodeSlot (25 u32s each, little-endian)
+/// [4+n*100 ..]        UTF-8 string table (clean values when ≠ raw)
 /// ```
 ///
 /// All CSS-offset fields are 0-indexed byte offsets into `css`.
-/// 0xFFFF_FFFF (`ABSENT`) means the field is not present.
+/// `ABSENT` (0xFFFF_FFFF) means the field is not present.
 pub fn to_offset_array(root: &Node, _css: &str) -> Vec<u8> {
     let mut entries: Vec<Entry<'_>> = Vec::new();
     collect(root, ABSENT, &mut entries);
 
     let n = entries.len();
-    // One leading u32 for node_count, then n*STRIDE u32s.
-    let mut data: Vec<u32> = vec![0u32; 1 + n * STRIDE];
-    data[0] = n as u32;
-
+    let mut slots: Vec<NodeSlot> = Vec::with_capacity(n);
     let mut string_table: Vec<u8> = Vec::new();
 
-    for (i, entry) in entries.iter().enumerate() {
+    for entry in &entries {
         let node = entry.node;
-        let base = 1 + i * STRIDE;
-        let s = &mut data[base..base + STRIDE];
-
-        // Slot 1: parent
-        s[1] = entry.parent_idx;
-
-        // Slots 2-7: source
         let ss = &node.source.start;
         let src_start = ss.offset as u32;
-        s[2] = src_start;
-        s[3] = ss.line as u32;
-        s[4] = ss.column as u32;
 
-        let src_end: u32 = if let Some(se) = &node.source.end {
-            s[5] = se.offset as u32;
-            s[6] = se.line as u32;
-            s[7] = se.column as u32;
-            se.offset as u32
-        } else {
-            s[5] = ABSENT;
-            s[6] = 0;
-            s[7] = 0;
-            ABSENT
+        let (source_end_off, source_end_line, source_end_col, src_end) =
+            if let Some(se) = &node.source.end {
+                (se.offset as u32, se.line as u32, se.column as u32, se.offset as u32)
+            } else {
+                (ABSENT, 0, 0, ABSENT)
+            };
+
+        let mut node_flags: u32 = 0;
+        if node.nodes.is_some() {
+            node_flags |= flags::HAS_NODES;
+        }
+        if let Some(semi_val) = *node.raws.semicolon {
+            node_flags |= flags::SEMI_PRESENT;
+            if semi_val { node_flags |= flags::SEMI_VALUE; }
+        }
+
+        let (raws_before_start, raws_before_end) = encode_ends_at(&node.raws.before, src_start);
+
+        // Zero-initialise via Zeroable; only set the fields we need.
+        let mut slot = NodeSlot {
+            type_tag:           0,
+            parent_idx:         entry.parent_idx,
+            source_start_off:   src_start,
+            source_start_line:  ss.line as u32,
+            source_start_col:   ss.column as u32,
+            source_end_off,
+            source_end_line,
+            source_end_col,
+            field1_start:       ABSENT,
+            field1_end:         0,
+            field2_start:       ABSENT,
+            field2_end:         0,
+            raws_before_start,
+            raws_before_end,
+            raws_between_start: ABSENT,
+            raws_between_end:   0,
+            raws_after_start:   ABSENT,
+            raws_after_end:     0,
+            raws_extra1_start:  ABSENT,
+            raws_extra1_end:    0,
+            raws_extra2_start:  ABSENT,
+            raws_extra2_end:    0,
+            flags:              node_flags,
+            clean_start:        0,
+            clean_end:          0,
         };
 
-        // Flags
-        let mut flags: u32 = 0;
-        if node.nodes.is_some() {
-            flags |= 0x20;
-        }
-        // Encode semicolon (present in raws for root/rule/atrule)
-        if let Some(semi_val) = *node.raws.semicolon {
-            flags |= 0x02;
-            if semi_val {
-                flags |= 0x04;
-            }
-        }
-
-        // raws.before always ends at src_start
-        let (bs, be) = encode_ends_at(&node.raws.before, src_start);
-        s[12] = bs;
-        s[13] = be;
-
-        // Defaults for fields not set by every variant
-        s[8]  = ABSENT; s[9]  = 0;
-        s[10] = ABSENT; s[11] = 0;
-        s[14] = ABSENT; s[15] = 0;
-        s[16] = ABSENT; s[17] = 0;
-        s[18] = ABSENT; s[19] = 0;
-        s[20] = ABSENT; s[21] = 0;
-        s[23] = 0;      s[24] = 0;
-
         match &node.data {
-            // ── Root ──────────────────────────────────────────────────────────
+            // ── Root ─────────────────────────────────────────────────────────
             Data::Root => {
-                s[0] = 0;
-                // Root has no field1/field2/between/extra
-                // raws.after ends at src_end (no closing brace for root)
+                slot.type_tag = node_type::ROOT;
                 if src_end != ABSENT {
                     let (as_, ae) = encode_ends_at(&node.raws.after, src_end);
-                    s[16] = as_;
-                    s[17] = ae;
+                    slot.raws_after_start = as_;
+                    slot.raws_after_end   = ae;
                 }
             }
 
-            // ── Rule ──────────────────────────────────────────────────────────
+            // ── Rule ─────────────────────────────────────────────────────────
             Data::Rule(rule) => {
-                s[0] = 1;
+                slot.type_tag = node_type::RULE;
 
-                // field1 = selector_raw (starts at src_start)
                 let sel_raw = node.raws.selector.raw.as_deref().unwrap_or(&rule.selector);
-                s[8] = src_start;
-                s[9] = src_start + sel_raw.len() as u32;
-                let sel_end = s[9];
+                slot.field1_start = src_start;
+                slot.field1_end   = src_start + sel_raw.len() as u32;
 
-                // raws.between starts at selector end
-                let (bt_s, bt_e) = encode_starts_at(&node.raws.between, sel_end);
-                s[14] = bt_s;
-                s[15] = bt_e;
+                let (bt_s, bt_e) = encode_starts_at(&node.raws.between, slot.field1_end);
+                slot.raws_between_start = bt_s;
+                slot.raws_between_end   = bt_e;
 
-                // raws.after ends at src_end-1 (just before closing '}')
                 if src_end != ABSENT {
                     let (as_, ae) = encode_ends_at(&node.raws.after, src_end - 1);
-                    s[16] = as_;
-                    s[17] = ae;
+                    slot.raws_after_start = as_;
+                    slot.raws_after_end   = ae;
                 }
 
-                // Clean selector (stored in string table when inline comments stripped)
                 if node.raws.selector.raw.is_some() {
                     let clean = node.raws.selector.value.as_deref().unwrap_or(&rule.selector);
-                    let st_s = string_table.len() as u32;
+                    slot.clean_start = string_table.len() as u32;
                     string_table.extend_from_slice(clean.as_bytes());
-                    s[23] = st_s;
-                    s[24] = string_table.len() as u32;
-                    flags |= 0x08; // has_clean_str, clean_is_field1 (bit4 clear)
+                    slot.clean_end = string_table.len() as u32;
+                    slot.flags |= flags::HAS_CLEAN_STR; // clean_is_field2 left clear → field1
                 }
             }
 
-            // ── Declaration ───────────────────────────────────────────────────
+            // ── Declaration ──────────────────────────────────────────────────
             Data::Declaration(decl) => {
-                s[0] = 2;
+                slot.type_tag = node_type::DECL;
 
-                // field1 = prop (starts at src_start)
-                s[8] = src_start;
-                s[9] = src_start + decl.prop.len() as u32;
-                let prop_end = s[9];
+                slot.field1_start = src_start;
+                slot.field1_end   = src_start + decl.prop.len() as u32;
 
-                // raws.between starts at prop_end
                 let between_len = node.raws.between.as_deref().map(|b| b.len() as u32).unwrap_or(0);
-                let (bt_s, bt_e) = encode_starts_at(&node.raws.between, prop_end);
-                s[14] = bt_s;
-                s[15] = bt_e;
-                let value_start = prop_end + between_len;
+                let (bt_s, bt_e) = encode_starts_at(&node.raws.between, slot.field1_end);
+                slot.raws_between_start = bt_s;
+                slot.raws_between_end   = bt_e;
+                let value_start = slot.field1_end + between_len;
 
-                // field2 = value_raw (starts after between)
                 let val_raw = node.raws.value.raw.as_deref().unwrap_or(&decl.value);
-                s[10] = value_start;
-                s[11] = value_start + val_raw.len() as u32;
-                let val_raw_end = s[11];
+                slot.field2_start = value_start;
+                slot.field2_end   = value_start + val_raw.len() as u32;
 
-                // raws.important (extra2) starts right after value_raw
-                let (i_s, i_e) = encode_starts_at(&node.raws.important, val_raw_end);
-                s[20] = i_s;
-                s[21] = i_e;
+                let (i_s, i_e) = encode_starts_at(&node.raws.important, slot.field2_end);
+                slot.raws_extra2_start = i_s;
+                slot.raws_extra2_end   = i_e;
 
                 if decl.important == Some(true) {
-                    flags |= 0x01;
+                    slot.flags |= flags::IMPORTANT;
                 }
 
-                // Clean value (stored in string table when inline comments stripped)
                 if node.raws.value.raw.is_some() {
                     let clean = node.raws.value.value.as_deref().unwrap_or(&decl.value);
-                    let st_s = string_table.len() as u32;
+                    slot.clean_start = string_table.len() as u32;
                     string_table.extend_from_slice(clean.as_bytes());
-                    s[23] = st_s;
-                    s[24] = string_table.len() as u32;
-                    flags |= 0x08 | 0x10; // has_clean_str + clean_is_field2
+                    slot.clean_end = string_table.len() as u32;
+                    slot.flags |= flags::HAS_CLEAN_STR | flags::CLEAN_IS_FIELD2;
                 }
             }
 
-            // ── AtRule ────────────────────────────────────────────────────────
+            // ── AtRule ───────────────────────────────────────────────────────
             Data::AtRule(at_rule) => {
-                s[0] = 3;
+                slot.type_tag = node_type::ATRULE;
 
-                // field1 = name (starts at src_start+1, after '@')
-                let name_start = src_start + 1;
-                s[8] = name_start;
-                s[9] = name_start + at_rule.name.len() as u32;
-                let name_end = s[9];
+                let name_start = src_start + 1; // skip '@'
+                slot.field1_start = name_start;
+                slot.field1_end   = name_start + at_rule.name.len() as u32;
 
-                // extra1 = after_name (starts at name_end)
                 let after_name_len = node.raws.after_name.as_deref().map(|s| s.len() as u32).unwrap_or(0);
-                let (an_s, an_e) = encode_starts_at(&node.raws.after_name, name_end);
-                s[18] = an_s;
-                s[19] = an_e;
-                let params_start = name_end + after_name_len;
+                let (an_s, an_e) = encode_starts_at(&node.raws.after_name, slot.field1_end);
+                slot.raws_extra1_start = an_s;
+                slot.raws_extra1_end   = an_e;
+                let params_start = slot.field1_end + after_name_len;
 
-                // field2 = params (starts at params_start; may be absent)
                 let params_end = if let Some(params) = &at_rule.params {
-                    s[10] = params_start;
-                    s[11] = params_start + params.len() as u32;
-                    s[11]
+                    slot.field2_start = params_start;
+                    slot.field2_end   = params_start + params.len() as u32;
+                    slot.field2_end
                 } else {
-                    s[10] = ABSENT;
-                    s[11] = 0;
+                    slot.field2_start = ABSENT;
+                    slot.field2_end   = 0;
                     params_start
                 };
 
-                // raws.between starts at params_end
                 let (bt_s, bt_e) = encode_starts_at(&node.raws.between, params_end);
-                s[14] = bt_s;
-                s[15] = bt_e;
+                slot.raws_between_start = bt_s;
+                slot.raws_between_end   = bt_e;
 
-                // raws.after only present when the at-rule has a block
                 if src_end != ABSENT && node.nodes.is_some() {
                     let (as_, ae) = encode_ends_at(&node.raws.after, src_end - 1);
-                    s[16] = as_;
-                    s[17] = ae;
+                    slot.raws_after_start = as_;
+                    slot.raws_after_end   = ae;
                 }
             }
 
-            // ── Comment ───────────────────────────────────────────────────────
+            // ── Comment ──────────────────────────────────────────────────────
             Data::Comment(comment) => {
-                s[0] = 4;
+                slot.type_tag = node_type::COMMENT;
 
-                // extra1 = left (starts at src_start+2, after '/*')
-                let left_start = src_start + 2;
+                let left_start = src_start + 2; // skip '/*'
                 let left_len = node.raws.left.as_deref().map(|l| l.len() as u32).unwrap_or(0);
                 let (l_s, l_e) = encode_starts_at(&node.raws.left, left_start);
-                s[18] = l_s;
-                s[19] = l_e;
+                slot.raws_extra1_start = l_s;
+                slot.raws_extra1_end   = l_e;
                 let text_start = left_start + left_len;
 
-                // field1 = text (starts after left)
-                s[8] = text_start;
-                s[9] = text_start + comment.text.len() as u32;
+                slot.field1_start = text_start;
+                slot.field1_end   = text_start + comment.text.len() as u32;
 
-                // extra2 = right (ends at src_end-2, before '*/')
                 if src_end != ABSENT {
-                    let (r_s, r_e) = encode_ends_at(&node.raws.right, src_end - 2);
-                    s[20] = r_s;
-                    s[21] = r_e;
+                    let (r_s, r_e) = encode_ends_at(&node.raws.right, src_end - 2); // before '*/'
+                    slot.raws_extra2_start = r_s;
+                    slot.raws_extra2_end   = r_e;
                 }
             }
         }
 
-        s[22] = flags;
+        slots.push(slot);
     }
 
-    // Serialise to little-endian bytes, then append string table.
-    let mut out: Vec<u8> = Vec::with_capacity(data.len() * 4 + string_table.len());
-    for &x in &data {
-        out.extend_from_slice(&x.to_le_bytes());
-    }
+    // Build output: [node_count u32 LE][NodeSlot × n bytes][string table]
+    let count_bytes = (n as u32).to_le_bytes();
+    let slots_bytes: &[u8] = bytemuck::cast_slice(&slots);
+    let mut out = Vec::with_capacity(4 + slots_bytes.len() + string_table.len());
+    out.extend_from_slice(&count_bytes);
+    out.extend_from_slice(slots_bytes);
     out.extend_from_slice(&string_table);
     out
 }
