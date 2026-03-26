@@ -4,7 +4,7 @@ name = "postcss-rs-node-postcss"
 version = "0.0.0"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 napi = { version = "3", features = ["compat-mode"] }
@@ -15,6 +15,13 @@ serde_json = "1.0"
 sonic-rs   = "0.5"
 flatbuffers = "24.3.25"
 rmp-serde  = "1.3"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "parse"
+harness = false
 
 [build-dependencies]
 napi-build = "2"

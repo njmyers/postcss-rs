@@ -642,6 +642,7 @@ dependencies = [
 name = "postcss-rs-node-postcss"
 version = "0.0.0"
 dependencies = [
+ "criterion",
  "flatbuffers",
  "napi",
  "napi-build",
