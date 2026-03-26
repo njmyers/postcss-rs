@@ -17,7 +17,8 @@ import * as path from 'path';
 
 const bindings = require(path.join(__dirname, '../../index.js')) as {
   postcss: {
-    parseOffsetsSync: (css: string, from?: string | null) => Buffer;
+    parseToOffsetsSync:  (css: string, from?: string | null) => Buffer;
+    parseToOffsetsAsync: (css: string, from?: string | null) => Promise<Buffer>;
     nodeSlotLayout: () => NodeSlotLayout;
   };
 };
@@ -243,16 +244,21 @@ export interface ParseOptions {
   from?: string;
 }
 
-/**
- * Synchronous offset-array parse — fastest path for large CSS.
- */
+/** Synchronous offset-array parse — fastest path for large CSS. */
 export function parseOffsetsSync(css: string, opts: ParseOptions = {}): Root {
-  const buf   = bindings.postcss.parseOffsetsSync(css, opts.from ?? null);
+  const buf   = bindings.postcss.parseToOffsetsSync(css, opts.from ?? null);
+  const input = new postcss.Input(css, { from: opts.from });
+  return buildNodeFromOffsets(buf, css, input);
+}
+
+/** Async offset-array parse — runs on the thread pool, non-blocking. */
+export async function parseOffsetsAsync(css: string, opts: ParseOptions = {}): Promise<Root> {
+  const buf   = await bindings.postcss.parseToOffsetsAsync(css, opts.from ?? null);
   const input = new postcss.Input(css, { from: opts.from });
   return buildNodeFromOffsets(buf, css, input);
 }
 
 /** Rust parse → offset-array Buffer only (no JS tree walk; for benchmarking) */
 export function parseOffsetsRustOnlySync(css: string, opts: ParseOptions = {}): Buffer {
-  return bindings.postcss.parseOffsetsSync(css, opts.from ?? null);
+  return bindings.postcss.parseToOffsetsSync(css, opts.from ?? null);
 }

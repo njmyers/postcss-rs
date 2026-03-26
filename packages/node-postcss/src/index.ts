@@ -24,6 +24,7 @@ export {
 } from './parsers/json';
 export {
   parseOffsetsSync,
+  parseOffsetsAsync,
   parseOffsetsRustOnlySync,
 } from './parsers/offset';
 

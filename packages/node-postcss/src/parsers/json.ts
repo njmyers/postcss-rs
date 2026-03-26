@@ -10,8 +10,8 @@ import * as path from 'path';
 
 const bindings = require(path.join(__dirname, '../../index.js')) as {
   postcss: {
-    parse:     (css: string, from?: string | null) => Promise<string>;
-    parseSync: (css: string, from?: string | null) => string;
+    parseToJsonAsync: (css: string, from?: string | null) => Promise<string>;
+    parseToJsonSync:  (css: string, from?: string | null) => string;
   };
 };
 
@@ -100,24 +100,24 @@ export interface ParseOptions {
 
 /** Rust parse → JSON string only (no JSON.parse, no buildNode; for benchmarking) */
 export function parseRustOnlySync(css: string, opts: ParseOptions = {}): string {
-  return bindings.postcss.parseSync(css, opts.from ?? null);
+  return bindings.postcss.parseToJsonSync(css, opts.from ?? null);
 }
 
 /** Rust parse → JSON.parse only (no buildNode; for benchmarking) */
 export function parseJsonOnlySync(css: string, opts: ParseOptions = {}): any {
-  return JSON.parse(bindings.postcss.parseSync(css, opts.from ?? null));
+  return JSON.parse(bindings.postcss.parseToJsonSync(css, opts.from ?? null));
 }
 
 /** Parse CSS into a PostCSS AST (async). */
 export async function parse(css: string, opts: ParseOptions = {}): Promise<Root> {
-  const jsonStr = await bindings.postcss.parse(css, opts.from ?? null);
+  const jsonStr = await bindings.postcss.parseToJsonAsync(css, opts.from ?? null);
   const input   = new postcss.Input(css, { from: opts.from });
   return buildNode(JSON.parse(jsonStr), input, undefined) as Root;
 }
 
 /** Synchronous JSON parse (blocks the event loop). */
 export function parseSync(css: string, opts: ParseOptions = {}): Root {
-  const jsonStr = bindings.postcss.parseSync(css, opts.from ?? null);
+  const jsonStr = bindings.postcss.parseToJsonSync(css, opts.from ?? null);
   const input   = new postcss.Input(css, { from: opts.from });
   return buildNode(JSON.parse(jsonStr), input, undefined) as Root;
 }

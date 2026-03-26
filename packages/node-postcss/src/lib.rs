@@ -8,12 +8,12 @@ use napi::{Env, Result, Task};
 use postcss_rs_parser::{Node, Parser};
 use postcss_rs_stringifier::{Stringifier, StringifyOptions};
 
-pub struct AsyncParseTask {
+pub struct AsyncJsonTask {
     css: String,
     _from: Option<String>,
 }
 
-impl Task for AsyncParseTask {
+impl Task for AsyncJsonTask {
     type Output = String;
     type JsValue = String;
 
@@ -32,6 +32,26 @@ impl Task for AsyncParseTask {
 
     fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
         return Ok(output);
+    }
+}
+
+pub struct AsyncOffsetTask {
+    css: String,
+    _from: Option<String>,
+}
+
+impl Task for AsyncOffsetTask {
+    type Output = Vec<u8>;
+    type JsValue = napi::bindgen_prelude::Buffer;
+
+    fn compute(&mut self) -> Result<Self::Output> {
+        let mut parser = Parser::new(&self.css).unwrap();
+        let node = parser.parse();
+        return Ok(offset::OffsetSerializer::serialize(&node, &self.css));
+    }
+
+    fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
+        return Ok(output.into());
     }
 }
 
@@ -101,15 +121,15 @@ pub mod postcss {
     pub use super::*;
 
     #[napi]
-    pub fn parse(css: String, from: Option<String>) -> AsyncTask<AsyncParseTask> {
-        return AsyncTask::new(AsyncParseTask { css, _from: from });
+    pub fn parse_to_json_async(css: String, from: Option<String>) -> AsyncTask<AsyncJsonTask> {
+        return AsyncTask::new(AsyncJsonTask { css, _from: from });
     }
 
-    /// Synchronous version of parse(). Blocks the event loop while parsing.
-    /// Faster than parse() for small/medium CSS because it avoids the
-    /// Promise + thread-pool round-trip overhead (~0.05–0.1 ms per call).
+    /// Synchronous JSON parse. Blocks the event loop while parsing.
+    /// Faster than parse_to_json_async() for small/medium CSS because it
+    /// avoids the Promise + thread-pool round-trip overhead (~0.05–0.1 ms).
     #[napi]
-    pub fn parse_sync(css: String, _from: Option<String>) -> Result<String> {
+    pub fn parse_to_json_sync(css: String, _from: Option<String>) -> Result<String> {
         let mut parser = Parser::new(&css).unwrap();
         let node = parser.parse();
         let mut buf = Vec::with_capacity(css.len() * 5);
@@ -124,10 +144,17 @@ pub mod postcss {
     /// The JS side reconstructs strings with `css.slice(start, end)` and
     /// never needs to call `JSON.parse()`.
     #[napi]
-    pub fn parse_offsets_sync(css: String, _from: Option<String>) -> Result<Buffer> {
+    pub fn parse_to_offsets_sync(css: String, _from: Option<String>) -> Result<Buffer> {
         let mut parser = Parser::new(&css).unwrap();
         let node = parser.parse();
         return Ok(offset::OffsetSerializer::serialize(&node, &css).into());
+    }
+
+    /// Async offset-array parse.  Same output as `parse_to_offsets_sync` but
+    /// runs on the thread pool so the event loop is not blocked.
+    #[napi]
+    pub fn parse_to_offsets_async(css: String, from: Option<String>) -> AsyncTask<AsyncOffsetTask> {
+        return AsyncTask::new(AsyncOffsetTask { css, _from: from });
     }
 
     #[napi]
