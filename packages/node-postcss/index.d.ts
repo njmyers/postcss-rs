@@ -60,7 +60,18 @@ export declare namespace postcss {
    * automatically.  Call once at module startup and cache the result.
    */
   export function nodeSlotLayout(): NodeSlotLayout
-  export function parse(css: string, from?: string | undefined | null): Promise<unknown>
+  export function parseToJsonAsync(css: string, from?: string | undefined | null): Promise<unknown>
+  /**
+   * Synchronous JSON parse. Blocks the event loop while parsing.
+   * Faster than parse_to_json_async() for small/medium CSS because it
+   * avoids the Promise + thread-pool round-trip overhead (~0.05–0.1 ms).
+   */
+  export function parseToJsonSync(css: string, from?: string | undefined | null): string
+  /**
+   * Async offset-array parse.  Same output as `parse_to_offsets_sync` but
+   * runs on the thread pool so the event loop is not blocked.
+   */
+  export function parseToOffsetsAsync(css: string, from?: string | undefined | null): Promise<unknown>
   /**
    * Synchronous offset-array parse.  Returns a compact binary buffer
    * containing a flat `Uint32Array` of CSS byte offsets plus a UTF-8
@@ -68,12 +79,6 @@ export declare namespace postcss {
    * The JS side reconstructs strings with `css.slice(start, end)` and
    * never needs to call `JSON.parse()`.
    */
-  export function parseOffsetsSync(css: string, from?: string | undefined | null): Buffer
-  /**
-   * Synchronous version of parse(). Blocks the event loop while parsing.
-   * Faster than parse() for small/medium CSS because it avoids the
-   * Promise + thread-pool round-trip overhead (~0.05–0.1 ms per call).
-   */
-  export function parseSync(css: string, from?: string | undefined | null): string
+  export function parseToOffsetsSync(css: string, from?: string | undefined | null): Buffer
   export function stringify(json: string): string
 }
