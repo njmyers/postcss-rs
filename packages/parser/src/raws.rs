@@ -82,7 +82,7 @@ impl Raw {
     /// assert_eq!(&raw, &"\n");
     /// ```
     pub fn push(&mut self, token: &Token<'_>) {
-        self.push_str(&token.value);
+        self.push_str(token.value);
     }
 
     /// Push a new string slice to a raw value

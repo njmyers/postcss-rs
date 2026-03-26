@@ -143,7 +143,7 @@ impl Rule {
         while let Some(token) = tokenizer.peek() {
             if token.kind == Kind::Space && !Self::is_newline(&token) {
                 has_space_before = true;
-                own_semicolon.push_str(&token.value);
+                own_semicolon.push_str(token.value);
                 tokenizer.next();
             } else {
                 break;

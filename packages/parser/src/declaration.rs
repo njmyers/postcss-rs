@@ -41,7 +41,7 @@ impl Declaration {
 
         // Handle IE hack prefixes (* and _) by extracting them from property name
         // and adding them to the 'before' raw field
-        let (actual_prop, ie_hack_prefix) = Self::extract_ie_hack_prefix(&prop.value);
+        let (actual_prop, ie_hack_prefix) = Self::extract_ie_hack_prefix(prop.value);
         if let Some(prefix) = ie_hack_prefix {
             builder.append_to_before(&prefix);
         }
@@ -171,7 +171,7 @@ impl Declaration {
                 // Check for !important
                 Kind::Word if token.value.contains('!') => {
                     // Word contains !, check if it's !important
-                    let (result, bang_pos) = Self::check_important(&token.value, tokenizer);
+                    let (result, bang_pos) = Self::check_important(token.value, tokenizer);
 
                     match result {
                         ImportantResult::Found(raw) => {
@@ -350,7 +350,7 @@ impl Declaration {
 
         if let Some(trailing) = tokenizer.peek() {
             if trailing.kind == Kind::Space {
-                raw.push_str(&trailing.value);
+                raw.push_str(trailing.value);
                 tokenizer.next();
             }
         }
