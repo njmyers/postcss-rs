@@ -627,9 +627,9 @@ mod tests {
     use super::*;
     use indoc::indoc;
 
-    fn tokenizer(css: &str) -> Vec<Token> {
+    fn tokenizer(css: &str) -> Vec<Token<'_>> {
         let mut iterator = Tokenizer::new(css);
-        let mut tokens: Vec<Token> = vec![];
+        let mut tokens: Vec<Token<'_>> = vec![];
 
         while let Some(token) = iterator.next() {
             tokens.push(token)
