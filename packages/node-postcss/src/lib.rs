@@ -96,7 +96,7 @@ pub struct NodeSlotLayout {
 pub mod postcss {
     use napi::bindgen_prelude::{AsyncTask, Buffer};
     use std::mem::offset_of;
-    use crate::offset_serializer::{NodeSlot, STRIDE, flags, node_type, ABSENT};
+    use crate::offset_serializer::{NodeSlot, STRIDE, Flags, NodeType, ABSENT};
 
     pub use super::*;
 
@@ -147,11 +147,11 @@ pub mod postcss {
     pub fn node_slot_layout() -> NodeSlotLayout {
         // offset_of! returns byte offset; divide by 4 to get u32 slot index.
         NodeSlotLayout {
-            type_root:    node_type::ROOT,
-            type_rule:    node_type::RULE,
-            type_decl:    node_type::DECL,
-            type_atrule:  node_type::ATRULE,
-            type_comment: node_type::COMMENT,
+            type_root:    NodeType::ROOT,
+            type_rule:    NodeType::RULE,
+            type_decl:    NodeType::DECL,
+            type_atrule:  NodeType::ATRULE,
+            type_comment: NodeType::COMMENT,
 
             stride: STRIDE as u32,
             absent: ABSENT,
@@ -182,12 +182,12 @@ pub mod postcss {
             idx_clean_start:        (offset_of!(NodeSlot, clean_start)        / 4) as u32,
             idx_clean_end:          (offset_of!(NodeSlot, clean_end)          / 4) as u32,
 
-            flag_important:       flags::IMPORTANT,
-            flag_semi_present:    flags::SEMI_PRESENT,
-            flag_semi_value:      flags::SEMI_VALUE,
-            flag_has_clean_str:   flags::HAS_CLEAN_STR,
-            flag_clean_is_field2: flags::CLEAN_IS_FIELD2,
-            flag_has_nodes:       flags::HAS_NODES,
+            flag_important:       Flags::IMPORTANT,
+            flag_semi_present:    Flags::SEMI_PRESENT,
+            flag_semi_value:      Flags::SEMI_VALUE,
+            flag_has_clean_str:   Flags::HAS_CLEAN_STR,
+            flag_clean_is_field2: Flags::CLEAN_IS_FIELD2,
+            flag_has_nodes:       Flags::HAS_NODES,
         }
     }
 }

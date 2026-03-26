@@ -5,7 +5,8 @@ use postcss_rs_parser::{Data, Node, Raw};
 pub const ABSENT: u32 = u32::MAX;
 
 /// Flag bits stored in `NodeSlot::flags`.
-pub mod flags {
+pub struct Flags;
+impl Flags {
     pub const IMPORTANT:       u32 = 0x01;
     pub const SEMI_PRESENT:    u32 = 0x02;
     pub const SEMI_VALUE:      u32 = 0x04;
@@ -15,7 +16,8 @@ pub mod flags {
 }
 
 /// Node type tag values stored in `NodeSlot::type_tag`.
-pub mod node_type {
+pub struct NodeType;
+impl NodeType {
     pub const ROOT:    u32 = 0;
     pub const RULE:    u32 = 1;
     pub const DECL:    u32 = 2;
@@ -163,11 +165,11 @@ pub fn to_offset_array(root: &Node, _css: &str) -> Vec<u8> {
 
         let mut node_flags: u32 = 0;
         if node.nodes.is_some() {
-            node_flags |= flags::HAS_NODES;
+            node_flags |= Flags::HAS_NODES;
         }
         if let Some(semi_val) = *node.raws.semicolon {
-            node_flags |= flags::SEMI_PRESENT;
-            if semi_val { node_flags |= flags::SEMI_VALUE; }
+            node_flags |= Flags::SEMI_PRESENT;
+            if semi_val { node_flags |= Flags::SEMI_VALUE; }
         }
 
         let (raws_before_start, raws_before_end) = encode_ends_at(&node.raws.before, src_start);
@@ -204,7 +206,7 @@ pub fn to_offset_array(root: &Node, _css: &str) -> Vec<u8> {
         match &node.data {
             // ── Root ─────────────────────────────────────────────────────────
             Data::Root => {
-                slot.type_tag = node_type::ROOT;
+                slot.type_tag = NodeType::ROOT;
                 if src_end != ABSENT {
                     let (as_, ae) = encode_ends_at(&node.raws.after, src_end);
                     slot.raws_after_start = as_;
@@ -214,7 +216,7 @@ pub fn to_offset_array(root: &Node, _css: &str) -> Vec<u8> {
 
             // ── Rule ─────────────────────────────────────────────────────────
             Data::Rule(rule) => {
-                slot.type_tag = node_type::RULE;
+                slot.type_tag = NodeType::RULE;
 
                 let sel_raw = node.raws.selector.raw.as_deref().unwrap_or(&rule.selector);
                 slot.field1_start = src_start;
@@ -235,13 +237,13 @@ pub fn to_offset_array(root: &Node, _css: &str) -> Vec<u8> {
                     slot.clean_start = string_table.len() as u32;
                     string_table.extend_from_slice(clean.as_bytes());
                     slot.clean_end = string_table.len() as u32;
-                    slot.flags |= flags::HAS_CLEAN_STR; // clean_is_field2 left clear → field1
+                    slot.flags |= Flags::HAS_CLEAN_STR; // clean_is_field2 left clear → field1
                 }
             }
 
             // ── Declaration ──────────────────────────────────────────────────
             Data::Declaration(decl) => {
-                slot.type_tag = node_type::DECL;
+                slot.type_tag = NodeType::DECL;
 
                 slot.field1_start = src_start;
                 slot.field1_end   = src_start + decl.prop.len() as u32;
@@ -261,7 +263,7 @@ pub fn to_offset_array(root: &Node, _css: &str) -> Vec<u8> {
                 slot.raws_extra2_end   = i_e;
 
                 if decl.important == Some(true) {
-                    slot.flags |= flags::IMPORTANT;
+                    slot.flags |= Flags::IMPORTANT;
                 }
 
                 if node.raws.value.raw.is_some() {
@@ -269,13 +271,13 @@ pub fn to_offset_array(root: &Node, _css: &str) -> Vec<u8> {
                     slot.clean_start = string_table.len() as u32;
                     string_table.extend_from_slice(clean.as_bytes());
                     slot.clean_end = string_table.len() as u32;
-                    slot.flags |= flags::HAS_CLEAN_STR | flags::CLEAN_IS_FIELD2;
+                    slot.flags |= Flags::HAS_CLEAN_STR | Flags::CLEAN_IS_FIELD2;
                 }
             }
 
             // ── AtRule ───────────────────────────────────────────────────────
             Data::AtRule(at_rule) => {
-                slot.type_tag = node_type::ATRULE;
+                slot.type_tag = NodeType::ATRULE;
 
                 let name_start = src_start + 1; // skip '@'
                 slot.field1_start = name_start;
@@ -310,7 +312,7 @@ pub fn to_offset_array(root: &Node, _css: &str) -> Vec<u8> {
 
             // ── Comment ──────────────────────────────────────────────────────
             Data::Comment(comment) => {
-                slot.type_tag = node_type::COMMENT;
+                slot.type_tag = NodeType::COMMENT;
 
                 let left_start = src_start + 2; // skip '/*'
                 let left_len = node.raws.left.as_deref().map(|l| l.len() as u32).unwrap_or(0);
