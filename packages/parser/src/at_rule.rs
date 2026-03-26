@@ -33,9 +33,9 @@ impl AtRule {
     /// optional parameters and an optional block body, returning both the
     /// resulting [`Node`] and the [`StatementTerminator`] that ended parsing.
     pub fn create(
-        token: Token,
-        tokenizer: &mut Tokenizer,
-        spaces: &[Token],
+        token: Token<'_>,
+        tokenizer: &mut Tokenizer<'_>,
+        spaces: &[Token<'_>],
     ) -> (Node, StatementTerminator) {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
         builder.ensure_empty_before();
@@ -161,7 +161,7 @@ struct AtRuleDeclaration;
 
 impl AtRuleDeclaration {
     /// Test whether the the tokens following an at word rule are part of a declaration or not
-    pub fn test(tokenizer: &mut Tokenizer) -> bool {
+    pub fn test(tokenizer: &mut Tokenizer<'_>) -> bool {
         let cp = tokenizer.checkpoint();
         let result = loop {
             match tokenizer.next() {
@@ -195,7 +195,7 @@ struct Params;
 
 impl Params {
     /// Peek ahead past spaces to see if there's a terminator (CloseCurly)
-    fn peek_for_terminator_after_space(tokenizer: &mut Tokenizer) -> bool {
+    fn peek_for_terminator_after_space(tokenizer: &mut Tokenizer<'_>) -> bool {
         let cp = tokenizer.checkpoint();
         tokenizer.next(); // skip the current space token
         let result = loop {
@@ -212,7 +212,7 @@ impl Params {
 
     fn create(
         parent: &mut NodeBuilder,
-        tokenizer: &mut Tokenizer,
+        tokenizer: &mut Tokenizer<'_>,
     ) -> (String, StatementTerminator, Option<crate::Source>) {
         let mut spaces = Tokens::new();
         let mut statement = Statement::new();
@@ -302,7 +302,7 @@ impl Params {
     ///
     /// If an at rule has a parameter value then the spaces will be `after_name`. If not they will
     /// be part of `between`.
-    fn spaces(statement: &Statement, parent: &mut NodeBuilder, spaces: &Tokens) {
+    fn spaces(statement: &Statement<'_>, parent: &mut NodeBuilder, spaces: &Tokens<'_>) {
         for token in spaces.iter() {
             if !statement.is_empty() {
                 parent.after_name(token);

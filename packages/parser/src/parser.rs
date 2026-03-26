@@ -99,7 +99,7 @@ impl<'a> Parser<'a> {
     /// Classify a Word token as either a declaration or rule by peeking ahead.
     /// - Declaration: `prop: value;` - word + colon + value + semicolon
     /// - Rule: `selector::pseudo {` - word + colon + more tokens + opening brace
-    fn classify(tokenizer: &mut Tokenizer) -> RootStatementType {
+    fn classify(tokenizer: &mut Tokenizer<'_>) -> RootStatementType {
         let Some(next) = tokenizer.peek() else {
             return RootStatementType::Rule;
         };
@@ -111,7 +111,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Scan ahead after a colon to find whether we hit `{` (rule) or `;` (declaration)
-    fn scan_for_terminator(tokenizer: &mut Tokenizer) -> RootStatementType {
+    fn scan_for_terminator(tokenizer: &mut Tokenizer<'_>) -> RootStatementType {
         let cp = tokenizer.checkpoint();
         let mut paren_depth = 0;
         let mut square_depth = 0;
