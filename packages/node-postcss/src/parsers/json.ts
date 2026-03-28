@@ -27,20 +27,28 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
   switch (json.type) {
     case 'root': {
       node = Object.create(RootProto);
-      node.raws = {}; node[isClean] = false; node[my] = true;
-      node.type = 'root'; node.nodes = [];
+      node.raws = {};
+      node[isClean] = false;
+      node[my] = true;
+      node.type = 'root';
+      node.nodes = [];
       break;
     }
     case 'rule': {
       node = Object.create(RuleProto);
-      node.raws = {}; node[isClean] = false; node[my] = true;
-      node.type = 'rule'; node.nodes = [];
+      node.raws = {};
+      node[isClean] = false;
+      node[my] = true;
+      node.type = 'rule';
+      node.nodes = [];
       node.selector = json.selector;
       break;
     }
     case 'atrule': {
       node = Object.create(AtRuleProto);
-      node.raws = {}; node[isClean] = false; node[my] = true;
+      node.raws = {};
+      node[isClean] = false;
+      node[my] = true;
       node.type = 'atrule';
       node.name   = json.name;
       node.params = json.params;
@@ -48,16 +56,22 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
     }
     case 'decl': {
       node = Object.create(DeclProto);
-      node.raws = {}; node[isClean] = false; node[my] = true;
+      node.raws = {};
+      node[isClean] = false;
+      node[my] = true;
       node.type = 'decl';
       node.prop  = json.prop;
       node.value = json.value;
-      if (json.important) node.important = json.important;
+      if (json.important) {
+        node.important = json.important;
+      }
       break;
     }
     case 'comment': {
       node = Object.create(CommentProto);
-      node.raws = {}; node[isClean] = false; node[my] = true;
+      node.raws = {};
+      node[isClean] = false;
+      node[my] = true;
       node.type = 'comment';
       node.text = json.text;
       break;
@@ -73,13 +87,17 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
     ? { start: s.start, end: s.end, input }
     : { start: s.start, input };
 
-  if (parent !== undefined) node.parent = parent;
+  if (parent !== undefined) {
+    node.parent = parent;
+  }
 
   const rawChildren = json.nodes;
   if (rawChildren) {
     const n = rawChildren.length;
     const built = new Array(n);
-    for (let i = 0; i < n; i++) built[i] = buildNode(rawChildren[i], input, node);
+    for (let i = 0; i < n; i++) {
+      built[i] = buildNode(rawChildren[i], input, node);
+    }
     node.nodes = built;
   }
 
