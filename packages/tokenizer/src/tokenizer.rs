@@ -1563,7 +1563,7 @@ mod tests {
         // Test the convenience method
         let mut peekable = Tokenizer::new("a b c").into_peekable();
 
-        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
+        assert_eq!(peekable.peek().map(|t| t.value), Some("a"));
         assert_eq!(
             peekable.next().map(|t| t.value.to_string()),
             Some("a".to_string())
@@ -1576,9 +1576,9 @@ mod tests {
         let mut multi = Tokenizer::new("a b c").into_multipeek();
 
         // Peek ahead multiple times
-        assert_eq!(multi.peek().map(|t| t.value.as_ref()), Some("a"));
-        assert_eq!(multi.peek().map(|t| t.value.as_ref()), Some(" "));
-        assert_eq!(multi.peek().map(|t| t.value.as_ref()), Some("b"));
+        assert_eq!(multi.peek().map(|t| t.value), Some("a"));
+        assert_eq!(multi.peek().map(|t| t.value), Some(" "));
+        assert_eq!(multi.peek().map(|t| t.value), Some("b"));
 
         multi.reset_peek();
         assert_eq!(
@@ -1593,10 +1593,10 @@ mod tests {
         let mut peekable = PeekableTokenizer::new(tokenizer);
 
         // Peek at next token without consuming
-        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
+        assert_eq!(peekable.peek().map(|t| t.value), Some("a"));
 
         // Peek again should return the same token (not advance)
-        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
+        assert_eq!(peekable.peek().map(|t| t.value), Some("a"));
 
         // Now consume the token
         assert_eq!(
@@ -1605,7 +1605,7 @@ mod tests {
         );
 
         // Peek at the next token (space)
-        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some(" "));
+        assert_eq!(peekable.peek().map(|t| t.value), Some(" "));
     }
 
     #[test]
@@ -1614,14 +1614,14 @@ mod tests {
         let mut peekable = MultiPeekTokenizer::new(tokenizer);
 
         // Peek at first token without consuming
-        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
+        assert_eq!(peekable.peek().map(|t| t.value), Some("a"));
 
         // Peek again advances to next token
-        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some(" "));
+        assert_eq!(peekable.peek().map(|t| t.value), Some(" "));
 
         // Reset and peek from start again
         peekable.reset_peek();
-        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
+        assert_eq!(peekable.peek().map(|t| t.value), Some("a"));
 
         // Now consume the token
         peekable.reset_peek();
@@ -1637,11 +1637,11 @@ mod tests {
         let mut peekable = MultiPeekTokenizer::new(tokenizer);
 
         // Peek ahead multiple times
-        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
-        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some(" "));
-        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("b"));
-        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some(" "));
-        assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("c"));
+        assert_eq!(peekable.peek().map(|t| t.value), Some("a"));
+        assert_eq!(peekable.peek().map(|t| t.value), Some(" "));
+        assert_eq!(peekable.peek().map(|t| t.value), Some("b"));
+        assert_eq!(peekable.peek().map(|t| t.value), Some(" "));
+        assert_eq!(peekable.peek().map(|t| t.value), Some("c"));
 
         // Reset and consume tokens normally
         peekable.reset_peek();

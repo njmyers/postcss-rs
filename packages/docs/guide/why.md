@@ -9,6 +9,7 @@ PostCSS is the backbone of modern CSS tooling — used by Tailwind, Autoprefixer
 In a typical PostCSS pipeline, parsing is one of the first and most frequent operations. For a large project with hundreds of CSS files, even a few milliseconds of parsing overhead per file compounds into seconds of build time.
 
 The JavaScript PostCSS parser is well-written, but it faces inherent limitations of the JS runtime:
+
 - Single-threaded execution
 - JIT compilation warmup costs
 - Garbage collection pauses
@@ -39,5 +40,6 @@ postcss-rs is a good fit if:
 - You are already using PostCSS and want a drop-in speed improvement
 
 It may not be necessary if:
+
 - You only process a handful of small CSS files
 - Your build bottleneck is elsewhere (e.g. JavaScript bundling)

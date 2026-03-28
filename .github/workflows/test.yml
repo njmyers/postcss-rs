@@ -28,8 +28,14 @@ jobs:
       - name: Check Prettier formatting
         run: pnpm run lint:prettier
 
-      - name: ESLint
+      - name: ESLint (tests)
         run: pnpm --filter postcss-parser-tests run test:lint
+
+      - name: ESLint (node-postcss)
+        run: pnpm --filter @postcss-rs/node-postcss run lint
+
+      - name: ESLint (docs)
+        run: pnpm --filter @postcss-rs/docs run lint
 
   test-rust:
     name: Test Rust

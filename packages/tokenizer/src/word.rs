@@ -28,8 +28,7 @@ impl Word {
         let count = bytes.len();
         let mut escape_open = false;
 
-        for i in 1..count {
-            let byte = bytes[i];
+        for (i, &byte) in bytes.iter().enumerate().skip(1) {
             if escape_open {
                 escape_open = false;
                 continue;

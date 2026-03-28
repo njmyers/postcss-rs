@@ -24,6 +24,24 @@ importers:
 
   packages/docs:
     devDependencies:
+      '@logux/eslint-config':
+        specifier: ^53.5.1
+        version: 53.5.1(@typescript-eslint/parser@8.57.2(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4)(typescript@5.9.3)
+      eslint:
+        specifier: ^9.20.0
+        version: 9.39.4
+      eslint-config-prettier:
+        specifier: ^9.0.0
+        version: 9.1.2(eslint@9.39.4)
+      eslint-plugin-prettier:
+        specifier: ^5.0.0
+        version: 5.5.5(eslint-config-prettier@9.1.2(eslint@9.39.4))(eslint@9.39.4)(prettier@3.8.1)
+      prettier:
+        specifier: ^3.0.0
+        version: 3.8.1
+      typescript:
+        specifier: ^5.0.0
+        version: 5.9.3
       vitepress:
         specifier: ^1.6.3
         version: 1.6.4(@algolia/client-search@5.49.2)(@types/node@20.19.37)(postcss@8.5.8)(search-insights@2.17.3)(typescript@5.9.3)
@@ -34,6 +52,9 @@ importers:
         specifier: ^8.4.0
         version: 8.5.8
     devDependencies:
+      '@logux/eslint-config':
+        specifier: ^53.5.1
+        version: 53.5.1(@typescript-eslint/parser@8.57.2(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4)(typescript@5.9.3)
       '@napi-rs/cli':
         specifier: ^3.0.0
         version: 3.5.1(@emnapi/runtime@1.9.1)(@types/node@20.19.37)
@@ -49,9 +70,21 @@ importers:
       benny:
         specifier: ^3.7.1
         version: 3.7.1
+      eslint:
+        specifier: ^9.20.0
+        version: 9.39.4
+      eslint-config-prettier:
+        specifier: ^9.0.0
+        version: 9.1.2(eslint@9.39.4)
+      eslint-plugin-prettier:
+        specifier: ^5.0.0
+        version: 5.5.5(eslint-config-prettier@9.1.2(eslint@9.39.4))(eslint@9.39.4)(prettier@3.8.1)
       postcss-parser-tests:
         specifier: workspace:^
         version: link:../../tests
+      prettier:
+        specifier: ^3.0.0
+        version: 3.8.1
       tsx:
         specifier: ^4.21.0
         version: 4.21.0
@@ -3861,7 +3894,7 @@ snapshots:
     dependencies:
       '@eslint/eslintrc': 3.3.5
       eslint: 9.39.4
-      eslint-config-standard: 17.1.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4))(eslint-plugin-n@17.24.0(eslint@9.39.4)(typescript@5.9.3))(eslint-plugin-promise@7.2.1(eslint@9.39.4))(eslint@9.39.4)
+      eslint-config-standard: 17.1.0(eslint-plugin-import@2.32.0(eslint@9.39.4))(eslint-plugin-n@17.24.0(eslint@9.39.4)(typescript@5.9.3))(eslint-plugin-promise@7.2.1(eslint@9.39.4))(eslint@9.39.4)
       eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4)
       eslint-plugin-n: 17.24.0(eslint@9.39.4)(typescript@5.9.3)
       eslint-plugin-perfectionist: 3.9.1(eslint@9.39.4)(typescript@5.9.3)
@@ -5113,7 +5146,7 @@ snapshots:
     dependencies:
       eslint: 9.39.4
 
-  eslint-config-standard@17.1.0(eslint-plugin-import@2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4))(eslint-plugin-n@17.24.0(eslint@9.39.4)(typescript@5.9.3))(eslint-plugin-promise@7.2.1(eslint@9.39.4))(eslint@9.39.4):
+  eslint-config-standard@17.1.0(eslint-plugin-import@2.32.0(eslint@9.39.4))(eslint-plugin-n@17.24.0(eslint@9.39.4)(typescript@5.9.3))(eslint-plugin-promise@7.2.1(eslint@9.39.4))(eslint@9.39.4):
     dependencies:
       eslint: 9.39.4
       eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.57.2(eslint@9.39.4)(typescript@5.9.3))(eslint@9.39.4)

@@ -13,22 +13,22 @@
  */
 
 import * as postcss from 'postcss';
-import type { Root, Plugin, Processor, ProcessOptions } from 'postcss';
+import type { Plugin, ProcessOptions, Processor, Root } from 'postcss';
+
+import { parseOffsetsSync } from './parsers/offset';
 
 export type { ParseOptions } from './parsers/json';
 export {
   parseJsonAsync,
+  parseJsonOnlySync,
   parseJsonSync,
   parseRustOnlySync,
-  parseJsonOnlySync,
 } from './parsers/json';
 export {
-  parseOffsetsSync,
   parseOffsetsAsync,
   parseOffsetsRustOnlySync,
+  parseOffsetsSync,
 } from './parsers/offset';
-
-import { parseOffsetsSync } from './parsers/offset';
 
 /** PostCSS Processor subclass with Rust-powered parsing and postcss stringify. */
 class RustProcessor extends postcss.Processor {
@@ -36,13 +36,13 @@ class RustProcessor extends postcss.Processor {
     super(plugins);
   }
 
-  process(css: string | Root, opts: ProcessOptions = {}): any {
-    const mergedOpts: ProcessOptions = { ...opts };
+  process(css: Root | string, opts: ProcessOptions = {}): any {
+    let mergedOpts: ProcessOptions = { ...opts };
     if (typeof css === 'string') {
       if (!mergedOpts.parser) {
         mergedOpts.parser = {
-          parse: (cssStr: string | { toString(): string }, parseOpts?: any) => {
-            const cssString =
+          parse: (cssStr: { toString(): string } | string, parseOpts?: any) => {
+            let cssString =
               typeof cssStr === 'string' ? cssStr : cssStr.toString();
             return parseOffsetsSync(cssString, parseOpts || {}) as any;
           },
@@ -78,13 +78,13 @@ export const PostCSSContainer = postcss.Container;
 export const PostCSSNode = postcss.Node;
 
 export type {
-  Root,
-  Rule,
   AtRule,
-  Declaration,
   Comment,
   Container,
+  Declaration,
   Node,
   Plugin,
   Processor,
+  Root,
+  Rule,
 } from 'postcss';

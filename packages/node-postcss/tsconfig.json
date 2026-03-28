@@ -15,13 +15,6 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": [
-    "src/**/*",
-    "vitest/globals",
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "test",
-  ]
+  "include": ["src/**/*", "vitest/globals"],
+  "exclude": ["node_modules", "dist", "test"]
 }
