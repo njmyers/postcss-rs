@@ -17,8 +17,8 @@ import type { Root, Plugin, Processor, ProcessOptions } from 'postcss';
 
 export type { ParseOptions } from './parsers/json';
 export {
-  parse,
-  parseSync,
+  parseJsonAsync,
+  parseJsonSync,
   parseRustOnlySync,
   parseJsonOnlySync,
 } from './parsers/json';
@@ -28,29 +28,38 @@ export {
   parseOffsetsRustOnlySync,
 } from './parsers/offset';
 
-// Re-import parse for use in postcssRs below
-import { parse } from './parsers/json';
+import { parseOffsetsSync } from './parsers/offset';
+
+/** PostCSS Processor subclass with Rust-powered parsing and postcss stringify. */
+class RustProcessor extends postcss.Processor {
+  constructor(plugins: Plugin[] = []) {
+    super(plugins);
+  }
+
+  process(css: string | Root, opts: ProcessOptions = {}): any {
+    const mergedOpts: ProcessOptions = { ...opts };
+    if (typeof css === 'string') {
+      if (!mergedOpts.parser) {
+        mergedOpts.parser = {
+          parse: (cssStr: string | { toString(): string }, parseOpts?: any) => {
+            const cssString = typeof cssStr === 'string' ? cssStr : cssStr.toString();
+            return parseOffsetsSync(cssString, parseOpts || {}) as any;
+          },
+        };
+      }
+      if (!mergedOpts.stringifier) {
+        mergedOpts.stringifier = postcss.stringify;
+      }
+    }
+    return super.process(css, mergedOpts);
+  }
+}
 
 /**
  * Create a PostCSS processor with Rust-powered parsing.
  */
 export function postcssRs(plugins: Plugin[] = []): Processor {
-  const processor = postcss.default(plugins);
-  const originalProcess = processor.process.bind(processor);
-
-  processor.process = function(css: string | Root, opts: ProcessOptions = {}): any {
-    if (typeof css === 'string') {
-      opts.parser = {
-        parse: (cssStr: string | { toString(): string }, parseOpts?: any) => {
-          const cssString = typeof cssStr === 'string' ? cssStr : cssStr.toString();
-          return parse(cssString, parseOpts || {}) as any;
-        }
-      };
-    }
-    return originalProcess(css, opts);
-  };
-
-  return processor;
+  return new RustProcessor(plugins);
 }
 
 // Default export

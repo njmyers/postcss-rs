@@ -3,7 +3,7 @@
  * Includes tests for parse(), restoreRaws(), and PostCSS integration
  */
 
-import { parse } from '../src/index';
+import { parseJsonAsync as parse } from '../src/index';
 import { Input } from 'postcss';
 import { describe, test, expect } from 'vitest';
 

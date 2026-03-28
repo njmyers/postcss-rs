@@ -13,7 +13,7 @@
 
 import b from 'benny';
 import {
-  parse, parseSync,
+  parseJsonAsync, parseJsonSync,
   parseOffsetsSync, parseOffsetsAsync,
   parseRustOnlySync, parseJsonOnlySync, parseOffsetsRustOnlySync,
 } from '../src/index';
@@ -176,7 +176,7 @@ const processor = postcss();
 function makeSyncSuite(name: string, css: string) {
   return b.suite(
     `${name} — sync`,
-    b.add('postcss-rs JSON',    () => { parseSync(css); }),
+    b.add('postcss-rs JSON',    () => { parseJsonSync(css); }),
     b.add('postcss-rs Offsets', () => { parseOffsetsSync(css); }),
     b.add('postcss (JS)',        () => { processor.process(css, { from: undefined }).sync().root; }),
     b.cycle(),
@@ -187,7 +187,7 @@ function makeSyncSuite(name: string, css: string) {
 function makeAsyncSuite(name: string, css: string) {
   return b.suite(
     `${name} — async`,
-    b.add('postcss-rs JSON',    async () => { await parse(css); }),
+    b.add('postcss-rs JSON',    async () => { await parseJsonAsync(css); }),
     b.add('postcss-rs Offsets', async () => { await parseOffsetsAsync(css); }),
     b.add('postcss (JS)',        async () => { (await processor.process(css, { from: undefined }).async()).root; }),
     b.cycle(),

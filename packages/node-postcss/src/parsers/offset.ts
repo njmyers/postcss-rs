@@ -180,6 +180,8 @@ function buildNodeFromOffsets(buf: Buffer, css: string, input: postcss.Input): R
         } else {
           node.selector = rawSel;
         }
+        // ex1S/ex1E hold ownSemicolon for RULE (unused slot repurposed)
+        if (ex1S !== ABSENT32) raws.ownSemicolon = css.slice(ex1S, ex1E);
         break;
       }
       case TYPE_DECL: {

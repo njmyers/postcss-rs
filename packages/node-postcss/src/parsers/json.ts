@@ -108,15 +108,15 @@ export function parseJsonOnlySync(css: string, opts: ParseOptions = {}): any {
   return JSON.parse(bindings.postcss.parseToJsonSync(css, opts.from ?? null));
 }
 
-/** Parse CSS into a PostCSS AST (async). */
-export async function parse(css: string, opts: ParseOptions = {}): Promise<Root> {
+/** Parse CSS into a PostCSS AST via JSON (async). */
+export async function parseJsonAsync(css: string, opts: ParseOptions = {}): Promise<Root> {
   const jsonStr = await bindings.postcss.parseToJsonAsync(css, opts.from ?? null);
   const input   = new postcss.Input(css, { from: opts.from });
   return buildNode(JSON.parse(jsonStr), input, undefined) as Root;
 }
 
-/** Synchronous JSON parse (blocks the event loop). */
-export function parseSync(css: string, opts: ParseOptions = {}): Root {
+/** Parse CSS into a PostCSS AST via JSON (sync, blocks the event loop). */
+export function parseJsonSync(css: string, opts: ParseOptions = {}): Root {
   const jsonStr = bindings.postcss.parseToJsonSync(css, opts.from ?? null);
   const input   = new postcss.Input(css, { from: opts.from });
   return buildNode(JSON.parse(jsonStr), input, undefined) as Root;
