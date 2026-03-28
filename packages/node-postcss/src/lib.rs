@@ -11,12 +11,12 @@ use napi_derive::napi;
 use postcss_rs_parser::{Node, Parser};
 use postcss_rs_stringifier::{Stringifier, StringifyOptions};
 
-pub struct AsyncJsonTask {
+pub struct JsonTask {
     css: String,
     _from: Option<String>,
 }
 
-impl Task for AsyncJsonTask {
+impl Task for JsonTask {
     type Output = String;
     type JsValue = String;
 
@@ -32,12 +32,12 @@ impl Task for AsyncJsonTask {
     }
 }
 
-pub struct AsyncOffsetTask {
+pub struct OffsetTask {
     css: String,
     _from: Option<String>,
 }
 
-impl Task for AsyncOffsetTask {
+impl Task for OffsetTask {
     type Output = Vec<u8>;
     type JsValue = napi::bindgen_prelude::Buffer;
 
@@ -59,8 +59,8 @@ pub mod postcss {
     pub use super::*;
 
     #[napi]
-    pub fn parse_to_json_async(css: String, from: Option<String>) -> AsyncTask<AsyncJsonTask> {
-        return AsyncTask::new(AsyncJsonTask { css, _from: from });
+    pub fn parse_to_json_async(css: String, from: Option<String>) -> AsyncTask<JsonTask> {
+        return AsyncTask::new(JsonTask { css, _from: from });
     }
 
     /// Synchronous JSON parse. Blocks the event loop while parsing.
@@ -89,8 +89,8 @@ pub mod postcss {
     /// Async offset-array parse.  Same output as `parse_to_offsets_sync` but
     /// runs on the thread pool so the event loop is not blocked.
     #[napi]
-    pub fn parse_to_offsets_async(css: String, from: Option<String>) -> AsyncTask<AsyncOffsetTask> {
-        return AsyncTask::new(AsyncOffsetTask { css, _from: from });
+    pub fn parse_to_offsets_async(css: String, from: Option<String>) -> AsyncTask<OffsetTask> {
+        return AsyncTask::new(OffsetTask { css, _from: from });
     }
 
     #[napi]
@@ -110,5 +110,4 @@ pub mod postcss {
     pub fn node_slot_layout() -> NodeSlotLayout {
         NodeSlotLayout::build()
     }
-
 }

@@ -13,7 +13,7 @@
  */
 
 import * as postcss from 'postcss';
-import type { Root, Plugin, Processor, ProcessOptions } from 'postcss';
+import type { Plugin, Processor } from 'postcss';
 
 export type { ParseOptions } from './parsers/json';
 export {
@@ -46,7 +46,7 @@ export function postcssRs(plugins: Plugin[] = []): Processor {
 export default postcssRs;
 
 // Re-export PostCSS for convenience
-export { postcss };
+export { postcssRs as postcss };
 
 export const PostCSSRoot = postcss.Root;
 export const PostCSSRule = postcss.Rule;
