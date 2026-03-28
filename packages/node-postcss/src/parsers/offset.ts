@@ -186,7 +186,8 @@ class OffsetParser {
     node[my] = true;
     node.type = 'atrule';
     node.name = css.slice(field1Start, field1End);
-    node.params = field2Start !== ABSENT ? css.slice(field2Start, field2End) : '';
+    node.params =
+      field2Start !== ABSENT ? css.slice(field2Start, field2End) : '';
     if (flags & FLAG_HAS_NODES) {
       node.nodes = [];
     }

@@ -52,23 +52,21 @@ impl<'a> Parser<'a> {
                 }
 
                 // Handle words - could be rules or root-level declarations
-                Kind::Word => {
-                    match Self::classify(&mut tokenizer) {
-                        RootStatementType::Declaration => {
-                            let (node, terminator) =
-                                crate::Declaration::create(token, &mut tokenizer, &spaces);
-                            root.terminator(&terminator);
-                            root.append(node);
-                            spaces.clear();
-                        }
-                        RootStatementType::Rule => {
-                            let terminator = crate::StatementTerminator::new();
-                            root.terminator(&terminator);
-                            root.append(Rule::create(token, &mut tokenizer, &spaces));
-                            spaces.clear();
-                        }
+                Kind::Word => match Self::classify(&mut tokenizer) {
+                    RootStatementType::Declaration => {
+                        let (node, terminator) =
+                            crate::Declaration::create(token, &mut tokenizer, &spaces);
+                        root.terminator(&terminator);
+                        root.append(node);
+                        spaces.clear();
                     }
-                }
+                    RootStatementType::Rule => {
+                        let terminator = crate::StatementTerminator::new();
+                        root.terminator(&terminator);
+                        root.append(Rule::create(token, &mut tokenizer, &spaces));
+                        spaces.clear();
+                    }
+                },
 
                 // Handle rules starting with brackets or braces
                 Kind::OpenCurly | Kind::OpenSquare => {
@@ -155,7 +153,9 @@ impl<'a> Parser<'a> {
         };
 
         // Strip leading newline if present (to match PostCSS behavior)
-        return Ok(css_without_bom.strip_prefix('\n').unwrap_or(css_without_bom));
+        return Ok(css_without_bom
+            .strip_prefix('\n')
+            .unwrap_or(css_without_bom));
     }
 }
 

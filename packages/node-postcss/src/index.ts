@@ -42,7 +42,8 @@ class RustProcessor extends postcss.Processor {
       if (!mergedOpts.parser) {
         mergedOpts.parser = {
           parse: (cssStr: string | { toString(): string }, parseOpts?: any) => {
-            const cssString = typeof cssStr === 'string' ? cssStr : cssStr.toString();
+            const cssString =
+              typeof cssStr === 'string' ? cssStr : cssStr.toString();
             return parseOffsetsSync(cssString, parseOpts || {}) as any;
           },
         };
@@ -68,13 +69,13 @@ export default postcssRs;
 // Re-export PostCSS for convenience
 export { postcss };
 
-export const PostCSSRoot        = postcss.Root;
-export const PostCSSRule        = postcss.Rule;
-export const PostCSSAtRule      = postcss.AtRule;
+export const PostCSSRoot = postcss.Root;
+export const PostCSSRule = postcss.Rule;
+export const PostCSSAtRule = postcss.AtRule;
 export const PostCSSDeclaration = postcss.Declaration;
-export const PostCSSComment     = postcss.Comment;
-export const PostCSSContainer   = postcss.Container;
-export const PostCSSNode        = postcss.Node;
+export const PostCSSComment = postcss.Comment;
+export const PostCSSContainer = postcss.Container;
+export const PostCSSNode = postcss.Node;
 
 export type {
   Root,
@@ -85,5 +86,5 @@ export type {
   Container,
   Node,
   Plugin,
-  Processor
+  Processor,
 } from 'postcss';

@@ -35,7 +35,11 @@ impl Comment {
 
             // Count trailing spaces from what remains after left spaces
             let remaining = &inner[left_count..];
-            let right_count = remaining.chars().rev().take_while(|c| c.is_whitespace()).count();
+            let right_count = remaining
+                .chars()
+                .rev()
+                .take_while(|c| c.is_whitespace())
+                .count();
             let right = if right_count > 0 {
                 &remaining[remaining.len() - right_count..]
             } else {

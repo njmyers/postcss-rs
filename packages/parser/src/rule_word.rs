@@ -24,7 +24,10 @@ impl RuleWord {
     ///
     /// # Returns
     /// A combined Token representing the property name
-    pub fn collect_and_combine<'src>(first_token: Token<'src>, tokenizer: &mut Tokenizer<'src>) -> Token<'src> {
+    pub fn collect_and_combine<'src>(
+        first_token: Token<'src>,
+        tokenizer: &mut Tokenizer<'src>,
+    ) -> Token<'src> {
         let mut tokens = vec![first_token];
 
         // Collect tokens that are part of the property name (Word and Brackets)
@@ -75,8 +78,8 @@ impl RuleWord {
         // last.value.as_ptr() + last.value.len()) is a valid UTF-8 sub-slice.
         let combined_value: &'src str = unsafe {
             let ptr = first.value.as_ptr();
-            let len = (last.value.as_ptr() as usize + last.value.len())
-                - first.value.as_ptr() as usize;
+            let len =
+                (last.value.as_ptr() as usize + last.value.len()) - first.value.as_ptr() as usize;
             std::str::from_utf8_unchecked(std::slice::from_raw_parts(ptr, len))
         };
 

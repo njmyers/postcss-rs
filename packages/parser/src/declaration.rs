@@ -102,8 +102,13 @@ impl Declaration {
                 Kind::Space if peeked.value == characters::NEWLINE && !statement.is_open() => break,
 
                 // Space with newline followed by comment or CloseCurly ends declaration
-                Kind::Space if peeked.value.starts_with(characters::NEWLINE) && !statement.is_open() => {
-                    if matches!(Self::peek_second_kind(tokenizer), Some(Kind::Comment) | Some(Kind::CloseCurly)) {
+                Kind::Space
+                    if peeked.value.starts_with(characters::NEWLINE) && !statement.is_open() =>
+                {
+                    if matches!(
+                        Self::peek_second_kind(tokenizer),
+                        Some(Kind::Comment) | Some(Kind::CloseCurly)
+                    ) {
                         break;
                     }
                 }

@@ -85,7 +85,6 @@ pub struct Token<'src> {
     pub column: usize,
 }
 
-
 impl<'src> fmt::Display for Token<'src> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -146,7 +145,12 @@ impl<'src> Token<'src> {
     /// assert_eq!(value_token.start, 6);
     /// assert_eq!(value_token.end, 11);
     /// ```
-    pub fn split(&self, split_index: usize, first_kind: Kind, second_kind: Kind) -> (Token<'src>, Option<Token<'src>>) {
+    pub fn split(
+        &self,
+        split_index: usize,
+        first_kind: Kind,
+        second_kind: Kind,
+    ) -> (Token<'src>, Option<Token<'src>>) {
         let first_token = Token {
             kind: first_kind,
             value: &self.value[..split_index],
@@ -1560,7 +1564,10 @@ mod tests {
         let mut peekable = Tokenizer::new("a b c").into_peekable();
 
         assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
-        assert_eq!(peekable.next().map(|t| t.value.to_string()), Some("a".to_string()));
+        assert_eq!(
+            peekable.next().map(|t| t.value.to_string()),
+            Some("a".to_string())
+        );
     }
 
     #[test]
@@ -1574,7 +1581,10 @@ mod tests {
         assert_eq!(multi.peek().map(|t| t.value.as_ref()), Some("b"));
 
         multi.reset_peek();
-        assert_eq!(multi.next().map(|t| t.value.to_string()), Some("a".to_string()));
+        assert_eq!(
+            multi.next().map(|t| t.value.to_string()),
+            Some("a".to_string())
+        );
     }
 
     #[test]
@@ -1589,7 +1599,10 @@ mod tests {
         assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some("a"));
 
         // Now consume the token
-        assert_eq!(peekable.next().map(|t| t.value.to_string()), Some("a".to_string()));
+        assert_eq!(
+            peekable.next().map(|t| t.value.to_string()),
+            Some("a".to_string())
+        );
 
         // Peek at the next token (space)
         assert_eq!(peekable.peek().map(|t| t.value.as_ref()), Some(" "));
@@ -1612,7 +1625,10 @@ mod tests {
 
         // Now consume the token
         peekable.reset_peek();
-        assert_eq!(peekable.next().map(|t| t.value.to_string()), Some("a".to_string()));
+        assert_eq!(
+            peekable.next().map(|t| t.value.to_string()),
+            Some("a".to_string())
+        );
     }
 
     #[test]
@@ -1629,8 +1645,17 @@ mod tests {
 
         // Reset and consume tokens normally
         peekable.reset_peek();
-        assert_eq!(peekable.next().map(|t| t.value.to_string()), Some("a".to_string()));
-        assert_eq!(peekable.next().map(|t| t.value.to_string()), Some(" ".to_string()));
-        assert_eq!(peekable.next().map(|t| t.value.to_string()), Some("b".to_string()));
+        assert_eq!(
+            peekable.next().map(|t| t.value.to_string()),
+            Some("a".to_string())
+        );
+        assert_eq!(
+            peekable.next().map(|t| t.value.to_string()),
+            Some(" ".to_string())
+        );
+        assert_eq!(
+            peekable.next().map(|t| t.value.to_string()),
+            Some("b".to_string())
+        );
     }
 }

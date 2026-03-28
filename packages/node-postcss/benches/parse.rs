@@ -30,9 +30,9 @@ static LARGE_CSS: &str =
 /// All three size variants in order.
 fn fixtures() -> [(&'static str, &'static str); 3] {
     [
-        ("small  (~200 B)",  SMALL_CSS),
-        ("medium (~2 KB)",   MEDIUM_CSS),
-        ("large  (~30 KB)",  LARGE_CSS),
+        ("small  (~200 B)", SMALL_CSS),
+        ("medium (~2 KB)", MEDIUM_CSS),
+        ("large  (~30 KB)", LARGE_CSS),
     ]
 }
 

@@ -1,4 +1,6 @@
-use crate::bytes::{CLOSE_CURLY, CLOSE_PAREN, CLOSE_SQUARE, COLON, OPEN_CURLY, OPEN_PAREN, OPEN_SQUARE, SEMICOLON};
+use crate::bytes::{
+    CLOSE_CURLY, CLOSE_PAREN, CLOSE_SQUARE, COLON, OPEN_CURLY, OPEN_PAREN, OPEN_SQUARE, SEMICOLON,
+};
 
 /// Tokenizer for the opening curly brace (`{`).
 pub struct OpenCurly;

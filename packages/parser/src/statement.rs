@@ -210,7 +210,13 @@ mod tests {
     use postcss_rs_tokenizer::{Kind, Token};
 
     fn make_token<'a>(kind: Kind, value: &'a str) -> Token<'a> {
-        Token { kind, value, start: 0, end: value.len(), column: 1 }
+        Token {
+            kind,
+            value,
+            start: 0,
+            end: value.len(),
+            column: 1,
+        }
     }
 
     // ---- BracketDepth tests ----

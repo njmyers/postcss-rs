@@ -6,8 +6,8 @@ mod offset;
 
 pub use offset::NodeSlotLayout;
 
-use napi_derive::napi;
 use napi::{Env, Result, Task};
+use napi_derive::napi;
 use postcss_rs_parser::{Node, Parser};
 use postcss_rs_stringifier::{Stringifier, StringifyOptions};
 

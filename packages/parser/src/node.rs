@@ -357,7 +357,8 @@ impl NodeBuilder {
         if self.node.source.end.is_none() {
             self.node.source.end = if self.node.has_nodes() {
                 // Non-empty root: extend one position past the last child's end
-                self.node.nodes
+                self.node
+                    .nodes
                     .as_ref()
                     .and_then(|nodes| nodes.last())
                     .and_then(|last| last.source.end.as_ref())
@@ -412,9 +413,15 @@ mod tests {
                 Token::Seq { len: Some(0) },
                 Token::SeqEnd,
                 Token::Str("source"),
-                Token::Struct { name: "Sources", len: 1 },
+                Token::Struct {
+                    name: "Sources",
+                    len: 1,
+                },
                 Token::Str("start"),
-                Token::Struct { name: "Source", len: 3 },
+                Token::Struct {
+                    name: "Source",
+                    len: 3,
+                },
                 Token::Str("offset"),
                 Token::U64(0),
                 Token::Str("line"),

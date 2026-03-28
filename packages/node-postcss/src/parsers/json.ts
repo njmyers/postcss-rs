@@ -9,17 +9,20 @@ import * as path from 'path';
 const bindings = require(path.join(__dirname, '../../index.js')) as {
   postcss: {
     parseToJsonAsync: (css: string, from?: string | null) => Promise<string>;
-    parseToJsonSync:  (css: string, from?: string | null) => string;
+    parseToJsonSync: (css: string, from?: string | null) => string;
   };
 };
 
-const RootProto    = postcss.Root.prototype;
-const RuleProto    = postcss.Rule.prototype;
-const AtRuleProto  = postcss.AtRule.prototype;
-const DeclProto    = postcss.Declaration.prototype;
+const RootProto = postcss.Root.prototype;
+const RuleProto = postcss.Rule.prototype;
+const AtRuleProto = postcss.AtRule.prototype;
+const DeclProto = postcss.Declaration.prototype;
 const CommentProto = postcss.Comment.prototype;
 
-const { isClean, my } = require('postcss/lib/symbols') as { isClean: symbol; my: symbol };
+const { isClean, my } = require('postcss/lib/symbols') as {
+  isClean: symbol;
+  my: symbol;
+};
 
 function buildNode(json: any, input: postcss.Input, parent: any): any {
   let node: any;
@@ -50,7 +53,7 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
       node[isClean] = false;
       node[my] = true;
       node.type = 'atrule';
-      node.name   = json.name;
+      node.name = json.name;
       node.params = json.params;
       break;
     }
@@ -60,7 +63,7 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
       node[isClean] = false;
       node[my] = true;
       node.type = 'decl';
-      node.prop  = json.prop;
+      node.prop = json.prop;
       node.value = json.value;
       if (json.important) {
         node.important = json.important;
@@ -109,7 +112,10 @@ export interface ParseOptions {
 }
 
 /** Rust parse → JSON string only (no JSON.parse, no buildNode; for benchmarking) */
-export function parseRustOnlySync(css: string, opts: ParseOptions = {}): string {
+export function parseRustOnlySync(
+  css: string,
+  opts: ParseOptions = {}
+): string {
   return bindings.postcss.parseToJsonSync(css, opts.from ?? null);
 }
 
@@ -119,15 +125,21 @@ export function parseJsonOnlySync(css: string, opts: ParseOptions = {}): any {
 }
 
 /** Parse CSS into a PostCSS AST via JSON (async). */
-export async function parseJsonAsync(css: string, opts: ParseOptions = {}): Promise<Root> {
-  const jsonStr = await bindings.postcss.parseToJsonAsync(css, opts.from ?? null);
-  const input   = new postcss.Input(css, { from: opts.from });
+export async function parseJsonAsync(
+  css: string,
+  opts: ParseOptions = {}
+): Promise<Root> {
+  const jsonStr = await bindings.postcss.parseToJsonAsync(
+    css,
+    opts.from ?? null
+  );
+  const input = new postcss.Input(css, { from: opts.from });
   return buildNode(JSON.parse(jsonStr), input, undefined) as Root;
 }
 
 /** Parse CSS into a PostCSS AST via JSON (sync, blocks the event loop). */
 export function parseJsonSync(css: string, opts: ParseOptions = {}): Root {
   const jsonStr = bindings.postcss.parseToJsonSync(css, opts.from ?? null);
-  const input   = new postcss.Input(css, { from: opts.from });
+  const input = new postcss.Input(css, { from: opts.from });
   return buildNode(JSON.parse(jsonStr), input, undefined) as Root;
 }
