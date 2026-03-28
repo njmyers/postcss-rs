@@ -323,175 +323,11 @@ impl OffsetSerializer {
             };
 
             match &node.data {
-                Data::Root => {
-                    slot.type_tag = NodeType::ROOT;
-                    if src_end != ABSENT {
-                        let (as_, ae) = Self::encode_ends_at(&node.raws.after, src_end);
-                        slot.raws_after_start = as_;
-                        slot.raws_after_end   = ae;
-                    }
-                }
-
-                Data::Rule(rule) => {
-                    slot.type_tag = NodeType::RULE;
-
-                    let sel_raw = node.raws.selector.raw.as_deref().unwrap_or(&rule.selector);
-                    // Selector may be preceded by a non-ASCII prefix (e.g. BOM) that is
-                    // part of raws.before; find where sel_raw actually starts.
-                    let (f1s, f1s_byte) = Self::find_field_start(css, src_start, sel_raw);
-                    // The parser moves inter-selector whitespace (e.g. the space in ".a, .b")
-                    // into raws.between, so sel_raw (".a,.b") can be shorter than the actual
-                    // CSS span.  Walk both simultaneously to find the true CSS end.
-                    let actual_f1e = Self::find_selector_css_end(css, f1s_byte, f1s, sel_raw);
-                    slot.field1_start = f1s;
-                    slot.field1_end   = actual_f1e;
-
-                    // raws.before ends where the selector starts (overrides default src_start value)
-                    let (rbs, rbe) = Self::encode_ends_at(&node.raws.before, f1s);
-                    slot.raws_before_start = rbs;
-                    slot.raws_before_end   = rbe;
-
-                    let (bt_s, bt_e) = Self::encode_starts_at(&node.raws.between, slot.field1_end);
-                    slot.raws_between_start = bt_s;
-                    slot.raws_between_end   = bt_e;
-
-                    if src_end != ABSENT {
-                        let (as_, ae) = Self::encode_ends_at(&node.raws.after, src_end - 1);
-                        slot.raws_after_start = as_;
-                        slot.raws_after_end   = ae;
-
-                        // ownSemicolon stored in raws_extra1 (otherwise unused for RULE).
-                        // When ownSemicolon has a preceding space (e.g. " ;"), the parser
-                        // folds the trailing newline into src_end; strip it before slicing.
-                        let own_semi_end = match css.as_bytes().get(src_end as usize - 1) {
-                            Some(b'\n') | Some(b'\r') => src_end - 1,
-                            _ => src_end,
-                        };
-                        let (os, oe) = Self::encode_ends_at(&node.raws.own_semicolon, own_semi_end);
-                        slot.raws_extra1_start = os;
-                        slot.raws_extra1_end   = oe;
-                    }
-
-                    if node.raws.selector.raw.is_some() {
-                        // Inline comments: raw is sel_raw (with comments), clean is comment-stripped.
-                        let clean = node.raws.selector.value.as_deref().unwrap_or(&rule.selector);
-                        slot.clean_start = string_table.len() as u32;
-                        string_table.extend_from_slice(clean.as_bytes());
-                        slot.clean_end = string_table.len() as u32;
-                        slot.flags |= Flags::HAS_CLEAN_STR; // clean_is_field2 left clear → field1
-                    } else if actual_f1e != f1s + Self::js_len(sel_raw) {
-                        // Inter-selector spaces: CSS span is wider than the stored selector.
-                        // Store the normalized selector as the clean value so the JS side
-                        // uses it (rule.selector = normalized) rather than the raw CSS slice.
-                        slot.clean_start = string_table.len() as u32;
-                        string_table.extend_from_slice(sel_raw.as_bytes());
-                        slot.clean_end = string_table.len() as u32;
-                        slot.flags |= Flags::HAS_CLEAN_STR;
-                    }
-                }
-
-                Data::Declaration(decl) => {
-                    slot.type_tag = NodeType::DECL;
-
-                    // IE hack: *color, _background — source.start points to the prefix
-                    // char, not the prop; find where decl.prop actually begins.
-                    let f1s = Self::find_field_js_start(css, src_start, &decl.prop);
-                    slot.field1_start = f1s;
-                    slot.field1_end   = f1s + Self::js_len(&decl.prop);
-
-                    // raws.before ends where the prop starts (overrides default src_start value)
-                    let (rbs, rbe) = Self::encode_ends_at(&node.raws.before, f1s);
-                    slot.raws_before_start = rbs;
-                    slot.raws_before_end   = rbe;
-
-                    let between_len =
-                        node.raws.between.as_deref().map(|b| b.len() as u32).unwrap_or(0);
-                    let (bt_s, bt_e) =
-                        Self::encode_starts_at(&node.raws.between, slot.field1_end);
-                    slot.raws_between_start = bt_s;
-                    slot.raws_between_end   = bt_e;
-                    let value_start = slot.field1_end + between_len;
-
-                    let val_raw = node.raws.value.raw.as_deref().unwrap_or(&decl.value);
-                    slot.field2_start = value_start;
-                    slot.field2_end   = value_start + val_raw.len() as u32;
-
-                    let (i_s, i_e) =
-                        Self::encode_starts_at(&node.raws.important, slot.field2_end);
-                    slot.raws_extra2_start = i_s;
-                    slot.raws_extra2_end   = i_e;
-
-                    if decl.important == Some(true) {
-                        slot.flags |= Flags::IMPORTANT;
-                    }
-
-                    if node.raws.value.raw.is_some() {
-                        let clean = node.raws.value.value.as_deref().unwrap_or(&decl.value);
-                        slot.clean_start = string_table.len() as u32;
-                        string_table.extend_from_slice(clean.as_bytes());
-                        slot.clean_end = string_table.len() as u32;
-                        slot.flags |= Flags::HAS_CLEAN_STR | Flags::CLEAN_IS_FIELD2;
-                    }
-                }
-
-                Data::AtRule(at_rule) => {
-                    slot.type_tag = NodeType::ATRULE;
-
-                    let name_start = src_start + 1; // skip '@'
-                    slot.field1_start = name_start;
-                    slot.field1_end   = name_start + at_rule.name.len() as u32;
-
-                    let after_name_len =
-                        node.raws.after_name.as_deref().map(|s| s.len() as u32).unwrap_or(0);
-                    let (an_s, an_e) =
-                        Self::encode_starts_at(&node.raws.after_name, slot.field1_end);
-                    slot.raws_extra1_start = an_s;
-                    slot.raws_extra1_end   = an_e;
-                    let params_start = slot.field1_end + after_name_len;
-
-                    let params_end = if let Some(params) = &at_rule.params {
-                        slot.field2_start = params_start;
-                        slot.field2_end   = params_start + params.len() as u32;
-                        slot.field2_end
-                    } else {
-                        slot.field2_start = ABSENT;
-                        slot.field2_end   = 0;
-                        params_start
-                    };
-
-                    let (bt_s, bt_e) = Self::encode_starts_at(&node.raws.between, params_end);
-                    slot.raws_between_start = bt_s;
-                    slot.raws_between_end   = bt_e;
-
-                    if src_end != ABSENT && node.nodes.is_some() {
-                        let (as_, ae) = Self::encode_ends_at(&node.raws.after, src_end - 1);
-                        slot.raws_after_start = as_;
-                        slot.raws_after_end   = ae;
-                    }
-                }
-
-                Data::Comment(comment) => {
-                    slot.type_tag = NodeType::COMMENT;
-
-                    let left_start = src_start + 2; // skip '/*'
-                    let left_len =
-                        node.raws.left.as_deref().map(|l| l.len() as u32).unwrap_or(0);
-                    let (l_s, l_e) =
-                        Self::encode_starts_at(&node.raws.left, left_start);
-                    slot.raws_extra1_start = l_s;
-                    slot.raws_extra1_end   = l_e;
-                    let text_start = left_start + left_len;
-
-                    slot.field1_start = text_start;
-                    slot.field1_end   = text_start + comment.text.len() as u32;
-
-                    if src_end != ABSENT {
-                        let (r_s, r_e) =
-                            Self::encode_ends_at(&node.raws.right, src_end - 2); // before '*/'
-                        slot.raws_extra2_start = r_s;
-                        slot.raws_extra2_end   = r_e;
-                    }
-                }
+                Data::Root => Self::serialize_root(node, src_end, &mut slot),
+                Data::Rule(rule) => Self::serialize_rule(node, rule, css, src_start, src_end, &mut slot, string_table),
+                Data::Declaration(decl) => Self::serialize_declaration(node, decl, css, src_start, &mut slot, string_table),
+                Data::AtRule(at_rule) => Self::serialize_at_rule(node, at_rule, css, src_start, src_end, &mut slot),
+                Data::Comment(comment) => Self::serialize_comment(node, comment, css, src_start, src_end, &mut slot),
             }
 
         slots.push(slot);
@@ -500,6 +336,205 @@ impl OffsetSerializer {
             for child in children {
                 Self::visit(child, my_idx, slots, string_table, css);
             }
+        }
+    }
+
+    fn serialize_root(node: &Node, src_end: u32, slot: &mut NodeSlot) {
+        slot.type_tag = NodeType::ROOT;
+        if src_end != ABSENT {
+            let (as_, ae) = Self::encode_ends_at(&node.raws.after, src_end);
+            slot.raws_after_start = as_;
+            slot.raws_after_end   = ae;
+        }
+    }
+
+    fn serialize_rule(
+        node: &Node,
+        rule: &postcss_rs_parser::Rule,
+        css: &str,
+        src_start: u32,
+        src_end: u32,
+        slot: &mut NodeSlot,
+        string_table: &mut Vec<u8>,
+    ) {
+        slot.type_tag = NodeType::RULE;
+
+        let sel_raw = node.raws.selector.raw.as_deref().unwrap_or(&rule.selector);
+        // Selector may be preceded by a non-ASCII prefix (e.g. BOM) that is
+        // part of raws.before; find where sel_raw actually starts.
+        let (f1s, f1s_byte) = Self::find_field_start(css, src_start, sel_raw);
+        // The parser moves inter-selector whitespace (e.g. the space in ".a, .b")
+        // into raws.between, so sel_raw (".a,.b") can be shorter than the actual
+        // CSS span.  Walk both simultaneously to find the true CSS end.
+        let actual_f1e = Self::find_selector_css_end(css, f1s_byte, f1s, sel_raw);
+        slot.field1_start = f1s;
+        slot.field1_end   = actual_f1e;
+
+        // raws.before ends where the selector starts (overrides default src_start value)
+        let (rbs, rbe) = Self::encode_ends_at(&node.raws.before, f1s);
+        slot.raws_before_start = rbs;
+        slot.raws_before_end   = rbe;
+
+        let (bt_s, bt_e) = Self::encode_starts_at(&node.raws.between, slot.field1_end);
+        slot.raws_between_start = bt_s;
+        slot.raws_between_end   = bt_e;
+
+        if src_end != ABSENT {
+            let (as_, ae) = Self::encode_ends_at(&node.raws.after, src_end - 1);
+            slot.raws_after_start = as_;
+            slot.raws_after_end   = ae;
+
+            // ownSemicolon stored in raws_extra1 (otherwise unused for RULE).
+            // When ownSemicolon has a preceding space (e.g. " ;"), the parser
+            // folds the trailing newline into src_end; strip it before slicing.
+            let own_semi_end = match css.as_bytes().get(src_end as usize - 1) {
+                Some(b'\n') | Some(b'\r') => src_end - 1,
+                _ => src_end,
+            };
+            let (os, oe) = Self::encode_ends_at(&node.raws.own_semicolon, own_semi_end);
+            slot.raws_extra1_start = os;
+            slot.raws_extra1_end   = oe;
+        }
+
+        if node.raws.selector.raw.is_some() {
+            // Inline comments: raw is sel_raw (with comments), clean is comment-stripped.
+            let clean = node.raws.selector.value.as_deref().unwrap_or(&rule.selector);
+            slot.clean_start = string_table.len() as u32;
+            string_table.extend_from_slice(clean.as_bytes());
+            slot.clean_end = string_table.len() as u32;
+            slot.flags |= Flags::HAS_CLEAN_STR; // clean_is_field2 left clear → field1
+        } else if actual_f1e != f1s + Self::js_len(sel_raw) {
+            // Inter-selector spaces: CSS span is wider than the stored selector.
+            // Store the normalized selector as the clean value so the JS side
+            // uses it (rule.selector = normalized) rather than the raw CSS slice.
+            slot.clean_start = string_table.len() as u32;
+            string_table.extend_from_slice(sel_raw.as_bytes());
+            slot.clean_end = string_table.len() as u32;
+            slot.flags |= Flags::HAS_CLEAN_STR;
+        }
+    }
+
+    fn serialize_declaration(
+        node: &Node,
+        decl: &postcss_rs_parser::Declaration,
+        css: &str,
+        src_start: u32,
+        slot: &mut NodeSlot,
+        string_table: &mut Vec<u8>,
+    ) {
+        slot.type_tag = NodeType::DECL;
+
+        // IE hack: *color, _background — source.start points to the prefix
+        // char, not the prop; find where decl.prop actually begins.
+        let f1s = Self::find_field_js_start(css, src_start, &decl.prop);
+        slot.field1_start = f1s;
+        slot.field1_end   = f1s + Self::js_len(&decl.prop);
+
+        // raws.before ends where the prop starts (overrides default src_start value)
+        let (rbs, rbe) = Self::encode_ends_at(&node.raws.before, f1s);
+        slot.raws_before_start = rbs;
+        slot.raws_before_end   = rbe;
+
+        let between_len =
+            node.raws.between.as_deref().map(|b| b.len() as u32).unwrap_or(0);
+        let (bt_s, bt_e) =
+            Self::encode_starts_at(&node.raws.between, slot.field1_end);
+        slot.raws_between_start = bt_s;
+        slot.raws_between_end   = bt_e;
+        let value_start = slot.field1_end + between_len;
+
+        let val_raw = node.raws.value.raw.as_deref().unwrap_or(&decl.value);
+        slot.field2_start = value_start;
+        slot.field2_end   = value_start + val_raw.len() as u32;
+
+        let (i_s, i_e) =
+            Self::encode_starts_at(&node.raws.important, slot.field2_end);
+        slot.raws_extra2_start = i_s;
+        slot.raws_extra2_end   = i_e;
+
+        if decl.important == Some(true) {
+            slot.flags |= Flags::IMPORTANT;
+        }
+
+        if node.raws.value.raw.is_some() {
+            let clean = node.raws.value.value.as_deref().unwrap_or(&decl.value);
+            slot.clean_start = string_table.len() as u32;
+            string_table.extend_from_slice(clean.as_bytes());
+            slot.clean_end = string_table.len() as u32;
+            slot.flags |= Flags::HAS_CLEAN_STR | Flags::CLEAN_IS_FIELD2;
+        }
+    }
+
+    fn serialize_at_rule(
+        node: &Node,
+        at_rule: &postcss_rs_parser::AtRule,
+        _css: &str,
+        src_start: u32,
+        src_end: u32,
+        slot: &mut NodeSlot,
+    ) {
+        slot.type_tag = NodeType::ATRULE;
+
+        let name_start = src_start + 1; // skip '@'
+        slot.field1_start = name_start;
+        slot.field1_end   = name_start + at_rule.name.len() as u32;
+
+        let after_name_len =
+            node.raws.after_name.as_deref().map(|s| s.len() as u32).unwrap_or(0);
+        let (an_s, an_e) =
+            Self::encode_starts_at(&node.raws.after_name, slot.field1_end);
+        slot.raws_extra1_start = an_s;
+        slot.raws_extra1_end   = an_e;
+        let params_start = slot.field1_end + after_name_len;
+
+        let params_end = if let Some(params) = &at_rule.params {
+            slot.field2_start = params_start;
+            slot.field2_end   = params_start + params.len() as u32;
+            slot.field2_end
+        } else {
+            slot.field2_start = ABSENT;
+            slot.field2_end   = 0;
+            params_start
+        };
+
+        let (bt_s, bt_e) = Self::encode_starts_at(&node.raws.between, params_end);
+        slot.raws_between_start = bt_s;
+        slot.raws_between_end   = bt_e;
+
+        if src_end != ABSENT && node.nodes.is_some() {
+            let (as_, ae) = Self::encode_ends_at(&node.raws.after, src_end - 1);
+            slot.raws_after_start = as_;
+            slot.raws_after_end   = ae;
+        }
+    }
+
+    fn serialize_comment(
+        node: &Node,
+        comment: &postcss_rs_parser::CommentData,
+        _css: &str,
+        src_start: u32,
+        src_end: u32,
+        slot: &mut NodeSlot,
+    ) {
+        slot.type_tag = NodeType::COMMENT;
+
+        let left_start = src_start + 2; // skip '/*'
+        let left_len =
+            node.raws.left.as_deref().map(|l| l.len() as u32).unwrap_or(0);
+        let (l_s, l_e) =
+            Self::encode_starts_at(&node.raws.left, left_start);
+        slot.raws_extra1_start = l_s;
+        slot.raws_extra1_end   = l_e;
+        let text_start = left_start + left_len;
+
+        slot.field1_start = text_start;
+        slot.field1_end   = text_start + comment.text.len() as u32;
+
+        if src_end != ABSENT {
+            let (r_s, r_e) =
+                Self::encode_ends_at(&node.raws.right, src_end - 2); // before '*/'
+            slot.raws_extra2_start = r_s;
+            slot.raws_extra2_end   = r_e;
         }
     }
 
