@@ -111,16 +111,6 @@ export declare namespace postcss {
    * automatically.  Call once at module startup and cache the result.
    */
   export function nodeSlotLayout(): NodeSlotLayout
-  /**
-   * No-op: returns a zero-filled Buffer of the given size.
-   * Used only for benchmarking NAPI Buffer-return overhead.
-   */
-  export function noopBuffer(size: number): Buffer
-  /**
-   * No-op: accepts a CSS string and immediately returns its byte length.
-   * Used only for benchmarking NAPI string-passing overhead.
-   */
-  export function noopString(css: string): number
   export function parseToJsonAsync(css: string, from?: string | undefined | null): Promise<unknown>
   /**
    * Synchronous JSON parse. Blocks the event loop while parsing.
@@ -141,15 +131,5 @@ export declare namespace postcss {
    * never needs to call `JSON.parse()`.
    */
   export function parseToOffsetsSync(css: string, from?: string | undefined | null): Buffer
-  /**
-   * Synchronous offset-array parse that writes into a caller-supplied buffer.
-   *
-   * Writing into a pre-allocated buffer avoids per-call V8 Buffer allocation,
-   * eliminating GC pressure and improving throughput in hot loops.
-   *
-   * Returns the number of bytes written.  Throws if `buffer` is too small
-   * (pre-allocate at least `css.length * 12 + 4096` bytes to be safe).
-   */
-  export function parseToOffsetsSyncInPlace(css: string, buffer: Buffer, from?: string | undefined | null): number
   export function stringify(json: string): string
 }

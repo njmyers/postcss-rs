@@ -18,7 +18,6 @@ const bindings = require(path.join(__dirname, '../../index.js')) as {
   postcss: {
     parseToOffsetsSync: (css: string, from?: string | null) => Buffer;
     parseToOffsetsAsync: (css: string, from?: string | null) => Promise<Buffer>;
-    parseToOffsetsSyncInPlace: (css: string, buffer: Buffer, from?: string | null) => number;
     nodeSlotLayout: () => NodeSlotLayout;
   };
 };
@@ -415,42 +414,4 @@ export function parseOffsetsRustOnlySync(
   opts: ParseOptions = {}
 ): Buffer {
   return bindings.postcss.parseToOffsetsSync(css, opts.from ?? null);
-}
-
-/**
- * Pre-allocated shared buffer used by `parseOffsetsSyncFast`.
- * Starts at 4 MB; grows automatically if CSS exceeds capacity.
- * NOT safe for concurrent use; sync-only.
- */
-let _sharedBuf: Buffer = Buffer.allocUnsafe(4 * 1024 * 1024);
-
-function _ensureSharedBuf(minBytes: number): Buffer {
-  if (_sharedBuf.length < minBytes) {
-    _sharedBuf = Buffer.allocUnsafe(Math.max(minBytes * 2, 4 * 1024 * 1024));
-  }
-  return _sharedBuf;
-}
-
-/**
- * Synchronous offset-array parse that writes into a module-level pre-allocated
- * buffer instead of creating a new Buffer on every call.
- *
- * This eliminates per-call V8 Buffer allocation and the associated GC pressure,
- * significantly improving throughput in tight loops.
- *
- * NOT safe to call concurrently; suitable for the Node.js main thread only.
- */
-export function parseOffsetsSyncFast(css: string, opts: ParseOptions = {}): Root {
-  // Worst-case buffer size: each byte of CSS can generate at most ~12 bytes of
-  // offset data.  Add 4096 bytes of headroom for small CSS and the string table.
-  const minSize = css.length * 12 + 4096;
-  const buf = _ensureSharedBuf(minSize);
-  const bytesWritten = bindings.postcss.parseToOffsetsSyncInPlace(
-    css,
-    buf,
-    opts.from ?? null
-  );
-  const view = buf.subarray(0, bytesWritten);
-  const input = new postcss.Input(css, { from: opts.from });
-  return OffsetParser.parse(view, css, input);
 }

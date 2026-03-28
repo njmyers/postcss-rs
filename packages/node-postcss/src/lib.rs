@@ -111,45 +111,4 @@ pub mod postcss {
         NodeSlotLayout::build()
     }
 
-    /// Synchronous offset-array parse that writes into a caller-supplied buffer.
-    ///
-    /// Writing into a pre-allocated buffer avoids per-call V8 Buffer allocation,
-    /// eliminating GC pressure and improving throughput in hot loops.
-    ///
-    /// Returns the number of bytes written.  Throws if `buffer` is too small
-    /// (pre-allocate at least `css.length * 12 + 4096` bytes to be safe).
-    #[napi]
-    pub fn parse_to_offsets_sync_in_place(
-        css: String,
-        mut buffer: Buffer,
-        _from: Option<String>,
-    ) -> Result<u32> {
-        let mut parser = Parser::new(&css).unwrap();
-        let node = parser.parse();
-        let serialized = offset::OffsetSerializer::serialize(&node, &css);
-        let len = serialized.len();
-        if len > buffer.len() {
-            return Err(napi::Error::from_reason(format!(
-                "Buffer too small: need {} bytes, have {}",
-                len,
-                buffer.len()
-            )));
-        }
-        buffer[..len].copy_from_slice(&serialized);
-        return Ok(len as u32);
-    }
-
-    /// No-op: accepts a CSS string and immediately returns its byte length.
-    /// Used only for benchmarking NAPI string-passing overhead.
-    #[napi]
-    pub fn noop_string(css: String) -> u32 {
-        css.len() as u32
-    }
-
-    /// No-op: returns a zero-filled Buffer of the given size.
-    /// Used only for benchmarking NAPI Buffer-return overhead.
-    #[napi]
-    pub fn noop_buffer(size: u32) -> napi::bindgen_prelude::Buffer {
-        vec![0u8; size as usize].into()
-    }
 }

@@ -13,7 +13,7 @@
  */
 
 import * as postcss from 'postcss';
-import type { Root, Plugin, Processor, ProcessOptions } from 'postcss';
+import type { Root, Plugin, Processor, ProcessOptions, Stringifier, Syntax } from 'postcss';
 
 export type { ParseOptions } from './parsers/json';
 export {
@@ -26,42 +26,80 @@ export {
   parseOffsetsSync,
   parseOffsetsAsync,
   parseOffsetsRustOnlySync,
-  parseOffsetsSyncFast,
 } from './parsers/offset';
 
-import { parseOffsetsSync } from './parsers/offset';
+type SyncParseFn = (css: string, opts?: any) => Root;
+type AsyncParseFn = (css: string, opts?: any) => Promise<Root>;
+type ParseFn = SyncParseFn | AsyncParseFn;
 
-/** PostCSS Processor subclass with Rust-powered parsing and postcss stringify. */
-class RustProcessor extends postcss.Processor {
-  constructor(plugins: Plugin[] = []) {
-    super(plugins);
-  }
+/**
+ * Returns a PostCSS Processor class that uses the provided `parseFn` and
+ * `stringifyFn` by default on every `.process()` call.
+ *
+ * Works with both synchronous and asynchronous parse functions:
+ * - Sync parseFn: returned processor supports both `.sync()` and `.async()`
+ * - Async parseFn: returned processor only supports `.async()` (`.sync()` throws)
+ *
+ * The parse result (Root) is passed directly to PostCSS, bypassing its own
+ * parser so the full plugin chain and stringify still run normally.
+ *
+ * @example
+ * ```ts
+ * import { RustProcessorFactory, parseOffsetsAsync } from '@postcss-rs/node-postcss';
+ *
+ * const OffsetProcessor = RustProcessorFactory(parseOffsetsAsync);
+ * const result = await new OffsetProcessor().process(css, { from: undefined }).async();
+ * ```
+ */
+export function RustProcessorFactory(
+  parseFn: ParseFn,
+  stringifyFn: Stringifier | Syntax = postcss.stringify,
+): new (plugins?: Plugin[]) => Processor {
+  class RustProcessor extends postcss.Processor {
+    constructor(plugins: Plugin[] = []) {
+      super(plugins);
+    }
 
-  process(css: string | Root, opts: ProcessOptions = {}): any {
-    const mergedOpts: ProcessOptions = { ...opts };
-    if (typeof css === 'string') {
-      if (!mergedOpts.parser) {
-        mergedOpts.parser = {
-          parse: (cssStr: string | { toString(): string }, parseOpts?: any) => {
-            const cssString =
-              typeof cssStr === 'string' ? cssStr : cssStr.toString();
-            return parseOffsetsSync(cssString, parseOpts || {}) as any;
+    process(css: string | Root, opts: ProcessOptions = {}): any {
+      if (typeof css !== 'string') {
+        return super.process(css, { stringifier: stringifyFn as Stringifier, ...opts });
+      }
+
+      const mergedOpts: ProcessOptions = {
+        stringifier: stringifyFn as Stringifier,
+        ...opts,
+      };
+
+      const parsed = parseFn(css, opts);
+
+      if (parsed instanceof Promise) {
+        return {
+          async: () =>
+            parsed.then((root: Root) => super.process(root, mergedOpts).async()),
+          sync: () => {
+            throw new Error(
+              'sync() is not supported when using an async parse function',
+            );
           },
         };
       }
-      if (!mergedOpts.stringifier) {
-        mergedOpts.stringifier = postcss.stringify;
-      }
+
+      return super.process(parsed as Root, mergedOpts);
     }
-    return super.process(css, mergedOpts);
   }
+
+  return RustProcessor;
 }
 
+import { parseOffsetsSync } from './parsers/offset';
+
 /**
- * Create a PostCSS processor with Rust-powered parsing.
+ * Create a PostCSS processor with Rust-powered parsing (offset path).
  */
+const OffsetProcessor = RustProcessorFactory(parseOffsetsSync);
+
 export function postcssRs(plugins: Plugin[] = []): Processor {
-  return new RustProcessor(plugins);
+  return new OffsetProcessor(plugins);
 }
 
 // Default export
