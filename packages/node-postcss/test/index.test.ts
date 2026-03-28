@@ -3,9 +3,9 @@
  * Includes tests for parse(), restoreRaws(), and PostCSS integration
  */
 
+import { describe, expect, test } from 'vitest';
+
 import { parseJsonAsync as parse } from '../src/index';
-import { Input } from 'postcss';
-import { describe, test, expect } from 'vitest';
 
 describe('parse() function', () => {
   test('Returns PostCSS Root instance', async () => {
@@ -20,22 +20,22 @@ describe('parse() function', () => {
 
     // Check root has input
     expect(root.source?.input).toBeDefined();
-    expect(root.source?.input?.from).toContain('test.css');
+    expect(root.source?.input.from).toContain('test.css');
 
     // Check rule has input
     const rule = root.first;
     expect(rule?.source?.input).toBeDefined();
-    expect(rule?.source?.input?.from).toContain('test.css');
+    expect(rule?.source?.input.from).toContain('test.css');
 
     // Check declaration has input
     const decl = (rule as any)?.first;
     expect(decl?.source?.input).toBeDefined();
-    expect(decl?.source?.input?.from).toContain('test.css');
+    expect(decl?.source?.input.from).toContain('test.css');
   });
 
   test('Accepts from option', async () => {
     const root = await parse('.test { color: red; }', { from: 'styles.css' });
-    expect(root.source?.input?.from).toContain('styles.css');
+    expect(root.source?.input.from).toContain('styles.css');
   });
 
   test('Works without options', async () => {

@@ -7,28 +7,28 @@ All exports are from `@postcss-rs/node-postcss`.
 Parses a CSS string and returns a PostCSS `Root` instance.
 
 ```typescript
-function parse(css: string, opts?: ParseOptions): Promise<Root>
+function parse(css: string, opts?: ParseOptions): Promise<Root>;
 ```
 
 **Parameters**
 
-| Name | Type | Description |
-|---|---|---|
-| `css` | `string` | CSS source to parse |
-| `opts.from` | `string` (optional) | Source file path, used for source maps |
-| `opts.map` | `any` (optional) | Source map options (passed through to PostCSS) |
+| Name        | Type                | Description                                    |
+| ----------- | ------------------- | ---------------------------------------------- |
+| `css`       | `string`            | CSS source to parse                            |
+| `opts.from` | `string` (optional) | Source file path, used for source maps         |
+| `opts.map`  | `any` (optional)    | Source map options (passed through to PostCSS) |
 
 **Returns** `Promise<Root>` — a PostCSS [`Root`](https://postcss.org/api/#root) instance.
 
 **Example**
 
 ```typescript
-import { parse } from '@postcss-rs/node-postcss'
+import { parse } from '@postcss-rs/node-postcss';
 
-const root = await parse('.btn { color: blue; }', { from: 'styles.css' })
+const root = await parse('.btn { color: blue; }', { from: 'styles.css' });
 root.walkDecls(decl => {
-  console.log(decl.prop, decl.value)
-})
+  console.log(decl.prop, decl.value);
+});
 ```
 
 ---
@@ -38,13 +38,13 @@ root.walkDecls(decl => {
 Creates a PostCSS `Processor` that uses the Rust parser.
 
 ```typescript
-function postcssRs(plugins?: Plugin[]): Processor
+function postcssRs(plugins?: Plugin[]): Processor;
 ```
 
 **Parameters**
 
-| Name | Type | Description |
-|---|---|---|
+| Name      | Type                  | Description              |
+| --------- | --------------------- | ------------------------ |
 | `plugins` | `Plugin[]` (optional) | PostCSS plugins to apply |
 
 **Returns** A PostCSS `Processor` instance with the Rust parser injected.
@@ -52,11 +52,11 @@ function postcssRs(plugins?: Plugin[]): Processor
 **Example**
 
 ```typescript
-import postcssRs from '@postcss-rs/node-postcss'
-import autoprefixer from 'autoprefixer'
+import postcssRs from '@postcss-rs/node-postcss';
+import autoprefixer from 'autoprefixer';
 
-const processor = postcssRs([autoprefixer])
-const result = await processor.process(css, { from: 'input.css' })
+const processor = postcssRs([autoprefixer]);
+const result = await processor.process(css, { from: 'input.css' });
 ```
 
 ---
@@ -66,7 +66,7 @@ const result = await processor.process(css, { from: 'input.css' })
 > **Not yet implemented.** Calling this will throw an error. Use the async `parse()` instead.
 
 ```typescript
-function parseSync(css: string, opts?: ParseOptions): Root
+function parseSync(css: string, opts?: ParseOptions): Root;
 ```
 
 ---
@@ -84,14 +84,21 @@ import {
   PostCSSDeclaration,
   PostCSSComment,
   PostCSSContainer,
-  PostCSSNode
-} from '@postcss-rs/node-postcss'
+  PostCSSNode,
+} from '@postcss-rs/node-postcss';
 
 // Types
 import type {
-  Root, Rule, AtRule, Declaration, Comment,
-  Container, Node, Plugin, Processor
-} from '@postcss-rs/node-postcss'
+  Root,
+  Rule,
+  AtRule,
+  Declaration,
+  Comment,
+  Container,
+  Node,
+  Plugin,
+  Processor,
+} from '@postcss-rs/node-postcss';
 ```
 
 ---
@@ -100,7 +107,7 @@ import type {
 
 ```typescript
 interface ParseOptions {
-  from?: string  // Source file path for source maps
-  map?: any      // Source map options
+  from?: string; // Source file path for source maps
+  map?: any; // Source map options
 }
 ```

@@ -21,22 +21,24 @@ No Rust toolchain required — pre-compiled native binaries are included for all
 ## Quick Start
 
 ```typescript
-import { parse } from '@postcss-rs/node-postcss'
+import { parse } from '@postcss-rs/node-postcss';
 
-const root = await parse('.button { color: red; padding: 8px; }')
+const root = await parse('.button { color: red; padding: 8px; }');
 
-console.log(root.first.selector)     // '.button'
-console.log(root.first.first.prop)   // 'color'
-console.log(root.first.first.value)  // 'red'
+console.log(root.first.selector); // '.button'
+console.log(root.first.first.prop); // 'color'
+console.log(root.first.first.value); // 'red'
 ```
 
 To use with PostCSS plugins, use the default export:
 
 ```typescript
-import postcssRs from '@postcss-rs/node-postcss'
-import autoprefixer from 'autoprefixer'
+import postcssRs from '@postcss-rs/node-postcss';
+import autoprefixer from 'autoprefixer';
 
-const result = await postcssRs([autoprefixer]).process(css, { from: 'input.css' })
+const result = await postcssRs([autoprefixer]).process(css, {
+  from: 'input.css',
+});
 ```
 
 ## Documentation

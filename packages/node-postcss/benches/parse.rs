@@ -14,8 +14,10 @@ use postcss_rs_parser::Parser;
 
 // Pull in serialisers without going through the NAPI lib.
 #[path = "../src/json.rs"]
+#[allow(dead_code)]
 mod json;
 #[path = "../src/offset.rs"]
+#[allow(dead_code)]
 mod offset;
 
 static SMALL_CSS: &str =

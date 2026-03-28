@@ -2,19 +2,20 @@
  * Basic tests for @postcss-rs/node-postcss
  */
 
+import * as postcss from 'postcss';
+import type { Declaration, Root, Rule } from 'postcss';
+import { describe, expect, test } from 'vitest';
+
 import {
   parseJsonAsync,
   parseJsonSync,
-  parseOffsetsSync,
   parseOffsetsAsync,
+  parseOffsetsSync,
 } from '../src/index';
-import * as postcss from 'postcss';
-import type { Root, Rule, Declaration } from 'postcss';
-import { describe, test, expect } from 'vitest';
 
-type ParseFn = (css: string) => Root | Promise<Root>;
+type ParseFn = (css: string) => Promise<Root> | Root;
 
-const parsers: Array<[string, ParseFn]> = [
+const parsers: [string, ParseFn][] = [
   ['parseJsonAsync', css => parseJsonAsync(css)],
   ['parseJsonSync', css => parseJsonSync(css)],
   ['parseOffsetsSync', css => parseOffsetsSync(css)],
@@ -27,14 +28,14 @@ describe.each(parsers)('@postcss-rs/node-postcss (%s)', (_name, parse) => {
     expect(root.type).toBe('root');
     expect(root.nodes.length).toBe(1);
     expect(root.first?.type).toBe('rule');
-    expect((root.first as Rule)?.selector).toBe('.test');
+    expect((root.first as Rule).selector).toBe('.test');
   });
 
   test('Returns real PostCSS class instances', async () => {
     const root = await parse('.test { color: red; }');
     expect(root.constructor.name).toBe('Root');
     expect(root.first?.constructor.name).toBe('Rule');
-    expect((root.first as Rule)?.first?.constructor.name).toBe('Declaration');
+    expect((root.first as Rule).first?.constructor.name).toBe('Declaration');
   });
 
   test('walkDecls() method works', async () => {
@@ -48,7 +49,7 @@ describe.each(parsers)('@postcss-rs/node-postcss (%s)', (_name, parse) => {
 
   test('Mutations work correctly', async () => {
     const root = await parse('.test { color: red; }');
-    const firstDecl = (root.first as Rule)?.first as Declaration;
+    const firstDecl = (root.first as Rule).first as Declaration;
     firstDecl.value = 'blue';
     expect(firstDecl.value).toBe('blue');
   });
@@ -84,7 +85,7 @@ describe.each(parsers)('@postcss-rs/node-postcss (%s)', (_name, parse) => {
   test('Handles !important correctly', async () => {
     const css = '.test { color: red !important; }';
     const root = await parse(css);
-    const firstDecl = (root.first as Rule)?.first as Declaration;
+    const firstDecl = (root.first as Rule).first as Declaration;
     expect(firstDecl.important).toBe(true);
   });
 

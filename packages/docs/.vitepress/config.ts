@@ -1,44 +1,44 @@
 import { defineConfig } from 'vitepress';
 
 export default defineConfig({
-  title: 'postcss-rs',
   description:
     'A high-performance PostCSS-compatible CSS parser powered by Rust',
-
   themeConfig: {
+    footer: {
+      copyright: 'Copyright © 2024 Nick Myers',
+      message: 'Released under the MIT License.',
+    },
+
     nav: [
-      { text: 'Guide', link: '/guide/getting-started' },
-      { text: 'API', link: '/api/' },
+      { link: '/guide/getting-started', text: 'Guide' },
+      { link: '/api/', text: 'API' },
       {
-        text: 'Rust API',
         link: '/rustdoc/postcss_rs_parser/index.html',
         target: '_blank',
+        text: 'Rust API',
       },
-      { text: 'GitHub', link: 'https://github.com/njmyers/postcss-rs' },
+      { link: 'https://github.com/njmyers/postcss-rs', text: 'GitHub' },
     ],
 
     sidebar: [
       {
-        text: 'Guide',
         items: [
-          { text: 'Why postcss-rs?', link: '/guide/why' },
-          { text: 'Getting Started', link: '/guide/getting-started' },
-          { text: 'Architecture', link: '/guide/architecture' },
+          { link: '/guide/why', text: 'Why postcss-rs?' },
+          { link: '/guide/getting-started', text: 'Getting Started' },
+          { link: '/guide/architecture', text: 'Architecture' },
         ],
+        text: 'Guide',
       },
       {
+        items: [{ link: '/api/', text: 'Overview' }],
         text: 'API Reference',
-        items: [{ text: 'Overview', link: '/api/' }],
       },
     ],
 
     socialLinks: [
       { icon: 'github', link: 'https://github.com/njmyers/postcss-rs' },
     ],
-
-    footer: {
-      message: 'Released under the MIT License.',
-      copyright: 'Copyright © 2024 Nick Myers',
-    },
   },
+
+  title: 'postcss-rs',
 });

@@ -12,18 +12,19 @@
  */
 
 import b from 'benny';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import postcss from 'postcss';
+
 import {
   parseJsonAsync,
-  parseJsonSync,
-  parseOffsetsSync,
-  parseOffsetsAsync,
-  parseRustOnlySync,
   parseJsonOnlySync,
+  parseJsonSync,
+  parseOffsetsAsync,
   parseOffsetsRustOnlySync,
+  parseOffsetsSync,
+  parseRustOnlySync,
 } from '../src/index';
-import postcss from 'postcss';
 
 const SMALL_CSS = readFileSync(join(__dirname, 'fixtures/small.css'), 'utf8');
 const MEDIUM_CSS = readFileSync(join(__dirname, 'fixtures/medium.css'), 'utf8');
