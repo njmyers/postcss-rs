@@ -12,6 +12,7 @@
 import * as postcss from 'postcss';
 import type { Root } from 'postcss';
 import * as path from 'path';
+import type { NodeSlotLayout } from '../../index';
 
 const bindings = require(path.join(__dirname, '../../index.js')) as {
   postcss: {
@@ -20,27 +21,6 @@ const bindings = require(path.join(__dirname, '../../index.js')) as {
     nodeSlotLayout: () => NodeSlotLayout;
   };
 };
-
-// Mirrors the Rust `NodeSlotLayout` napi object.  All idx_* fields are u32
-// slot indices (not byte offsets) within a single node's STRIDE-wide block.
-interface NodeSlotLayout {
-  typeRoot: number; typeRule: number; typeDecl: number;
-  typeAtrule: number; typeComment: number;
-  stride: number; absent: number;
-  idxTypeTag: number; idxParentIdx: number;
-  idxSourceStartOff: number; idxSourceStartLine: number; idxSourceStartCol: number;
-  idxSourceEndOff: number; idxSourceEndLine: number; idxSourceEndCol: number;
-  idxField1Start: number; idxField1End: number;
-  idxField2Start: number; idxField2End: number;
-  idxRawsBeforeStart: number; idxRawsBeforeEnd: number;
-  idxRawsBetweenStart: number; idxRawsBetweenEnd: number;
-  idxRawsAfterStart: number; idxRawsAfterEnd: number;
-  idxRawsExtra1Start: number; idxRawsExtra1End: number;
-  idxRawsExtra2Start: number; idxRawsExtra2End: number;
-  idxFlags: number; idxCleanStart: number; idxCleanEnd: number;
-  flagImportant: number; flagSemiPresent: number; flagSemiValue: number;
-  flagHasCleanStr: number; flagCleanIsField2: number; flagHasNodes: number;
-}
 
 // Fetch layout once at module startup.  Field indices are derived from the
 // Rust NodeSlot struct via offset_of!, so they stay in sync automatically.
