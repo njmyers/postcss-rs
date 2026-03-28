@@ -1,6 +1,7 @@
 #![deny(clippy::all)]
 #![allow(clippy::needless_return)]
 
+mod json;
 mod offset;
 
 use napi_derive::napi;
@@ -20,13 +21,7 @@ impl Task for AsyncJsonTask {
     fn compute(&mut self) -> Result<Self::Output> {
         let mut parser = Parser::new(&self.css).unwrap();
         let node = parser.parse();
-        // sonic-rs is a SIMD-accelerated JSON library (AVX2 on this host).
-        // Pre-allocate the output buffer to avoid reallocations during
-        // serialisation; CSS AST JSON is typically 3–8× the CSS source size.
-        let mut buf = Vec::with_capacity(self.css.len() * 5);
-        sonic_rs::to_writer(&mut buf, &node)
-            .map_err(|e| napi::Error::from_reason(e.to_string()))?;
-        // sonic-rs always produces valid UTF-8.
+        let buf = json::serialize(&node, &self.css);
         return Ok(unsafe { String::from_utf8_unchecked(buf) });
     }
 
@@ -128,9 +123,7 @@ pub mod postcss {
     pub fn parse_to_json_sync(css: String, _from: Option<String>) -> Result<String> {
         let mut parser = Parser::new(&css).unwrap();
         let node = parser.parse();
-        let mut buf = Vec::with_capacity(css.len() * 5);
-        sonic_rs::to_writer(&mut buf, &node)
-            .map_err(|e| napi::Error::from_reason(e.to_string()))?;
+        let buf = json::serialize(&node, &css);
         return Ok(unsafe { String::from_utf8_unchecked(buf) });
     }
 

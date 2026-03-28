@@ -12,7 +12,9 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use postcss_rs_parser::Parser;
 
-// Pull in the offset serialiser without going through the NAPI lib.
+// Pull in serialisers without going through the NAPI lib.
+#[path = "../src/json.rs"]
+mod json;
 #[path = "../src/offset.rs"]
 mod offset;
 
@@ -54,9 +56,7 @@ fn bench_json(c: &mut Criterion) {
             b.iter(|| {
                 let mut p = Parser::new(black_box(css)).unwrap();
                 let node = p.parse();
-                let mut buf = Vec::with_capacity(css.len() * 5);
-                sonic_rs::to_writer(&mut buf, &node).unwrap();
-                black_box(buf)
+                black_box(json::serialize(&node, css))
             })
         });
     }
