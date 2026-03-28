@@ -20,7 +20,7 @@
     "build:ts": "tsc",
     "clean": "rm -rf dist",
     "prepublishOnly": "napi pre-publish -t npm",
-    "bench": "tsx test/parse.bench.ts",
+    "bench": "tsx benches/parse.bench.ts",
     "test": "vitest run",
     "version": "napi version"
   },
