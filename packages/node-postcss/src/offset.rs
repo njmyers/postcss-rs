@@ -89,8 +89,6 @@ pub struct NodeSlot {
 pub const STRIDE: usize = std::mem::size_of::<NodeSlot>() / 4;
 const _STRIDE_CHECK: () = assert!(std::mem::size_of::<NodeSlot>() / 4 == 25);
 
-// ── internal ──────────────────────────────────────────────────────────────────
-
 /// Serializes a PostCSS AST into the compact offset-array binary format.
 ///
 /// # Buffer layout
@@ -178,7 +176,6 @@ impl OffsetSerializer {
             };
 
             match &node.data {
-                // ── Root ─────────────────────────────────────────────────────
                 Data::Root => {
                     slot.type_tag = NodeType::ROOT;
                     if src_end != ABSENT {
@@ -188,7 +185,6 @@ impl OffsetSerializer {
                     }
                 }
 
-                // ── Rule ─────────────────────────────────────────────────────
                 Data::Rule(rule) => {
                     slot.type_tag = NodeType::RULE;
 
@@ -234,7 +230,6 @@ impl OffsetSerializer {
                     }
                 }
 
-                // ── Declaration ──────────────────────────────────────────────
                 Data::Declaration(decl) => {
                     slot.type_tag = NodeType::DECL;
 
@@ -279,7 +274,6 @@ impl OffsetSerializer {
                     }
                 }
 
-                // ── AtRule ───────────────────────────────────────────────────
                 Data::AtRule(at_rule) => {
                     slot.type_tag = NodeType::ATRULE;
 
@@ -316,7 +310,6 @@ impl OffsetSerializer {
                     }
                 }
 
-                // ── Comment ──────────────────────────────────────────────────
                 Data::Comment(comment) => {
                     slot.type_tag = NodeType::COMMENT;
 

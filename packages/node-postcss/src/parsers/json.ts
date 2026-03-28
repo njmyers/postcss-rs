@@ -6,16 +6,12 @@ import * as postcss from 'postcss';
 import type { Root } from 'postcss';
 import * as path from 'path';
 
-// ─── Bindings ─────────────────────────────────────────────────────────────────
-
 const bindings = require(path.join(__dirname, '../../index.js')) as {
   postcss: {
     parseToJsonAsync: (css: string, from?: string | null) => Promise<string>;
     parseToJsonSync:  (css: string, from?: string | null) => string;
   };
 };
-
-// ─── PostCSS internals ────────────────────────────────────────────────────────
 
 const RootProto    = postcss.Root.prototype;
 const RuleProto    = postcss.Rule.prototype;
@@ -24,8 +20,6 @@ const DeclProto    = postcss.Declaration.prototype;
 const CommentProto = postcss.Comment.prototype;
 
 const { isClean, my } = require('postcss/lib/symbols') as { isClean: symbol; my: symbol };
-
-// ─── Builder ──────────────────────────────────────────────────────────────────
 
 function buildNode(json: any, input: postcss.Input, parent: any): any {
   let node: any;
@@ -91,8 +85,6 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
 
   return node;
 }
-
-// ─── Public API ───────────────────────────────────────────────────────────────
 
 export interface ParseOptions {
   from?: string;

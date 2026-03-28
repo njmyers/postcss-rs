@@ -19,8 +19,6 @@ import {
 } from '../src/index';
 import postcss from 'postcss';
 
-// ─── CSS Fixtures ─────────────────────────────────────────────────────────────
-
 const SMALL_CSS = `.button {
   display: inline-flex;
   align-items: center;
@@ -171,8 +169,6 @@ const LARGE_CSS = Array.from({ length: 50 }, (_, i) => `
 
 const processor = postcss();
 
-// ─── Suite factories ──────────────────────────────────────────────────────────
-
 function makeSyncSuite(name: string, css: string) {
   return b.suite(
     `${name} — sync`,
@@ -205,8 +201,6 @@ function makeRawSuite(name: string, css: string) {
     b.complete(),
   );
 }
-
-// ─── Run: sync → async → raw, small → medium → large within each group ───────
 
 makeSyncSuite('Small (~200 B)', SMALL_CSS)
   .then(() => makeSyncSuite('Medium (~2 KB)', MEDIUM_CSS))

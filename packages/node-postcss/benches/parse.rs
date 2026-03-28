@@ -16,8 +16,6 @@ use postcss_rs_parser::Parser;
 #[path = "../src/offset.rs"]
 mod offset;
 
-// ── CSS Fixtures ──────────────────────────────────────────────────────────────
-
 static SMALL_CSS: &str =
     unsafe { std::str::from_utf8_unchecked(include_bytes!("fixtures/small.css")) };
 
@@ -27,8 +25,6 @@ static MEDIUM_CSS: &str =
 static LARGE_CSS: &str =
     unsafe { std::str::from_utf8_unchecked(include_bytes!("fixtures/large.css")) };
 
-// ── Bench helpers ─────────────────────────────────────────────────────────────
-
 /// All three size variants in order.
 fn fixtures() -> [(&'static str, &'static str); 3] {
     [
@@ -37,8 +33,6 @@ fn fixtures() -> [(&'static str, &'static str); 3] {
         ("large  (~30 KB)",  LARGE_CSS),
     ]
 }
-
-// ── parse: pure parse, no serialization ──────────────────────────────────────
 
 fn bench_parse(c: &mut Criterion) {
     let mut group = c.benchmark_group("parse");
@@ -52,8 +46,6 @@ fn bench_parse(c: &mut Criterion) {
     }
     group.finish();
 }
-
-// ── json: parse + JSON serialization (sonic-rs) ───────────────────────────────
 
 fn bench_json(c: &mut Criterion) {
     let mut group = c.benchmark_group("json");
@@ -70,8 +62,6 @@ fn bench_json(c: &mut Criterion) {
     }
     group.finish();
 }
-
-// ── offsets: parse + flat offset-array serialization ─────────────────────────
 
 fn bench_offsets(c: &mut Criterion) {
     let mut group = c.benchmark_group("offsets");

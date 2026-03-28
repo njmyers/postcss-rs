@@ -13,8 +13,6 @@ import * as postcss from 'postcss';
 import type { Root } from 'postcss';
 import * as path from 'path';
 
-// ─── Bindings ─────────────────────────────────────────────────────────────────
-
 const bindings = require(path.join(__dirname, '../../index.js')) as {
   postcss: {
     parseToOffsetsSync:  (css: string, from?: string | null) => Buffer;
@@ -22,8 +20,6 @@ const bindings = require(path.join(__dirname, '../../index.js')) as {
     nodeSlotLayout: () => NodeSlotLayout;
   };
 };
-
-// ─── Layout types & constants ─────────────────────────────────────────────────
 
 // Mirrors the Rust `NodeSlotLayout` napi object.  All idx_* fields are u32
 // slot indices (not byte offsets) within a single node's STRIDE-wide block.
@@ -92,8 +88,6 @@ const TYPE_DECL    = L.typeDecl;
 const TYPE_ATRULE  = L.typeAtrule;
 const TYPE_COMMENT = L.typeComment;
 
-// ─── PostCSS internals ────────────────────────────────────────────────────────
-
 const RootProto    = postcss.Root.prototype;
 const RuleProto    = postcss.Rule.prototype;
 const AtRuleProto  = postcss.AtRule.prototype;
@@ -101,8 +95,6 @@ const DeclProto    = postcss.Declaration.prototype;
 const CommentProto = postcss.Comment.prototype;
 
 const { isClean, my } = require('postcss/lib/symbols') as { isClean: symbol; my: symbol };
-
-// ─── Builder ──────────────────────────────────────────────────────────────────
 
 function buildNodeFromOffsets(buf: Buffer, css: string, input: postcss.Input): Root {
   // Align-safe Uint32Array view (host is LE on all Node.js platforms we target)
@@ -239,8 +231,6 @@ function buildNodeFromOffsets(buf: Buffer, css: string, input: postcss.Input): R
 
   return nodes[0] as Root;
 }
-
-// ─── Public API ───────────────────────────────────────────────────────────────
 
 export interface ParseOptions {
   from?: string;

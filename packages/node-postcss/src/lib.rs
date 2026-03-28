@@ -63,20 +63,17 @@ impl Task for AsyncOffsetTask {
 /// constants derived directly from the Rust struct rather than magic numbers.
 #[napi(object)]
 pub struct NodeSlotLayout {
-    // ── node type constants ───────────────────────────────────────────────────
     pub type_root:    u32,
     pub type_rule:    u32,
     pub type_decl:    u32,
     pub type_atrule:  u32,
     pub type_comment: u32,
 
-    // ── sentinel & stride ────────────────────────────────────────────────────
     /// u32 slots per node (= 25)
     pub stride: u32,
     /// Absent-field sentinel (= 0xFFFF_FFFF)
     pub absent: u32,
 
-    // ── slot indices within each node block ───────────────────────────────────
     pub idx_type_tag:           u32,
     pub idx_parent_idx:         u32,
     pub idx_source_start_off:   u32,
@@ -103,7 +100,6 @@ pub struct NodeSlotLayout {
     pub idx_clean_start:        u32,
     pub idx_clean_end:          u32,
 
-    // ── flag bit masks ────────────────────────────────────────────────────────
     pub flag_important:        u32,
     pub flag_semi_present:     u32,
     pub flag_semi_value:       u32,
