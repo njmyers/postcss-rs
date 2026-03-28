@@ -22,6 +22,7 @@ import {
   parseRustOnlySync,
   parseJsonOnlySync,
   parseOffsetsRustOnlySync,
+  parseOffsetsSyncFast,
 } from '../src/index';
 import postcss from 'postcss';
 
@@ -39,6 +40,9 @@ function makeSyncSuite(name: string, css: string) {
     }),
     b.add('postcss-rs Offsets', () => {
       parseOffsetsSync(css);
+    }),
+    b.add('postcss-rs Offsets (fast/no-alloc)', () => {
+      parseOffsetsSyncFast(css);
     }),
     b.add('postcss (JS)', () => {
       processor.process(css, { from: undefined }).sync().root;

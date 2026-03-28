@@ -43,7 +43,7 @@ impl Declaration {
         // and adding them to the 'before' raw field
         let (actual_prop, ie_hack_prefix) = Self::extract_ie_hack_prefix(prop.value);
         if let Some(prefix) = ie_hack_prefix {
-            builder.append_to_before(&prefix);
+            builder.append_to_before(prefix);
         }
 
         // Phase 1: Process tokens before and including the colon
@@ -140,7 +140,7 @@ impl Declaration {
 
                 // Comment handling in value
                 Kind::Comment => {
-                    let before_content = statement.values_clean.is_empty() && !statement.is_open();
+                    let before_content = statement.clean_is_empty() && !statement.is_open();
                     let next_is_fn = Self::next_is_open_bracket(tokenizer);
                     match (before_content, next_is_fn) {
                         (true, true) => {
@@ -164,7 +164,7 @@ impl Declaration {
 
                 Kind::Space => {
                     // Check if clean value is empty (ignore raw-only tokens like stripped comments)
-                    if statement.values_clean.is_empty() && !statement.is_open() {
+                    if statement.clean_is_empty() && !statement.is_open() {
                         // Space before any value content - hold in pending
                         pending_spaces.push(token);
                     } else {
@@ -188,7 +188,10 @@ impl Declaration {
                                 statement.push_token_slice(&token, 0, bang_pos);
                             }
                             // Combine trailing spaces with the raw important
-                            important_raw = Some(format!("{}{}", trailing_spaces, raw));
+                            let mut imp = String::with_capacity(trailing_spaces.len() + raw.len());
+                            imp.push_str(&trailing_spaces);
+                            imp.push_str(&raw);
+                            important_raw = Some(imp);
                         }
                         ImportantResult::NotImportant => {
                             // Contains ! but not important
@@ -225,15 +228,29 @@ impl Declaration {
         if !pending_spaces.is_empty() {
             // Declaration ended with only spaces - they should be the value
             for space in pending_spaces.iter() {
-                statement.push(space.clone());
+                statement.push(*space);
             }
         }
 
-        // Get raw value first (preserves all spacing and comments)
-        let raw_value = statement.to_string();
+        // Get raw and clean values.  For the common case (no inline comments)
+        // we can slice the original CSS directly — zero allocation.
+        let css = tokenizer.source();
 
-        // Use clean value (without comments) as the main value
-        let clean_value_base = statement.to_string_clean();
+        let (raw_start, raw_end) = statement.raw_span();
+        let raw_value: &str = &css[raw_start..raw_end];
+
+        // Determine clean value:
+        //  - If no comments were stripped (clean_span returns Some), the clean
+        //    value is a sub-slice of the CSS — still zero allocation.
+        //  - If comments were stripped (gaps exist) we must allocate a String.
+        let clean_value_owned: Option<String>; // only allocated when needed
+        let clean_value_base: &str = match statement.clean_span() {
+            Some((cs, ce)) => &css[cs..ce],
+            None => {
+                clean_value_owned = Some(statement.to_string_clean());
+                clean_value_owned.as_deref().unwrap()
+            }
+        };
 
         // Trim trailing whitespace only when:
         // 1. Comments were removed (raw != clean)
@@ -241,22 +258,22 @@ impl Declaration {
         // 3. The value has actual content (not just whitespace)
         // This handles cases like "a/* comment */ b  " where removing the comment leaves trailing spaces
         // But preserves whitespace-only values like "/**/ " which should become " "
-        let clean_value = if raw_value != clean_value_base
+        let clean_value: &str = if raw_value != clean_value_base
             && terminator.ended_by == Some(Kind::Semicolon)
             && !clean_value_base.trim().is_empty()
         {
-            clean_value_base.trim_end().to_string()
+            clean_value_base.trim_end()
         } else {
             clean_value_base
         };
 
         let important = important_raw.as_ref().map(|_| true);
-        let declaration = Self::new(&actual_prop, &clean_value, important);
+        let declaration = Self::new(actual_prop, clean_value, important);
         builder.declaration(declaration);
 
         // If raw differs from clean (inline comments were stripped or whitespace differs), store both in raws.value
         if raw_value != clean_value {
-            builder.value_raw(&clean_value, &raw_value);
+            builder.value_raw(clean_value, raw_value);
         }
 
         // If important was found, store the raw important string
@@ -363,12 +380,10 @@ impl Declaration {
         raw
     }
 
-    /// Check if a string could be a prefix of "important" (case-insensitive)
+    /// Check if a string could be a prefix of "important" (case-insensitive, zero-alloc).
     fn could_be_important_prefix(s: &str) -> bool {
-        if s.is_empty() {
-            return true;
-        }
-        "important".to_lowercase().starts_with(&s.to_lowercase())
+        let n = s.len();
+        n == 0 || (n <= 9 && "important"[..n].eq_ignore_ascii_case(s))
     }
 
     /// Return the kind of the token after the next one (skips one token ahead).
@@ -386,13 +401,14 @@ impl Declaration {
         matches!(tokenizer.peek(), Some(t) if t.kind == Kind::Brackets && t.value.starts_with('('))
     }
 
-    /// Extract IE hack prefix (* or _) from property name
-    /// Returns (actual_property_name, optional_ie_hack_prefix)
-    fn extract_ie_hack_prefix(prop: &str) -> (String, Option<String>) {
-        match prop.chars().next() {
-            Some('*') => (prop[1..].to_string(), Some("*".to_string())),
-            Some('_') => (prop[1..].to_string(), Some("_".to_string())),
-            _ => (prop.to_string(), None),
+    /// Extract IE hack prefix (* or _) from property name.
+    /// Returns `(actual_property_name, optional_ie_hack_prefix)` as `&str` slices
+    /// — zero allocation for the common case of no IE prefix.
+    fn extract_ie_hack_prefix(prop: &str) -> (&str, Option<&'static str>) {
+        match prop.as_bytes().first() {
+            Some(b'*') => (&prop[1..], Some("*")),
+            Some(b'_') => (&prop[1..], Some("_")),
+            _ => (prop, None),
         }
     }
 }

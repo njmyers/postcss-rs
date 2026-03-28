@@ -305,7 +305,13 @@ impl Params {
         }
         // Otherwise, buffered spaces are trailing and should not be part of the at-rule
 
-        return (statement.to_string(), terminator, params_end_pos);
+        // Build the params string from the raw CSS span when possible (avoids
+        // iterating all tokens and re-concatenating their values).
+        let css = tokenizer.source();
+        let (rs, re) = statement.raw_span();
+        let params = css[rs..re].to_string();
+
+        return (params, terminator, params_end_pos);
     }
 
     /// Set the spaces for the parent node builder depending on whether the param exists or not.

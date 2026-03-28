@@ -26,6 +26,7 @@ export {
   parseOffsetsSync,
   parseOffsetsAsync,
   parseOffsetsRustOnlySync,
+  parseOffsetsSyncFast,
 } from './parsers/offset';
 
 import { parseOffsetsSync } from './parsers/offset';
