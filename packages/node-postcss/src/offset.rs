@@ -34,48 +34,89 @@ impl NodeType {
 /// constants derived directly from the Rust struct rather than magic numbers.
 #[napi(object)]
 pub struct NodeSlotLayout {
+    /// `type_tag` value for a Root node
     pub type_root:    u32,
+    /// `type_tag` value for a Rule node
     pub type_rule:    u32,
+    /// `type_tag` value for a Declaration node
     pub type_decl:    u32,
+    /// `type_tag` value for an AtRule node
     pub type_atrule:  u32,
+    /// `type_tag` value for a Comment node
     pub type_comment: u32,
 
-    /// u32 slots per node (= 25)
+    /// Number of u32 slots per node in the buffer (= 25)
     pub stride: u32,
-    /// Absent-field sentinel (= 0xFFFF_FFFF)
+    /// Sentinel value meaning a field is absent/null (= 0xFFFF_FFFF)
     pub absent: u32,
 
+    /// Slot index of the node type tag (see `type_*` constants)
     pub idx_type_tag:           u32,
+    /// Slot index of the parent node's index in the flat array; `absent` for the root
     pub idx_parent_idx:         u32,
+    /// Slot index of `source.start` JS char offset
     pub idx_source_start_off:   u32,
+    /// Slot index of `source.start` 1-based line number
     pub idx_source_start_line:  u32,
+    /// Slot index of `source.start` 1-based column number
     pub idx_source_start_col:   u32,
+    /// Slot index of `source.end` JS char offset; `absent` if missing
     pub idx_source_end_off:     u32,
+    /// Slot index of `source.end` 1-based line number
     pub idx_source_end_line:    u32,
+    /// Slot index of `source.end` 1-based column number
     pub idx_source_end_col:     u32,
+    /// Slot index of field1 start: selector (Rule), prop (Decl), name (AtRule), text (Comment)
     pub idx_field1_start:       u32,
+    /// Slot index of field1 end (exclusive)
     pub idx_field1_end:         u32,
+    /// Slot index of field2 start: value (Decl), params (AtRule); `absent` if not present
     pub idx_field2_start:       u32,
+    /// Slot index of field2 end (exclusive)
     pub idx_field2_end:         u32,
+    /// Slot index of `raws.before` start; `absent` if not present
     pub idx_raws_before_start:  u32,
+    /// Slot index of `raws.before` end (exclusive)
     pub idx_raws_before_end:    u32,
+    /// Slot index of `raws.between` start; `absent` if not present
     pub idx_raws_between_start: u32,
+    /// Slot index of `raws.between` end (exclusive)
     pub idx_raws_between_end:   u32,
+    /// Slot index of `raws.after` start; `absent` if not present
     pub idx_raws_after_start:   u32,
+    /// Slot index of `raws.after` end (exclusive)
     pub idx_raws_after_end:     u32,
+    /// Slot index of extra1 start: `raws.afterName` (AtRule), `raws.left` (Comment),
+    /// `raws.ownSemicolon` (Rule); `absent` if not present
     pub idx_raws_extra1_start:  u32,
+    /// Slot index of extra1 end (exclusive)
     pub idx_raws_extra1_end:    u32,
+    /// Slot index of extra2 start: `raws.important` (Decl), `raws.right` (Comment);
+    /// `absent` if not present
     pub idx_raws_extra2_start:  u32,
+    /// Slot index of extra2 end (exclusive)
     pub idx_raws_extra2_end:    u32,
+    /// Slot index of the bit-flag word (see `flag_*` constants)
     pub idx_flags:              u32,
+    /// Slot index of clean-string start in the trailing UTF-8 string table;
+    /// only meaningful when `flag_has_clean_str` is set
     pub idx_clean_start:        u32,
+    /// Slot index of clean-string end (exclusive) in the string table
     pub idx_clean_end:          u32,
 
+    /// Flag bit: declaration has `!important`
     pub flag_important:        u32,
+    /// Flag bit: root/rule has an explicit trailing semicolon in `raws.semicolon`
     pub flag_semi_present:     u32,
+    /// Flag bit: the `raws.semicolon` value is `true` (semicolon present after last child)
     pub flag_semi_value:       u32,
+    /// Flag bit: a clean string is stored in the trailing table (selector or value
+    /// differs from its raw CSS form)
     pub flag_has_clean_str:    u32,
+    /// Flag bit: the clean string belongs to field2 (declaration value);
+    /// when clear it belongs to field1 (rule selector)
     pub flag_clean_is_field2:  u32,
+    /// Flag bit: node has a `nodes` array (rule, at-rule with block)
     pub flag_has_nodes:        u32,
 }
 
