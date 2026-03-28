@@ -2,12 +2,26 @@
  * Basic tests for @postcss-rs/node-postcss
  */
 
-import { parse } from '../src/index';
+import {
+  parseJsonAsync,
+  parseJsonSync,
+  parseOffsetsSync,
+  parseOffsetsAsync,
+} from '../src/index';
 import * as postcss from 'postcss';
 import type { Root, Rule, Declaration } from 'postcss';
 import { describe, test, expect } from 'vitest';
 
-describe('@postcss-rs/node-postcss', () => {
+type ParseFn = (css: string) => Root | Promise<Root>;
+
+const parsers: Array<[string, ParseFn]> = [
+  ['parseJsonAsync', css => parseJsonAsync(css)],
+  ['parseJsonSync', css => parseJsonSync(css)],
+  ['parseOffsetsSync', css => parseOffsetsSync(css)],
+  ['parseOffsetsAsync', css => parseOffsetsAsync(css)],
+];
+
+describe.each(parsers)('@postcss-rs/node-postcss (%s)', (_name, parse) => {
   test('Parse simple CSS', async () => {
     const root = await parse('.test { color: red; }');
     expect(root.type).toBe('root');
@@ -85,7 +99,9 @@ describe('@postcss-rs/node-postcss', () => {
   test('Works with autoprefixer plugin', async () => {
     const autoprefixer = require('autoprefixer');
     const root = await parse('.test { display: flex; }');
-    const result = await postcss.default([autoprefixer]).process(root, { from: undefined });
+    const result = await postcss
+      .default([autoprefixer])
+      .process(root, { from: undefined });
     expect(result.css).toContain('display');
   });
 });

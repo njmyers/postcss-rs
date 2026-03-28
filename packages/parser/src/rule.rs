@@ -1,8 +1,8 @@
+use crate::rule_word::RuleWord;
 use crate::Declaration;
 use crate::Node;
 use crate::NodeBuilder;
 use crate::Statement;
-use crate::rule_word::RuleWord;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -122,7 +122,11 @@ impl Rule {
         return Self { selector };
     }
 
-    fn create_comment(token: Token<'_>, tokenizer: &mut Tokenizer<'_>, spaces: &[Token<'_>]) -> Node {
+    fn create_comment(
+        token: Token<'_>,
+        tokenizer: &mut Tokenizer<'_>,
+        spaces: &[Token<'_>],
+    ) -> Node {
         return crate::Comment::create(token, tokenizer, spaces);
     }
 
@@ -134,7 +138,9 @@ impl Rule {
     /// - Offset behavior:
     ///   - Just ";": offset points AT the newline
     ///   - " ;": offset points AFTER the newline (without consuming it)
-    fn consume_trailing_semicolon(tokenizer: &mut Tokenizer<'_>) -> Option<(crate::Source, String)> {
+    fn consume_trailing_semicolon(
+        tokenizer: &mut Tokenizer<'_>,
+    ) -> Option<(crate::Source, String)> {
         let cp = tokenizer.checkpoint();
         let mut has_space_before = false;
         let mut own_semicolon = String::new();
@@ -143,7 +149,7 @@ impl Rule {
         while let Some(token) = tokenizer.peek() {
             if token.kind == Kind::Space && !Self::is_newline(&token) {
                 has_space_before = true;
-                own_semicolon.push_str(&token.value);
+                own_semicolon.push_str(token.value);
                 tokenizer.next();
             } else {
                 break;
@@ -218,19 +224,23 @@ impl Selector {
             match tokenizer.next() {
                 None => break false,
                 Some(t) if t.kind == Kind::Space => continue,
-                Some(t) if matches!(
-                    t.kind,
-                    Kind::Word
-                    | Kind::Colon
-                    | Kind::Brackets
-                    | Kind::OpenSquare
-                    | Kind::CloseSquare
-                    | Kind::String
-                    | Kind::Semicolon
-                    | Kind::OpenCurvy
-                    | Kind::CloseCurvy
-                    | Kind::Comment
-                ) => break true,
+                Some(t)
+                    if matches!(
+                        t.kind,
+                        Kind::Word
+                            | Kind::Colon
+                            | Kind::Brackets
+                            | Kind::OpenSquare
+                            | Kind::CloseSquare
+                            | Kind::String
+                            | Kind::Semicolon
+                            | Kind::OpenCurvy
+                            | Kind::CloseCurvy
+                            | Kind::Comment
+                    ) =>
+                {
+                    break true
+                }
                 _ => break false,
             }
         };
@@ -239,7 +249,11 @@ impl Selector {
     }
 
     /// A builder struct used for creating a rule selector.
-    pub fn create(token: Token<'_>, tokenizer: &mut Tokenizer<'_>, builder: &mut NodeBuilder) -> String {
+    pub fn create(
+        token: Token<'_>,
+        tokenizer: &mut Tokenizer<'_>,
+        builder: &mut NodeBuilder,
+    ) -> String {
         if token.kind == Kind::OpenCurly {
             builder.ensure_empty_after();
             builder.ensure_empty_between();

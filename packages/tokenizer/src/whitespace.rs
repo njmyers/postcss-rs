@@ -11,7 +11,10 @@ pub struct Whitespace;
 impl Whitespace {
     /// Returns `true` if `byte` is a CSS whitespace character.
     pub fn test(byte: u8) -> bool {
-        matches!(byte, TAB | NEWLINE | VERTICAL_TAB | FORM_FEED | CARRIAGE_RETURN | SPACE)
+        matches!(
+            byte,
+            TAB | NEWLINE | VERTICAL_TAB | FORM_FEED | CARRIAGE_RETURN | SPACE
+        )
     }
 
     /// Returns the index of the last whitespace byte in a run of whitespace.

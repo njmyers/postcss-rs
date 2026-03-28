@@ -96,13 +96,31 @@ impl Bracket {
         if Self::is_prev_url_token(prev) {
             return !matches!(
                 next,
-                SINGLE_QUOTE | DOUBLE_QUOTE | SPACE | NEWLINE | TAB | VERTICAL_TAB | FORM_FEED | CARRIAGE_RETURN
+                SINGLE_QUOTE
+                    | DOUBLE_QUOTE
+                    | SPACE
+                    | NEWLINE
+                    | TAB
+                    | VERTICAL_TAB
+                    | FORM_FEED
+                    | CARRIAGE_RETURN
             );
         }
 
         return !matches!(
             next,
-            OPEN_PAREN | SINGLE_QUOTE | DOUBLE_QUOTE | SPACE | NEWLINE | TAB | FORWARD_SLASH | BACKSLASH | VERTICAL_TAB | FORM_FEED | CARRIAGE_RETURN | NULL_BYTE
+            OPEN_PAREN
+                | SINGLE_QUOTE
+                | DOUBLE_QUOTE
+                | SPACE
+                | NEWLINE
+                | TAB
+                | FORWARD_SLASH
+                | BACKSLASH
+                | VERTICAL_TAB
+                | FORM_FEED
+                | CARRIAGE_RETURN
+                | NULL_BYTE
         );
     }
 

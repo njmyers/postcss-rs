@@ -4,7 +4,7 @@ name = "postcss-rs-node-postcss"
 version = "0.0.0"
 
 [lib]
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 napi = { version = "3" }
@@ -12,6 +12,15 @@ napi-derive = "3"
 postcss-rs-parser = { path = "../parser" }
 postcss-rs-stringifier = { path = "../stringifier" }
 serde_json = "1.0"
+sonic-rs   = "0.5"
+bytemuck   = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "parse"
+harness = false
 
 [build-dependencies]
 napi-build = "2"

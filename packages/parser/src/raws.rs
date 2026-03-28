@@ -82,7 +82,7 @@ impl Raw {
     /// assert_eq!(&raw, &"\n");
     /// ```
     pub fn push(&mut self, token: &Token<'_>) {
-        self.push_str(&token.value);
+        self.push_str(token.value);
     }
 
     /// Push a new string slice to a raw value
@@ -266,7 +266,13 @@ mod tests {
     use postcss_rs_tokenizer::{Kind, Token};
 
     fn space_token<'a>(value: &'a str) -> Token<'a> {
-        Token { kind: Kind::Space, value, start: 0, end: value.len(), column: 1 }
+        Token {
+            kind: Kind::Space,
+            value,
+            start: 0,
+            end: value.len(),
+            column: 1,
+        }
     }
 
     // ---- Raw tests ----

@@ -20,7 +20,7 @@
     "build:ts": "tsc",
     "clean": "rm -rf dist",
     "prepublishOnly": "napi pre-publish -t npm",
-    "bench": "vitest bench",
+    "bench": "tsx benches/parse.bench.ts",
     "test": "vitest run",
     "version": "napi version"
   },
@@ -32,7 +32,9 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^20.0.0",
     "autoprefixer": "^10.0.0",
+    "benny": "^3.7.1",
     "postcss-parser-tests": "workspace:^",
+    "tsx": "^4.21.0",
     "typescript": "^5.0.0",
     "vitest": "^3.0.0"
   },

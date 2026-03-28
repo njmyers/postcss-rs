@@ -18,9 +18,7 @@ fn parse(css: &str) {
 }
 
 fn bench_parse_small(c: &mut Criterion) {
-    c.bench_function("parse/small", |b| {
-        b.iter(|| parse(black_box(SMALL_CSS)))
-    });
+    c.bench_function("parse/small", |b| b.iter(|| parse(black_box(SMALL_CSS))));
 }
 
 fn bench_parse_fixtures(c: &mut Criterion) {
@@ -67,8 +65,10 @@ fn bench_parse_all_fixtures_combined(c: &mut Criterion) {
 }
 
 fn make_large_css() -> String {
-    (0..50).map(|i| format!(
-        ".component-{i} {{\
+    (0..50)
+        .map(|i| {
+            format!(
+                ".component-{i} {{\
             \n  display: flex;\
             \n  flex-direction: column;\
             \n  padding: {p0}px {p1}px;\
@@ -87,8 +87,17 @@ fn make_large_css() -> String {
             \n@media (max-width: {mq}px) {{\
             \n  .component-{i} {{ padding: 8px; }}\
             \n}}\n",
-        i=i, p0=8+i, p1=16+i, m=4+i, h=i*7, br=4+(i%8), fs=12+(i%6), mq=320+i*10,
-    )).collect()
+                i = i,
+                p0 = 8 + i,
+                p1 = 16 + i,
+                m = 4 + i,
+                h = i * 7,
+                br = 4 + (i % 8),
+                fs = 12 + (i % 6),
+                mq = 320 + i * 10,
+            )
+        })
+        .collect()
 }
 
 fn bench_parse_large_synthetic(c: &mut Criterion) {

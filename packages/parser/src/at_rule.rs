@@ -273,9 +273,16 @@ impl Params {
 
                 // Handle all other content tokens - update end position after each.
                 // OpenCurly/CloseCurly only reach here when statement.is_open() (guarded in peek loop above).
-                Kind::Word | Kind::Brackets | Kind::Colon | Kind::String |
-                Kind::OpenSquare | Kind::CloseSquare | Kind::OpenCurvy | Kind::CloseCurvy |
-                Kind::OpenCurly | Kind::CloseCurly => {
+                Kind::Word
+                | Kind::Brackets
+                | Kind::Colon
+                | Kind::String
+                | Kind::OpenSquare
+                | Kind::CloseSquare
+                | Kind::OpenCurvy
+                | Kind::CloseCurvy
+                | Kind::OpenCurly
+                | Kind::CloseCurly => {
                     statement.push(token);
                     params_end_pos = Some(crate::Source::create_end(tokenizer));
                 }
@@ -288,7 +295,10 @@ impl Params {
         Self::spaces(&statement, parent, &spaces);
 
         // Only add buffered spaces to 'between' if there's a body (OpenCurly terminator)
-        if matches!(terminator.ended_by, Some(Kind::OpenCurly) | Some(Kind::CloseCurly)) {
+        if matches!(
+            terminator.ended_by,
+            Some(Kind::OpenCurly) | Some(Kind::CloseCurly)
+        ) {
             for token in between_buffer.iter() {
                 parent.between(token);
             }

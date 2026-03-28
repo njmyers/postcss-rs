@@ -357,7 +357,8 @@ impl NodeBuilder {
         if self.node.source.end.is_none() {
             self.node.source.end = if self.node.has_nodes() {
                 // Non-empty root: extend one position past the last child's end
-                self.node.nodes
+                self.node
+                    .nodes
                     .as_ref()
                     .and_then(|nodes| nodes.last())
                     .and_then(|last| last.source.end.as_ref())

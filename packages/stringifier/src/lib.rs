@@ -154,7 +154,7 @@ impl Stringifier {
         match node.raws.semicolon.as_ref() {
             Some(true) => self.output.push(';'),
             Some(false) => {} // No semicolon
-            None => {}  // Default: no semicolon
+            None => {}        // Default: no semicolon
         }
     }
 
@@ -206,7 +206,7 @@ impl Stringifier {
             // Statement at-rule - emit semicolon
             match node.raws.semicolon.as_ref() {
                 Some(true) => self.output.push(';'),
-                Some(false) => {} // No semicolon
+                Some(false) => {}              // No semicolon
                 None => self.output.push(';'), // Default: semicolon for at-rules
             }
         }
