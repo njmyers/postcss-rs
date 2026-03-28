@@ -33,6 +33,7 @@ impl NodeType {
 /// Exported via `postcss.nodeSlotLayout()` so TypeScript can use named
 /// constants derived directly from the Rust struct rather than magic numbers.
 #[napi(object)]
+#[allow(dead_code)]
 pub struct NodeSlotLayout {
     /// `type_tag` value for a Root node
     pub type_root: u32,
@@ -124,6 +125,7 @@ impl NodeSlotLayout {
     /// Build the layout descriptor from the actual `NodeSlot` memory layout.
     /// Field indices are derived via `offset_of!` so they stay in sync with
     /// the Rust struct automatically.
+    #[allow(dead_code)]
     pub fn build() -> Self {
         use std::mem::offset_of;
         NodeSlotLayout {
