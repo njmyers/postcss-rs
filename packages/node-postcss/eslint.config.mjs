@@ -23,6 +23,8 @@ export default [
       // CJS TypeScript projects don't use file extensions in imports
       'import/extensions': 'off',
       'n/global-require': 'off',
+      // const is clearer than let for non-reassigned bindings
+      'prefer-let/prefer-let': 'off',
     },
   },
   {

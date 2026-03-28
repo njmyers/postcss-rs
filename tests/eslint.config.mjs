@@ -5,6 +5,11 @@ export default [
   ...loguxTsConfig,
   prettierPlugin,
   {
+    rules: {
+      'prefer-let/prefer-let': 'off'
+    }
+  },
+  {
     files: ['test/update.js'],
     rules: {
       'n/no-missing-require': 'off'

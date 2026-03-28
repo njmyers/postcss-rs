@@ -37,12 +37,12 @@ class RustProcessor extends postcss.Processor {
   }
 
   process(css: Root | string, opts: ProcessOptions = {}): any {
-    let mergedOpts: ProcessOptions = { ...opts };
+    const mergedOpts: ProcessOptions = { ...opts };
     if (typeof css === 'string') {
       if (!mergedOpts.parser) {
         mergedOpts.parser = {
           parse: (cssStr: { toString(): string } | string, parseOpts?: any) => {
-            let cssString =
+            const cssString =
               typeof cssStr === 'string' ? cssStr : cssStr.toString();
             return parseOffsetsSync(cssString, parseOpts || {}) as any;
           },

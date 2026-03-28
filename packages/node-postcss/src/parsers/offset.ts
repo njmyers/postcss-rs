@@ -87,50 +87,50 @@ class OffsetParser {
     if (buf.byteOffset % 4 === 0) {
       view = new Uint32Array(buf.buffer, buf.byteOffset, buf.byteLength >>> 2);
     } else {
-      let copy = new Uint8Array(buf.byteLength);
+      const copy = new Uint8Array(buf.byteLength);
       copy.set(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
       view = new Uint32Array(copy.buffer);
     }
 
-    let nodeCount = view[0];
-    let stringTableBase = (1 + nodeCount * STRIDE) * 4;
-    let nodes: any[] = new Array(nodeCount);
+    const nodeCount = view[0];
+    const stringTableBase = (1 + nodeCount * STRIDE) * 4;
+    const nodes: any[] = new Array(nodeCount);
 
     for (let i = 0; i < nodeCount; i++) {
-      let slotOffset = 1 + i * STRIDE;
+      const slotOffset = 1 + i * STRIDE;
 
-      let type = view[slotOffset + IDX_TYPE_TAG];
-      let parentIdx = view[slotOffset + IDX_PARENT_IDX];
-      let sourceStartOffset = view[slotOffset + IDX_SOURCE_START_OFFSET];
-      let sourceStartLine = view[slotOffset + IDX_SOURCE_START_LINE];
-      let sourceStartColumn = view[slotOffset + IDX_SOURCE_START_COLUMN];
-      let sourceEndOffset = view[slotOffset + IDX_SOURCE_END_OFFSET];
-      let sourceEndLine = view[slotOffset + IDX_SOURCE_END_LINE];
-      let sourceEndColumn = view[slotOffset + IDX_SOURCE_END_COLUMN];
-      let field1Start = view[slotOffset + IDX_FIELD1_START];
-      let field1End = view[slotOffset + IDX_FIELD1_END];
-      let field2Start = view[slotOffset + IDX_FIELD2_START];
-      let field2End = view[slotOffset + IDX_FIELD2_END];
-      let rawsBeforeStart = view[slotOffset + IDX_RAWS_BEFORE_START];
-      let rawsBeforeEnd = view[slotOffset + IDX_RAWS_BEFORE_END];
-      let rawsBetweenStart = view[slotOffset + IDX_RAWS_BETWEEN_START];
-      let rawsBetweenEnd = view[slotOffset + IDX_RAWS_BETWEEN_END];
-      let rawsAfterStart = view[slotOffset + IDX_RAWS_AFTER_START];
-      let rawsAfterEnd = view[slotOffset + IDX_RAWS_AFTER_END];
-      let rawsExtra1Start = view[slotOffset + IDX_RAWS_EXTRA1_START];
-      let rawsExtra1End = view[slotOffset + IDX_RAWS_EXTRA1_END];
-      let rawsExtra2Start = view[slotOffset + IDX_RAWS_EXTRA2_START];
-      let rawsExtra2End = view[slotOffset + IDX_RAWS_EXTRA2_END];
-      let flags = view[slotOffset + IDX_FLAGS];
-      let cleanStart = view[slotOffset + IDX_CLEAN_START];
-      let cleanEnd = view[slotOffset + IDX_CLEAN_END];
+      const type = view[slotOffset + IDX_TYPE_TAG];
+      const parentIdx = view[slotOffset + IDX_PARENT_IDX];
+      const sourceStartOffset = view[slotOffset + IDX_SOURCE_START_OFFSET];
+      const sourceStartLine = view[slotOffset + IDX_SOURCE_START_LINE];
+      const sourceStartColumn = view[slotOffset + IDX_SOURCE_START_COLUMN];
+      const sourceEndOffset = view[slotOffset + IDX_SOURCE_END_OFFSET];
+      const sourceEndLine = view[slotOffset + IDX_SOURCE_END_LINE];
+      const sourceEndColumn = view[slotOffset + IDX_SOURCE_END_COLUMN];
+      const field1Start = view[slotOffset + IDX_FIELD1_START];
+      const field1End = view[slotOffset + IDX_FIELD1_END];
+      const field2Start = view[slotOffset + IDX_FIELD2_START];
+      const field2End = view[slotOffset + IDX_FIELD2_END];
+      const rawsBeforeStart = view[slotOffset + IDX_RAWS_BEFORE_START];
+      const rawsBeforeEnd = view[slotOffset + IDX_RAWS_BEFORE_END];
+      const rawsBetweenStart = view[slotOffset + IDX_RAWS_BETWEEN_START];
+      const rawsBetweenEnd = view[slotOffset + IDX_RAWS_BETWEEN_END];
+      const rawsAfterStart = view[slotOffset + IDX_RAWS_AFTER_START];
+      const rawsAfterEnd = view[slotOffset + IDX_RAWS_AFTER_END];
+      const rawsExtra1Start = view[slotOffset + IDX_RAWS_EXTRA1_START];
+      const rawsExtra1End = view[slotOffset + IDX_RAWS_EXTRA1_END];
+      const rawsExtra2Start = view[slotOffset + IDX_RAWS_EXTRA2_START];
+      const rawsExtra2End = view[slotOffset + IDX_RAWS_EXTRA2_END];
+      const flags = view[slotOffset + IDX_FLAGS];
+      const cleanStart = view[slotOffset + IDX_CLEAN_START];
+      const cleanEnd = view[slotOffset + IDX_CLEAN_END];
 
-      let start = {
+      const start = {
         column: sourceStartColumn,
         line: sourceStartLine,
         offset: sourceStartOffset,
       };
-      let source: any =
+      const source: any =
         sourceEndOffset !== ABSENT
           ? {
               end: {
@@ -143,7 +143,7 @@ class OffsetParser {
             }
           : { input, start };
 
-      let raws: any = {};
+      const raws: any = {};
       if (rawsBeforeStart !== ABSENT) {
         raws.before = css.slice(rawsBeforeStart, rawsBeforeEnd);
       }
@@ -227,7 +227,7 @@ class OffsetParser {
       node.source = source;
 
       if (parentIdx !== ABSENT) {
-        let parent = nodes[parentIdx];
+        const parent = nodes[parentIdx];
         if (parent.nodes === undefined) {
           parent.nodes = [];
         }
@@ -252,7 +252,7 @@ class OffsetParser {
     flags: number,
     raws: any
   ): any {
-    let node = Object.create(AtRuleProto);
+    const node = Object.create(AtRuleProto);
     node[isClean] = false;
     node[my] = true;
     node.type = 'atrule';
@@ -279,7 +279,7 @@ class OffsetParser {
     rawsExtra2End: number,
     raws: any
   ): any {
-    let node = Object.create(CommentProto);
+    const node = Object.create(CommentProto);
     node[isClean] = false;
     node[my] = true;
     node.type = 'comment';
@@ -309,14 +309,14 @@ class OffsetParser {
     cleanEnd: number,
     raws: any
   ): any {
-    let node = Object.create(DeclProto);
+    const node = Object.create(DeclProto);
     node[isClean] = false;
     node[my] = true;
     node.type = 'decl';
     node.prop = css.slice(field1Start, field1End);
-    let rawValue = css.slice(field2Start, field2End);
+    const rawValue = css.slice(field2Start, field2End);
     if (flags & FLAG_HAS_CLEAN_STRING) {
-      let cleanValue = buf.toString(
+      const cleanValue = buf.toString(
         'utf8',
         stringTableBase + cleanStart,
         stringTableBase + cleanEnd
@@ -337,7 +337,7 @@ class OffsetParser {
   }
 
   private static parseRoot(raws: any): any {
-    let node = Object.create(RootProto);
+    const node = Object.create(RootProto);
     node[isClean] = false;
     node[my] = true;
     node.type = 'root';
@@ -359,14 +359,14 @@ class OffsetParser {
     cleanEnd: number,
     raws: any
   ): any {
-    let node = Object.create(RuleProto);
+    const node = Object.create(RuleProto);
     node[isClean] = false;
     node[my] = true;
     node.type = 'rule';
     node.nodes = [];
-    let rawSelector = css.slice(field1Start, field1End);
+    const rawSelector = css.slice(field1Start, field1End);
     if (flags & FLAG_HAS_CLEAN_STRING) {
-      let cleanSelector = buf.toString(
+      const cleanSelector = buf.toString(
         'utf8',
         stringTableBase + cleanStart,
         stringTableBase + cleanEnd
@@ -391,8 +391,8 @@ export interface ParseOptions {
 
 /** Synchronous offset-array parse — fastest path for large CSS. */
 export function parseOffsetsSync(css: string, opts: ParseOptions = {}): Root {
-  let buf = bindings.postcss.parseToOffsetsSync(css, opts.from ?? null);
-  let input = new postcss.Input(css, { from: opts.from });
+  const buf = bindings.postcss.parseToOffsetsSync(css, opts.from ?? null);
+  const input = new postcss.Input(css, { from: opts.from });
   return OffsetParser.parse(buf, css, input);
 }
 
@@ -401,8 +401,11 @@ export async function parseOffsetsAsync(
   css: string,
   opts: ParseOptions = {}
 ): Promise<Root> {
-  let buf = await bindings.postcss.parseToOffsetsAsync(css, opts.from ?? null);
-  let input = new postcss.Input(css, { from: opts.from });
+  const buf = await bindings.postcss.parseToOffsetsAsync(
+    css,
+    opts.from ?? null
+  );
+  const input = new postcss.Input(css, { from: opts.from });
   return OffsetParser.parse(buf, css, input);
 }
 

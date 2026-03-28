@@ -85,7 +85,7 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
 
   node.raws = json.raws;
 
-  let s = json.source;
+  const s = json.source;
   node.source = s.end
     ? { end: s.end, input, start: s.start }
     : { input, start: s.start };
@@ -94,10 +94,10 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
     node.parent = parent;
   }
 
-  let rawChildren = json.nodes;
+  const rawChildren = json.nodes;
   if (rawChildren) {
-    let n = rawChildren.length;
-    let built = new Array(n);
+    const n = rawChildren.length;
+    const built = new Array(n);
     for (let i = 0; i < n; i++) {
       built[i] = buildNode(rawChildren[i], input, node);
     }
@@ -129,14 +129,17 @@ export async function parseJsonAsync(
   css: string,
   opts: ParseOptions = {}
 ): Promise<Root> {
-  let jsonStr = await bindings.postcss.parseToJsonAsync(css, opts.from ?? null);
-  let input = new postcss.Input(css, { from: opts.from });
+  const jsonStr = await bindings.postcss.parseToJsonAsync(
+    css,
+    opts.from ?? null
+  );
+  const input = new postcss.Input(css, { from: opts.from });
   return buildNode(JSON.parse(jsonStr), input, undefined) as Root;
 }
 
 /** Parse CSS into a PostCSS AST via JSON (sync, blocks the event loop). */
 export function parseJsonSync(css: string, opts: ParseOptions = {}): Root {
-  let jsonStr = bindings.postcss.parseToJsonSync(css, opts.from ?? null);
-  let input = new postcss.Input(css, { from: opts.from });
+  const jsonStr = bindings.postcss.parseToJsonSync(css, opts.from ?? null);
+  const input = new postcss.Input(css, { from: opts.from });
   return buildNode(JSON.parse(jsonStr), input, undefined) as Root;
 }
