@@ -2,7 +2,7 @@
  * Basic tests for @postcss-rs/node-postcss
  */
 
-import { parse } from '../src/index';
+import { parseJsonAsync as parse } from '../src/index';
 import * as postcss from 'postcss';
 import type { Root, Rule, Declaration } from 'postcss';
 import { describe, test, expect } from 'vitest';

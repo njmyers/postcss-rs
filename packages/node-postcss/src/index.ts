@@ -17,8 +17,8 @@ import type { Root, Plugin, Processor, ProcessOptions } from 'postcss';
 
 export type { ParseOptions } from './parsers/json';
 export {
-  parse,
-  parseSync,
+  parseJsonAsync,
+  parseJsonSync,
   parseRustOnlySync,
   parseJsonOnlySync,
 } from './parsers/json';
@@ -28,7 +28,7 @@ export {
   parseOffsetsRustOnlySync,
 } from './parsers/offset';
 
-import { parse } from './parsers/json';
+import { parseOffsetsSync } from './parsers/offset';
 
 /** PostCSS Processor subclass with Rust-powered parsing and postcss stringify. */
 class RustProcessor extends postcss.Processor {
@@ -43,7 +43,7 @@ class RustProcessor extends postcss.Processor {
         mergedOpts.parser = {
           parse: (cssStr: string | { toString(): string }, parseOpts?: any) => {
             const cssString = typeof cssStr === 'string' ? cssStr : cssStr.toString();
-            return parse(cssString, parseOpts || {}) as any;
+            return parseOffsetsSync(cssString, parseOpts || {}) as any;
           },
         };
       }

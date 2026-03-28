@@ -1,6 +1,6 @@
 import { eachTest, jsonify } from 'postcss-parser-tests';
 import { Input } from 'postcss';
-import { parse } from '../src/index';
+import { parseJsonAsync as parse } from '../src/index';
 
 function assignInput(node: any, input: Input): void {
   if (node.source) {
