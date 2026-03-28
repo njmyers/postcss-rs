@@ -191,9 +191,13 @@ impl OffsetSerializer {
                     let sel_raw = node.raws.selector.raw.as_deref().unwrap_or(&rule.selector);
                     // Selector may be preceded by a non-ASCII prefix (e.g. BOM) that is
                     // part of raws.before; find where sel_raw actually starts.
-                    let f1s = Self::find_field_js_start(css, src_start, sel_raw);
+                    let (f1s, f1s_byte) = Self::find_field_start(css, src_start, sel_raw);
+                    // The parser moves inter-selector whitespace (e.g. the space in ".a, .b")
+                    // into raws.between, so sel_raw (".a,.b") can be shorter than the actual
+                    // CSS span.  Walk both simultaneously to find the true CSS end.
+                    let actual_f1e = Self::find_selector_css_end(css, f1s_byte, f1s, sel_raw);
                     slot.field1_start = f1s;
-                    slot.field1_end   = f1s + Self::js_len(sel_raw);
+                    slot.field1_end   = actual_f1e;
 
                     // raws.before ends where the selector starts (overrides default src_start value)
                     let (rbs, rbe) = Self::encode_ends_at(&node.raws.before, f1s);
@@ -222,11 +226,20 @@ impl OffsetSerializer {
                     }
 
                     if node.raws.selector.raw.is_some() {
+                        // Inline comments: raw is sel_raw (with comments), clean is comment-stripped.
                         let clean = node.raws.selector.value.as_deref().unwrap_or(&rule.selector);
                         slot.clean_start = string_table.len() as u32;
                         string_table.extend_from_slice(clean.as_bytes());
                         slot.clean_end = string_table.len() as u32;
                         slot.flags |= Flags::HAS_CLEAN_STR; // clean_is_field2 left clear → field1
+                    } else if actual_f1e != f1s + Self::js_len(sel_raw) {
+                        // Inter-selector spaces: CSS span is wider than the stored selector.
+                        // Store the normalized selector as the clean value so the JS side
+                        // uses it (rule.selector = normalized) rather than the raw CSS slice.
+                        slot.clean_start = string_table.len() as u32;
+                        string_table.extend_from_slice(sel_raw.as_bytes());
+                        slot.clean_end = string_table.len() as u32;
+                        slot.flags |= Flags::HAS_CLEAN_STR;
                     }
                 }
 
@@ -361,21 +374,53 @@ impl OffsetSerializer {
         }
     }
 
-    /// Find the JS-char start index of `field` starting the search from `src_start`.
+    /// Find the actual CSS end position of a rule selector.
     ///
-    /// For typical ASCII CSS `field` begins right at `src_start`.
+    /// The parser moves inter-selector whitespace (e.g. the ` ` in `.a, .b`) into
+    /// `raws.between`, so the stored `sel_raw` (`.a,.b`) is shorter than the CSS
+    /// span.  This walks both strings simultaneously, skipping CSS whitespace that
+    /// is absent from `sel_raw`, and returns the JS-char end position.
+    ///
+    /// `byte_start` is the **byte** offset in `css` where `sel_raw` begins (may
+    /// differ from the JS-char offset `f1s` for non-ASCII prefixes like BOM).
+    fn find_selector_css_end(css: &str, byte_start: usize, f1s: u32, sel_raw: &str) -> u32 {
+        let mut css_chars = css[byte_start..].char_indices().peekable();
+        let mut sel_chars = sel_raw.chars().peekable();
+        let mut last_byte = 0usize;
+
+        while let Some(&sel_ch) = sel_chars.peek() {
+            match css_chars.next() {
+                None => break,
+                Some((i, css_ch)) => {
+                    last_byte = i + css_ch.len_utf8();
+                    if css_ch == sel_ch {
+                        sel_chars.next();
+                    } else if css_ch.is_whitespace() {
+                        // inter-selector whitespace in CSS; skip without advancing sel
+                    }
+                    // else: unexpected mismatch; advance css only
+                }
+            }
+        }
+
+        f1s + Self::js_len(&css[byte_start..byte_start + last_byte])
+    }
+
+    /// Find the JS-char start index AND byte offset of `field` in the CSS.
+    ///
+    /// Returns `(js_char_start, byte_start)`.  For typical ASCII CSS `field`
+    /// begins right at `src_start` so both values equal `src_start as usize`.
     /// Edge cases handled:
     ///  - Non-ASCII BOM or other multi-byte prefix at `src_start` (bom.css)
     ///  - IE hack prefix chars (`*`, `_`) for declarations (prop.css)
-    #[inline]
-    fn find_field_js_start(css: &str, src_start: u32, field: &str) -> u32 {
+    fn find_field_start(css: &str, src_start: u32, field: &str) -> (u32, usize) {
         if field.is_empty() {
-            return src_start;
+            return (src_start, src_start as usize);
         }
         let byte_pos = src_start as usize;
         // Fast path: field starts exactly at src_start (all ASCII, no prefix).
         if css.as_bytes().get(byte_pos).copied() == field.as_bytes().first().copied() {
-            return src_start;
+            return (src_start, byte_pos);
         }
         // Slow path: find field in the CSS from byte_pos, then convert the prefix
         // length to UTF-16 code units (JS char count) before adding to src_start.
@@ -383,7 +428,13 @@ impl OffsetSerializer {
             .and_then(|s| s.find(field))
             .unwrap_or(0);
         let prefix_js = Self::js_len(&css[byte_pos..byte_pos + prefix_bytes]);
-        src_start + prefix_js
+        (src_start + prefix_js, byte_pos + prefix_bytes)
+    }
+
+    /// Convenience wrapper returning only the JS-char start.
+    #[inline]
+    fn find_field_js_start(css: &str, src_start: u32, field: &str) -> u32 {
+        Self::find_field_start(css, src_start, field).0
     }
 
     /// Length of `s` in UTF-16 code units (i.e. JavaScript `String.length`).
