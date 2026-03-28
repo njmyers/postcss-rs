@@ -6,6 +6,8 @@ runs:
   steps:
     - name: Install stable toolchain
       uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        components: rustfmt, clippy
 
     - name: Install nightly toolchain
       run: rustup toolchain install nightly --no-self-update
