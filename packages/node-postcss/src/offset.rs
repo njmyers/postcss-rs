@@ -107,10 +107,10 @@ pub struct OffsetSerializer;
 
 impl OffsetSerializer {
     /// Serialize `root` into the offset-array binary format.
-    pub fn serialize(root: &Node, _css: &str) -> Vec<u8> {
+    pub fn serialize(root: &Node, css: &str) -> Vec<u8> {
         let mut slots: Vec<NodeSlot> = Vec::new();
         let mut string_table: Vec<u8> = Vec::new();
-        Self::visit(root, ABSENT, &mut slots, &mut string_table);
+        Self::visit(root, ABSENT, &mut slots, &mut string_table, css);
 
         let count_bytes = (slots.len() as u32).to_le_bytes();
         let slots_bytes: &[u8] = bytemuck::cast_slice(&slots);
@@ -124,7 +124,7 @@ impl OffsetSerializer {
     /// DFS pre-order traversal: build and push each node's slot, then recurse.
     /// `my_idx = slots.len()` before the push gives the stable index used as
     /// `parent_idx` for all direct children.
-    fn visit(node: &Node, parent_idx: u32, slots: &mut Vec<NodeSlot>, string_table: &mut Vec<u8>) {
+    fn visit(node: &Node, parent_idx: u32, slots: &mut Vec<NodeSlot>, string_table: &mut Vec<u8>, css: &str) {
         let my_idx = slots.len() as u32;
 
         let ss = &node.source.start;
@@ -193,8 +193,16 @@ impl OffsetSerializer {
                     slot.type_tag = NodeType::RULE;
 
                     let sel_raw = node.raws.selector.raw.as_deref().unwrap_or(&rule.selector);
-                    slot.field1_start = src_start;
-                    slot.field1_end   = src_start + sel_raw.len() as u32;
+                    // Selector may be preceded by a non-ASCII prefix (e.g. BOM) that is
+                    // part of raws.before; find where sel_raw actually starts.
+                    let f1s = Self::find_field_js_start(css, src_start, sel_raw);
+                    slot.field1_start = f1s;
+                    slot.field1_end   = f1s + Self::js_len(sel_raw);
+
+                    // raws.before ends where the selector starts (overrides default src_start value)
+                    let (rbs, rbe) = Self::encode_ends_at(&node.raws.before, f1s);
+                    slot.raws_before_start = rbs;
+                    slot.raws_before_end   = rbe;
 
                     let (bt_s, bt_e) = Self::encode_starts_at(&node.raws.between, slot.field1_end);
                     slot.raws_between_start = bt_s;
@@ -204,6 +212,17 @@ impl OffsetSerializer {
                         let (as_, ae) = Self::encode_ends_at(&node.raws.after, src_end - 1);
                         slot.raws_after_start = as_;
                         slot.raws_after_end   = ae;
+
+                        // ownSemicolon stored in raws_extra1 (otherwise unused for RULE).
+                        // When ownSemicolon has a preceding space (e.g. " ;"), the parser
+                        // folds the trailing newline into src_end; strip it before slicing.
+                        let own_semi_end = match css.as_bytes().get(src_end as usize - 1) {
+                            Some(b'\n') | Some(b'\r') => src_end - 1,
+                            _ => src_end,
+                        };
+                        let (os, oe) = Self::encode_ends_at(&node.raws.own_semicolon, own_semi_end);
+                        slot.raws_extra1_start = os;
+                        slot.raws_extra1_end   = oe;
                     }
 
                     if node.raws.selector.raw.is_some() {
@@ -219,8 +238,16 @@ impl OffsetSerializer {
                 Data::Declaration(decl) => {
                     slot.type_tag = NodeType::DECL;
 
-                    slot.field1_start = src_start;
-                    slot.field1_end   = src_start + decl.prop.len() as u32;
+                    // IE hack: *color, _background — source.start points to the prefix
+                    // char, not the prop; find where decl.prop actually begins.
+                    let f1s = Self::find_field_js_start(css, src_start, &decl.prop);
+                    slot.field1_start = f1s;
+                    slot.field1_end   = f1s + Self::js_len(&decl.prop);
+
+                    // raws.before ends where the prop starts (overrides default src_start value)
+                    let (rbs, rbe) = Self::encode_ends_at(&node.raws.before, f1s);
+                    slot.raws_before_start = rbs;
+                    slot.raws_before_end   = rbe;
 
                     let between_len =
                         node.raws.between.as_deref().map(|b| b.len() as u32).unwrap_or(0);
@@ -318,7 +345,7 @@ impl OffsetSerializer {
 
         if let Some(children) = &node.nodes {
             for child in children {
-                Self::visit(child, my_idx, slots, string_table);
+                Self::visit(child, my_idx, slots, string_table, css);
             }
         }
     }
@@ -328,7 +355,7 @@ impl OffsetSerializer {
     fn encode_ends_at(raw: &Raw, end_pos: u32) -> (u32, u32) {
         match raw.as_deref() {
             None    => (ABSENT, 0),
-            Some(s) => (end_pos.saturating_sub(s.len() as u32), end_pos),
+            Some(s) => (end_pos.saturating_sub(Self::js_len(s)), end_pos),
         }
     }
 
@@ -337,7 +364,42 @@ impl OffsetSerializer {
     fn encode_starts_at(raw: &Raw, start_pos: u32) -> (u32, u32) {
         match raw.as_deref() {
             None    => (ABSENT, 0),
-            Some(s) => (start_pos, start_pos + s.len() as u32),
+            Some(s) => (start_pos, start_pos + Self::js_len(s)),
         }
+    }
+
+    /// Find the JS-char start index of `field` starting the search from `src_start`.
+    ///
+    /// For typical ASCII CSS `field` begins right at `src_start`.
+    /// Edge cases handled:
+    ///  - Non-ASCII BOM or other multi-byte prefix at `src_start` (bom.css)
+    ///  - IE hack prefix chars (`*`, `_`) for declarations (prop.css)
+    #[inline]
+    fn find_field_js_start(css: &str, src_start: u32, field: &str) -> u32 {
+        if field.is_empty() {
+            return src_start;
+        }
+        let byte_pos = src_start as usize;
+        // Fast path: field starts exactly at src_start (all ASCII, no prefix).
+        if css.as_bytes().get(byte_pos).copied() == field.as_bytes().first().copied() {
+            return src_start;
+        }
+        // Slow path: find field in the CSS from byte_pos, then convert the prefix
+        // length to UTF-16 code units (JS char count) before adding to src_start.
+        let prefix_bytes = css.get(byte_pos..)
+            .and_then(|s| s.find(field))
+            .unwrap_or(0);
+        let prefix_js = Self::js_len(&css[byte_pos..byte_pos + prefix_bytes]);
+        src_start + prefix_js
+    }
+
+    /// Length of `s` in UTF-16 code units (i.e. JavaScript `String.length`).
+    /// For pure-ASCII strings this equals the byte length.
+    #[inline]
+    fn js_len(s: &str) -> u32 {
+        if s.is_ascii() {
+            return s.len() as u32;
+        }
+        s.chars().map(|c| c.len_utf16() as u32).sum()
     }
 }

@@ -1,6 +1,12 @@
 import { eachTest, jsonify } from 'postcss-parser-tests';
 import { Input } from 'postcss';
-import { parseJsonAsync as parse } from '../src/index';
+import type { Root } from 'postcss';
+import {
+  parseJsonAsync,
+  parseJsonSync,
+  parseOffsetsSync,
+  parseOffsetsAsync,
+} from '../src/index';
 
 function assignInput(node: any, input: Input): void {
   if (node.source) {
@@ -13,7 +19,14 @@ function assignInput(node: any, input: Input): void {
   }
 }
 
-describe('postcss-parser-tests', () => {
+const parsers: Array<[string, (css: string) => Root | Promise<Root>]> = [
+  ['parseJsonAsync',   (css) => parseJsonAsync(css)],
+  ['parseJsonSync',    (css) => parseJsonSync(css)],
+  ['parseOffsetsSync', (css) => parseOffsetsSync(css)],
+  ['parseOffsetsAsync',(css) => parseOffsetsAsync(css)],
+];
+
+describe.each(parsers)('postcss-parser-tests (%s)', (_name, parse) => {
   eachTest((name, css, expectedJson) => {
     test(name, async () => {
       const root = await parse(css);
