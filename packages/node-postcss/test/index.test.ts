@@ -9,68 +9,68 @@ import { parseJsonAsync as parse } from '../src/index';
 
 describe('parse() function', () => {
   test('Returns PostCSS Root instance', async () => {
-    let root = await parse('.test { color: red; }');
+    const root = await parse('.test { color: red; }');
     expect(root.type).toBe('root');
     expect(root.constructor.name).toBe('Root');
   });
 
   test('Attaches source.input to all nodes', async () => {
-    let css = '.test { color: red; }';
-    let root = await parse(css, { from: 'test.css' });
+    const css = '.test { color: red; }';
+    const root = await parse(css, { from: 'test.css' });
 
     // Check root has input
     expect(root.source?.input).toBeDefined();
     expect(root.source?.input.from).toContain('test.css');
 
     // Check rule has input
-    let rule = root.first;
+    const rule = root.first;
     expect(rule?.source?.input).toBeDefined();
     expect(rule?.source?.input.from).toContain('test.css');
 
     // Check declaration has input
-    let decl = (rule as any)?.first;
+    const decl = (rule as any)?.first;
     expect(decl?.source?.input).toBeDefined();
     expect(decl?.source?.input.from).toContain('test.css');
   });
 
   test('Accepts from option', async () => {
-    let root = await parse('.test { color: red; }', { from: 'styles.css' });
+    const root = await parse('.test { color: red; }', { from: 'styles.css' });
     expect(root.source?.input.from).toContain('styles.css');
   });
 
   test('Works without options', async () => {
-    let root = await parse('.test { color: red; }');
+    const root = await parse('.test { color: red; }');
     expect(root.source?.input).toBeDefined();
   });
 });
 
 describe('restoreRaws() - Whitespace preservation', () => {
   test('Preserves consecutive newlines in raws.before', async () => {
-    let css = '/* comment */\n\n.test { color: red; }';
-    let root = await parse(css);
+    const css = '/* comment */\n\n.test { color: red; }';
+    const root = await parse(css);
 
     // The rule after the comment should have "\n\n" in raws.before
-    let rule = root.nodes.find(n => n.type === 'rule') as any;
+    const rule = root.nodes.find(n => n.type === 'rule') as any;
     expect(rule?.raws?.before).toBe('\n\n');
   });
 
   test('Preserves multiple newlines', async () => {
-    let css = '/* a */\n\n\n.test { color: red; }';
-    let root = await parse(css);
+    const css = '/* a */\n\n\n.test { color: red; }';
+    const root = await parse(css);
 
-    let rule = root.nodes.find(n => n.type === 'rule') as any;
+    const rule = root.nodes.find(n => n.type === 'rule') as any;
     expect(rule?.raws?.before).toBe('\n\n\n');
   });
 
   test('Preserves whitespace in nested structures', async () => {
-    let css = `@media screen {
+    const css = `@media screen {
   .test { color: red; }
   .test2 { color: blue; }
 }`;
-    let root = await parse(css);
+    const root = await parse(css);
 
-    let mediaRule = root.first as any;
-    let secondRule = mediaRule?.nodes?.[1];
+    const mediaRule = root.first as any;
+    const secondRule = mediaRule?.nodes?.[1];
 
     // Second rule should have whitespace before it
     expect(secondRule?.raws?.before).toBeDefined();
@@ -78,42 +78,42 @@ describe('restoreRaws() - Whitespace preservation', () => {
   });
 
   test('Handles empty raws.before correctly', async () => {
-    let css = '.test { color: red; }';
-    let root = await parse(css);
+    const css = '.test { color: red; }';
+    const root = await parse(css);
 
-    let rule = root.first as any;
+    const rule = root.first as any;
     expect(rule?.raws?.before).toBe('');
   });
 
   test('Preserves raws.after whitespace', async () => {
-    let css = '.test { color: red;\n  }';
-    let root = await parse(css);
+    const css = '.test { color: red;\n  }';
+    const root = await parse(css);
 
-    let rule = root.first as any;
+    const rule = root.first as any;
     expect(rule?.raws?.after).toContain('\n');
   });
 
   test('Preserves raws.between whitespace', async () => {
-    let css = '.test   { color: red; }';
-    let root = await parse(css);
+    const css = '.test   { color: red; }';
+    const root = await parse(css);
 
-    let rule = root.first as any;
+    const rule = root.first as any;
     expect(rule?.raws?.between).toBe('   ');
   });
 
   test('Preserves declaration whitespace', async () => {
-    let css = '.test { color  :  red ; }';
-    let root = await parse(css);
+    const css = '.test { color  :  red ; }';
+    const root = await parse(css);
 
-    let decl = (root.first as any)?.first;
+    const decl = (root.first as any)?.first;
     expect(decl?.raws?.between).toBe('  :  ');
   });
 
   test('Preserves comment whitespace', async () => {
-    let css = '/*  text  */';
-    let root = await parse(css);
+    const css = '/*  text  */';
+    const root = await parse(css);
 
-    let comment = root.first as any;
+    const comment = root.first as any;
     expect(comment?.raws?.left).toBe('  ');
     expect(comment?.raws?.right).toBe('  ');
   });
@@ -121,27 +121,27 @@ describe('restoreRaws() - Whitespace preservation', () => {
 
 describe('PostCSS compatibility', () => {
   test('Nodes can be stringified correctly', async () => {
-    let css = '.test { color: red; }';
-    let root = await parse(css);
+    const css = '.test { color: red; }';
+    const root = await parse(css);
     expect(root.toString()).toBe(css);
   });
 
   test('toJSON() includes all expected fields', async () => {
-    let css = '/* a */\n\n.test { color: red; }';
-    let root = await parse(css);
+    const css = '/* a */\n\n.test { color: red; }';
+    const root = await parse(css);
 
-    let json = root.toJSON();
+    const json = root.toJSON();
     expect(json.type).toBe('root');
     expect(json.nodes).toBeDefined();
     expect(Array.isArray(json.nodes)).toBe(true);
   });
 
   test('Rule nodes have correct structure', async () => {
-    let css = '.test { color: red; }';
-    let root = await parse(css);
-    let rule = root.first as any;
+    const css = '.test { color: red; }';
+    const root = await parse(css);
+    const rule = root.first as any;
 
-    let json = rule.toJSON();
+    const json = rule.toJSON();
     expect(json.type).toBe('rule');
     expect(json.selector).toBe('.test');
     expect(json.nodes).toBeDefined();
@@ -149,9 +149,9 @@ describe('PostCSS compatibility', () => {
   });
 
   test('At-rule nodes have correct structure', async () => {
-    let css = '@media screen { }';
-    let root = await parse(css);
-    let atRule = root.first as any;
+    const css = '@media screen { }';
+    const root = await parse(css);
+    const atRule = root.first as any;
 
     expect(atRule.type).toBe('atrule');
     expect(atRule.name).toBe('media');
@@ -160,11 +160,11 @@ describe('PostCSS compatibility', () => {
   });
 
   test('Declaration nodes have correct structure', async () => {
-    let css = '.test { color: red; }';
-    let root = await parse(css);
-    let decl = (root.first as any)?.first;
+    const css = '.test { color: red; }';
+    const root = await parse(css);
+    const decl = (root.first as any)?.first;
 
-    let json = decl.toJSON();
+    const json = decl.toJSON();
     expect(json.type).toBe('decl');
     expect(json.prop).toBe('color');
     expect(json.value).toBe('red');
@@ -172,11 +172,11 @@ describe('PostCSS compatibility', () => {
   });
 
   test('Comment nodes have correct structure', async () => {
-    let css = '/* comment */';
-    let root = await parse(css);
-    let comment = root.first as any;
+    const css = '/* comment */';
+    const root = await parse(css);
+    const comment = root.first as any;
 
-    let json = comment.toJSON();
+    const json = comment.toJSON();
     expect(json.type).toBe('comment');
     expect(json.text).toBe('comment');
     expect(json.nodes).toBeUndefined(); // Comments don't have nodes
@@ -185,72 +185,72 @@ describe('PostCSS compatibility', () => {
 
 describe('Edge cases', () => {
   test('Handles empty CSS', async () => {
-    let root = await parse('');
+    const root = await parse('');
     expect(root.type).toBe('root');
     expect(root.nodes.length).toBe(0);
   });
 
   test('Handles only whitespace', async () => {
-    let root = await parse('   \n\n   ');
+    const root = await parse('   \n\n   ');
     expect(root.type).toBe('root');
     expect(root.nodes.length).toBe(0);
   });
 
   test('Handles only comments', async () => {
-    let css = '/* comment */';
-    let root = await parse(css);
+    const css = '/* comment */';
+    const root = await parse(css);
     expect(root.nodes.length).toBe(1);
     expect(root.first?.type).toBe('comment');
   });
 
   test('Handles trailing semicolon after rule', async () => {
-    let css = '.test { color: red; };';
-    let root = await parse(css);
-    let rule = root.first as any;
+    const css = '.test { color: red; };';
+    const root = await parse(css);
+    const rule = root.first as any;
 
     // Should have ownSemicolon in raws
     expect(rule?.raws?.ownSemicolon).toBe(';');
   });
 
   test('Handles trailing semicolon with space', async () => {
-    let css = '.test { color: red; } ;';
-    let root = await parse(css);
-    let rule = root.first as any;
+    const css = '.test { color: red; } ;';
+    const root = await parse(css);
+    const rule = root.first as any;
 
     expect(rule?.raws?.ownSemicolon).toBe(' ;');
   });
 
   test('Handles nested structures', async () => {
-    let css = '@media screen { .test { color: red; } }';
-    let root = await parse(css);
+    const css = '@media screen { .test { color: red; } }';
+    const root = await parse(css);
 
-    let mediaRule = root.first as any;
+    const mediaRule = root.first as any;
     expect(mediaRule.type).toBe('atrule');
     expect(mediaRule.nodes.length).toBe(1);
 
-    let nestedRule = mediaRule.nodes[0];
+    const nestedRule = mediaRule.nodes[0];
     expect(nestedRule.type).toBe('rule');
     expect(nestedRule.selector).toBe('.test');
   });
 
   test('Handles at-rule without block', async () => {
-    let css = '@charset "UTF-8";';
-    let root = await parse(css);
+    const css = '@charset "UTF-8";';
+    const root = await parse(css);
 
-    let atRule = root.first as any;
+    const atRule = root.first as any;
     expect(atRule.type).toBe('atrule');
     expect(atRule.name).toBe('charset');
     expect(atRule.params).toBe('"UTF-8"');
     // Statement at-rules should not have nodes field in JSON
-    let json = atRule.toJSON();
+    const json = atRule.toJSON();
     expect(json.nodes).toBeUndefined();
   });
 
   test('Handles at-rule with empty block', async () => {
-    let css = '@page { }';
-    let root = await parse(css);
+    const css = '@page { }';
+    const root = await parse(css);
 
-    let atRule = root.first as any;
+    const atRule = root.first as any;
     expect(atRule.type).toBe('atrule');
     expect(atRule.name).toBe('page');
     // Block at-rules should have nodes property even when empty (PostCSS behavior)
@@ -258,10 +258,10 @@ describe('Edge cases', () => {
   });
 
   test('Preserves exact source positions', async () => {
-    let css = '.test { color: red; }';
-    let root = await parse(css);
+    const css = '.test { color: red; }';
+    const root = await parse(css);
 
-    let rule = root.first as any;
+    const rule = root.first as any;
     expect(rule.source?.start).toBeDefined();
     expect(rule.source?.end).toBeDefined();
     expect(rule.source?.start?.line).toBe(1);
@@ -271,45 +271,45 @@ describe('Edge cases', () => {
 
 describe('Real-world CSS patterns', () => {
   test('Handles complex selectors', async () => {
-    let css = '.a > .b + .c:hover::before { color: red; }';
-    let root = await parse(css);
-    let rule = root.first as any;
+    const css = '.a > .b + .c:hover::before { color: red; }';
+    const root = await parse(css);
+    const rule = root.first as any;
     expect(rule.selector).toBe('.a>.b+.c:hover::before');
   });
 
   test('Handles vendor prefixes', async () => {
-    let css = '@-webkit-keyframes slide { from { left: 0; } }';
-    let root = await parse(css);
-    let atRule = root.first as any;
+    const css = '@-webkit-keyframes slide { from { left: 0; } }';
+    const root = await parse(css);
+    const atRule = root.first as any;
     expect(atRule.name).toBe('-webkit-keyframes');
   });
 
   test('Handles calc() with spaces', async () => {
-    let css = '.test { width: calc(100% - 20px); }';
-    let root = await parse(css);
-    let decl = (root.first as any)?.first;
+    const css = '.test { width: calc(100% - 20px); }';
+    const root = await parse(css);
+    const decl = (root.first as any)?.first;
     expect(decl.value).toBe('calc(100% - 20px)');
   });
 
   test('Handles CSS variables', async () => {
-    let css = ':root { --main-color: #06c; }';
-    let root = await parse(css);
-    let decl = (root.first as any)?.first;
+    const css = ':root { --main-color: #06c; }';
+    const root = await parse(css);
+    const decl = (root.first as any)?.first;
     expect(decl.prop).toBe('--main-color');
     expect(decl.value).toBe('#06c');
   });
 
   test('Handles multiple declarations', async () => {
-    let css = '.test { margin: 0; padding: 0; border: 1px solid red; }';
-    let root = await parse(css);
-    let rule = root.first as any;
+    const css = '.test { margin: 0; padding: 0; border: 1px solid red; }';
+    const root = await parse(css);
+    const rule = root.first as any;
     expect(rule.nodes.length).toBe(3);
   });
 
   test('Handles comments between declarations', async () => {
-    let css = '.test { color: red; /* comment */ background: blue; }';
-    let root = await parse(css);
-    let rule = root.first as any;
+    const css = '.test { color: red; /* comment */ background: blue; }';
+    const root = await parse(css);
+    const rule = root.first as any;
     expect(rule.nodes.length).toBe(3); // decl, comment, decl
     expect(rule.nodes[1].type).toBe('comment');
   });
