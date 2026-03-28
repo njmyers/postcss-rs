@@ -9,45 +9,96 @@
  * constants derived directly from the Rust struct rather than magic numbers.
  */
 export interface NodeSlotLayout {
+  /** `type_tag` value for a Root node */
   typeRoot: number
+  /** `type_tag` value for a Rule node */
   typeRule: number
+  /** `type_tag` value for a Declaration node */
   typeDecl: number
+  /** `type_tag` value for an AtRule node */
   typeAtrule: number
+  /** `type_tag` value for a Comment node */
   typeComment: number
-  /** u32 slots per node (= 25) */
+  /** Number of u32 slots per node in the buffer (= 25) */
   stride: number
-  /** Absent-field sentinel (= 0xFFFF_FFFF) */
+  /** Sentinel value meaning a field is absent/null (= 0xFFFF_FFFF) */
   absent: number
+  /** Slot index of the node type tag (see `type_*` constants) */
   idxTypeTag: number
+  /** Slot index of the parent node's index in the flat array; `absent` for the root */
   idxParentIdx: number
+  /** Slot index of `source.start` JS char offset */
   idxSourceStartOff: number
+  /** Slot index of `source.start` 1-based line number */
   idxSourceStartLine: number
+  /** Slot index of `source.start` 1-based column number */
   idxSourceStartCol: number
+  /** Slot index of `source.end` JS char offset; `absent` if missing */
   idxSourceEndOff: number
+  /** Slot index of `source.end` 1-based line number */
   idxSourceEndLine: number
+  /** Slot index of `source.end` 1-based column number */
   idxSourceEndCol: number
+  /** Slot index of field1 start: selector (Rule), prop (Decl), name (AtRule), text (Comment) */
   idxField1Start: number
+  /** Slot index of field1 end (exclusive) */
   idxField1End: number
+  /** Slot index of field2 start: value (Decl), params (AtRule); `absent` if not present */
   idxField2Start: number
+  /** Slot index of field2 end (exclusive) */
   idxField2End: number
+  /** Slot index of `raws.before` start; `absent` if not present */
   idxRawsBeforeStart: number
+  /** Slot index of `raws.before` end (exclusive) */
   idxRawsBeforeEnd: number
+  /** Slot index of `raws.between` start; `absent` if not present */
   idxRawsBetweenStart: number
+  /** Slot index of `raws.between` end (exclusive) */
   idxRawsBetweenEnd: number
+  /** Slot index of `raws.after` start; `absent` if not present */
   idxRawsAfterStart: number
+  /** Slot index of `raws.after` end (exclusive) */
   idxRawsAfterEnd: number
+  /**
+   * Slot index of extra1 start: `raws.afterName` (AtRule), `raws.left` (Comment),
+   * `raws.ownSemicolon` (Rule); `absent` if not present
+   */
   idxRawsExtra1Start: number
+  /** Slot index of extra1 end (exclusive) */
   idxRawsExtra1End: number
+  /**
+   * Slot index of extra2 start: `raws.important` (Decl), `raws.right` (Comment);
+   * `absent` if not present
+   */
   idxRawsExtra2Start: number
+  /** Slot index of extra2 end (exclusive) */
   idxRawsExtra2End: number
+  /** Slot index of the bit-flag word (see `flag_*` constants) */
   idxFlags: number
+  /**
+   * Slot index of clean-string start in the trailing UTF-8 string table;
+   * only meaningful when `flag_has_clean_str` is set
+   */
   idxCleanStart: number
+  /** Slot index of clean-string end (exclusive) in the string table */
   idxCleanEnd: number
+  /** Flag bit: declaration has `!important` */
   flagImportant: number
+  /** Flag bit: root/rule has an explicit trailing semicolon in `raws.semicolon` */
   flagSemiPresent: number
+  /** Flag bit: the `raws.semicolon` value is `true` (semicolon present after last child) */
   flagSemiValue: number
+  /**
+   * Flag bit: a clean string is stored in the trailing table (selector or value
+   * differs from its raw CSS form)
+   */
   flagHasCleanStr: number
+  /**
+   * Flag bit: the clean string belongs to field2 (declaration value);
+   * when clear it belongs to field1 (rule selector)
+   */
   flagCleanIsField2: number
+  /** Flag bit: node has a `nodes` array (rule, at-rule with block) */
   flagHasNodes: number
 }
 
