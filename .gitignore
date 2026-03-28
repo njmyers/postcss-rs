@@ -10,7 +10,8 @@ dist/
 
 *.node
 
-.claude/
+.claude/*
+!.claude/settings.json
 
 output/*
 !output/.gitkeep
