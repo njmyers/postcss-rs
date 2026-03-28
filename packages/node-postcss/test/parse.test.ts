@@ -92,7 +92,7 @@ describe.each(parsers)('@postcss-rs/node-postcss (%s)', (_name, parse) => {
     const css = '.a, .b { color: red; }';
     const root = await parse(css);
     const rule = root.first as Rule;
-    expect(rule.selector).toBe('.a,.b');
+    expect(rule.selector).toBe('.a, .b');
     expect(rule.selectors).toEqual(['.a', '.b']);
   });
 
