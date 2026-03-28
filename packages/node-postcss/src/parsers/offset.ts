@@ -77,7 +77,7 @@ const CommentProto = postcss.Comment.prototype;
 const { isClean, my } = require('postcss/lib/symbols') as { isClean: symbol; my: symbol };
 
 class OffsetParser {
-  static parseRoot(raws: any): any {
+  private static parseRoot(raws: any): any {
     const node = Object.create(RootProto);
     node[isClean] = false;
     node[my] = true;
@@ -87,7 +87,7 @@ class OffsetParser {
     return node;
   }
 
-  static parseRule(
+  private static parseRule(
     buf: Buffer,
     css: string,
     strTableBase: number,
@@ -121,7 +121,7 @@ class OffsetParser {
     return node;
   }
 
-  static parseDeclaration(
+  private static parseDeclaration(
     buf: Buffer,
     css: string,
     strTableBase: number,
@@ -159,7 +159,7 @@ class OffsetParser {
     return node;
   }
 
-  static parseAtRule(
+  private static parseAtRule(
     css: string,
     f1s: number,
     f1e: number,
@@ -186,7 +186,7 @@ class OffsetParser {
     return node;
   }
 
-  static parseComment(
+  private static parseComment(
     css: string,
     f1s: number,
     f1e: number,
@@ -211,7 +211,7 @@ class OffsetParser {
     return node;
   }
 
-  static buildNodeFromOffsets(buf: Buffer, css: string, input: postcss.Input): Root {
+  static parse(buf: Buffer, css: string, input: postcss.Input): Root {
     // Align-safe Uint32Array view (host is LE on all Node.js platforms we target)
     let view: Uint32Array;
     if (buf.byteOffset % 4 === 0) {
@@ -312,14 +312,14 @@ export interface ParseOptions {
 export function parseOffsetsSync(css: string, opts: ParseOptions = {}): Root {
   const buf   = bindings.postcss.parseToOffsetsSync(css, opts.from ?? null);
   const input = new postcss.Input(css, { from: opts.from });
-  return OffsetParser.buildNodeFromOffsets(buf, css, input);
+  return OffsetParser.parse(buf, css, input);
 }
 
 /** Async offset-array parse — runs on the thread pool, non-blocking. */
 export async function parseOffsetsAsync(css: string, opts: ParseOptions = {}): Promise<Root> {
   const buf   = await bindings.postcss.parseToOffsetsAsync(css, opts.from ?? null);
   const input = new postcss.Input(css, { from: opts.from });
-  return OffsetParser.buildNodeFromOffsets(buf, css, input);
+  return OffsetParser.parse(buf, css, input);
 }
 
 /** Rust parse → offset-array Buffer only (no JS tree walk; for benchmarking) */
