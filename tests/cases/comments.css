@@ -2,22 +2,20 @@
 /**/
 /* */
 div {
-  /* inside */
-  color: black;
-  /* between */
-  border-radius: 3px / 7px;
-  /* end */
+    /* inside */
+    color: black;
+    /* between */
+    border-radius: 3px / 7px
+    /* end */
 }
 /* b */
 
 a {
-  color: black;
-  /* c */
+    color: black;
+    /* c */
 }
 
 .in/**/side {
-  color: var /**/ (--broken);
-  font-family:
-    sans-serif,
-    /**/ serif;
+  color: var/**/(--broken);
+  font-family: sans-serif,/**/serif;
 }

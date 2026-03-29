@@ -9,3 +9,4 @@ output/
 packages/docs/public/rustdoc/
 packages/docs/.vitepress/cache/
 pnpm-lock.yaml
+**/*.css

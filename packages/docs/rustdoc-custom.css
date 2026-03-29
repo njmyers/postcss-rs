@@ -1,49 +1,48 @@
 /* Match VitePress default theme */
 
 :root {
-  --main-background-color: #ffffff;
-  --main-color: #3c3c43;
-  --sidebar-background-color: #f6f6f7;
-  --sidebar-current-theme-background-color: #f6f6f7;
-  --link-color: #3451b2;
-  --code-color: #3451b2;
-  --code-block-background-color: #f6f6f7;
-  --codeblock-error-hover-color: transparent;
-  --codeblock-warn-hover-color: transparent;
-  --border-color: #e2e2e3;
-  --settings-input-color: #3451b2;
-  --search-mark-background-color: rgba(100, 108, 255, 0.14);
-  --font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --main-background-color: #ffffff;
+    --main-color: #3c3c43;
+    --sidebar-background-color: #f6f6f7;
+    --sidebar-current-theme-background-color: #f6f6f7;
+    --link-color: #3451b2;
+    --code-color: #3451b2;
+    --code-block-background-color: #f6f6f7;
+    --codeblock-error-hover-color: transparent;
+    --codeblock-warn-hover-color: transparent;
+    --border-color: #e2e2e3;
+    --settings-input-color: #3451b2;
+    --search-mark-background-color: rgba(100, 108, 255, 0.14);
+    --font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
 
-:root[data-theme='dark'] {
-  --main-background-color: #1b1b1f;
-  --main-color: #dfdfd6;
-  --sidebar-background-color: #161618;
-  --link-color: #a8b1ff;
-  --code-color: #a8b1ff;
-  --code-block-background-color: #202127;
-  --border-color: #2e2e32;
-  --settings-input-color: #a8b1ff;
-  --search-mark-background-color: rgba(100, 108, 255, 0.16);
+:root[data-theme="dark"] {
+    --main-background-color: #1b1b1f;
+    --main-color: #dfdfd6;
+    --sidebar-background-color: #161618;
+    --link-color: #a8b1ff;
+    --code-color: #a8b1ff;
+    --code-block-background-color: #202127;
+    --border-color: #2e2e32;
+    --settings-input-color: #a8b1ff;
+    --search-mark-background-color: rgba(100, 108, 255, 0.16);
 }
 
 body {
-  font-family: var(--font-family);
+    font-family: var(--font-family);
 }
 
 /* Match VitePress nav height so rustdoc sits flush */
 #rustdoc-vars {
-  --nav-sub-mobile-max-height: none;
+    --nav-sub-mobile-max-height: none;
 }
 
 /* Softer code blocks */
-pre,
-.code-block {
-  border-radius: 8px;
+pre, .code-block {
+    border-radius: 8px;
 }
 
 /* Sidebar tweaks */
 nav.sidebar {
-  border-right: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
 }

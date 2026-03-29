@@ -1,4 +1,4 @@
 a::before {
-  content: ';\'@ /**/"';
-  content: '\'"\\';
+    content: ";'@ /**/\"";
+    content: '\'"\\';
 }

@@ -1,12 +1,12 @@
 @supports (animation-name: test) {
-  @-custom-keyframe anim {
-    from {
-      color: black;
+    @-custom-keyframe anim {
+        from {
+            color: black;
+        }
+        to {
+            color: white
+        }
     }
-    to {
-      color: white;
-    }
-  }
 }
 
 @support selector(:focus-visible) {

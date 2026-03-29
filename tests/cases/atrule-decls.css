@@ -1,19 +1,19 @@
 @page :left {
-  background: black;
+    background: black
 }
 
-@media (min-width: 0) {
-  background: white;
+@media(min-width: 0) {
+    background: white
 }
 
 @font-face {
-  family-name: "A;' /**/";
+    family-name: "A;' /**/";
 }
 
 @viewport {
-  width: 110px;
+    width: 110px;
 }
 
 @-ms-viewport {
-  width: 100px;
+    width: 100px;
 }
