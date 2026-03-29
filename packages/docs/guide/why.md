@@ -2,7 +2,7 @@
 
 PostCSS is the backbone of modern CSS tooling — used by Tailwind, Autoprefixer, CSS Modules, and hundreds of other tools. But its parser is written in JavaScript, which can become a bottleneck in large projects or build pipelines that process many CSS files.
 
-**postcss-rs** replaces PostCSS's parser with a Rust implementation that is 3–5× faster while remaining 100% compatible with the PostCSS API and plugin ecosystem.
+**postcss-rs** replaces PostCSS's parser with a Rust implementation that is faster for large CSS files while remaining 100% compatible with the PostCSS API and plugin ecosystem.
 
 ## The Performance Problem
 
@@ -18,9 +18,25 @@ The JavaScript PostCSS parser is well-written, but it faces inherent limitations
 
 Rust compiles to native machine code with no runtime overhead. By implementing the CSS parser in Rust and exposing it to Node.js via [NAPI-rs](https://napi.rs/), postcss-rs achieves:
 
-- **~3–5× faster parsing** for typical CSS workloads
-- **~2.5ms less overhead** by eliminating the JavaScript adapter layer
+- **~12% faster parsing** for large CSS files (~30 KB+) using the offsets sync mode
+- **Roughly on par** with postcss for medium-sized CSS (~2 KB)
 - **Identical output** — the Rust parser produces PostCSS-compatible JSON directly
+
+## Benchmark Results
+
+Performance vs. postcss original, measured using `benny` (ops/s, higher is better):
+
+| Mode                     | Small (~200 B) | Medium (~2 KB) | Large (~30 KB) |
+| ------------------------ | -------------- | -------------- | -------------- |
+| postcss-rs offsets sync  | 65,756         | 11,242         | **706**        |
+| postcss-rs offsets async | 11,887         | 5,634          | 676            |
+| postcss-rs json sync     | 37,423         | 5,661          | 320            |
+| postcss-rs json async    | 10,219         | 3,565          | 335            |
+| postcss original         | **74,975**     | **10,839**     | 633            |
+
+The offsets sync mode offers the best throughput. The json modes carry additional overhead from serializing the full AST to a JSON string before parsing it in JavaScript.
+
+For small files, postcss original wins due to the fixed overhead of crossing the Rust/JS boundary. postcss-rs is most beneficial when your build pipeline processes many large CSS files.
 
 ## Full PostCSS Compatibility
 

@@ -4,7 +4,7 @@ layout: home
 hero:
   name: postcss-rs
   text: PostCSS parsing at Rust speed
-  tagline: A drop-in replacement for the PostCSS parser — 3–5× faster, 100% compatible.
+  tagline: A drop-in replacement for the PostCSS parser — 100% compatible, faster for large CSS files.
   actions:
     - theme: brand
       text: Get Started
@@ -17,8 +17,8 @@ hero:
       link: https://github.com/njmyers/postcss-rs
 
 features:
-  - title: Blazing Fast
-    details: Written in Rust, postcss-rs parses CSS 3–5× faster than the standard PostCSS parser — with near-zero overhead from the Rust/JS boundary.
+  - title: Faster for Large Files
+    details: Written in Rust, postcss-rs parses large CSS files (~30 KB+) up to ~12% faster than the standard PostCSS parser using the offsets sync mode. Performance scales with file size.
   - title: Drop-in Compatible
     details: Returns real PostCSS Root instances. Works with all existing PostCSS plugins and tooling — no migration needed.
   - title: Zero Adapter Overhead
