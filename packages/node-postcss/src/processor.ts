@@ -1,16 +1,16 @@
 import * as postcss from 'postcss';
 import type {
-  Root,
   Plugin,
-  Processor,
   ProcessOptions,
+  Processor,
+  Root,
   Stringifier,
   Syntax,
 } from 'postcss';
 
 type SyncParseFn = (css: string, opts?: any) => Root;
 type AsyncParseFn = (css: string, opts?: any) => Promise<Root>;
-export type ParseFn = SyncParseFn | AsyncParseFn;
+export type ParseFn = AsyncParseFn | SyncParseFn;
 
 /**
  * Returns a PostCSS Processor class that uses the provided `parseFn` and
@@ -40,7 +40,7 @@ export function RustProcessorFactory(
       super(plugins);
     }
 
-    process(css: string | Root, opts: ProcessOptions = {}): any {
+    process(css: Root | string, opts: ProcessOptions = {}): any {
       if (typeof css !== 'string') {
         return super.process(css, {
           stringifier: stringifyFn as Stringifier,
@@ -69,7 +69,7 @@ export function RustProcessorFactory(
         };
       }
 
-      return super.process(parsed as Root, mergedOpts);
+      return super.process(parsed, mergedOpts);
     }
   }
 

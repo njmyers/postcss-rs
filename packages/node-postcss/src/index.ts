@@ -15,6 +15,9 @@
 import * as postcss from 'postcss';
 import type { Plugin, Processor } from 'postcss';
 
+import { parseOffsetsSync } from './parsers/offset';
+import { RustProcessorFactory } from './processor';
+
 export type { ParseOptions } from './parsers/json';
 export { parseJsonAsync, parseJsonSync } from './parsers/json';
 export {
@@ -24,9 +27,6 @@ export {
 } from './parsers/offset';
 export { RustProcessorFactory } from './processor';
 export type { ParseFn } from './processor';
-
-import { RustProcessorFactory } from './processor';
-import { parseOffsetsSync } from './parsers/offset';
 
 /**
  * Create a PostCSS processor with Rust-powered parsing (offset path).
