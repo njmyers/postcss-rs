@@ -124,16 +124,6 @@ export async function parseJsonAsync(
   return buildNode(JSON.parse(jsonStr), input, undefined) as Root;
 }
 
-/** Rust parse → raw JSON string only (no JS tree walk; for benchmarking). */
-export function parseRustOnlySync(css: string, opts: ParseOptions = {}): string {
-  return bindings.postcss.parseToJsonSync(css, opts.from ?? null);
-}
-
-/** Rust parse → parsed JSON object only (no PostCSS node building; for benchmarking). */
-export function parseJsonOnlySync(css: string, opts: ParseOptions = {}): any {
-  return JSON.parse(bindings.postcss.parseToJsonSync(css, opts.from ?? null));
-}
-
 /** Parse CSS into a PostCSS AST via JSON (sync, blocks the event loop). */
 export function parseJsonSync(css: string, opts: ParseOptions = {}): Root {
   const jsonStr = bindings.postcss.parseToJsonSync(css, opts.from ?? null);

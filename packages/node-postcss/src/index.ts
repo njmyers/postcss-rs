@@ -16,12 +16,7 @@ import * as postcss from 'postcss';
 import type { Plugin, Processor } from 'postcss';
 
 export type { ParseOptions } from './parsers/json';
-export {
-  parseJsonAsync,
-  parseJsonOnlySync,
-  parseJsonSync,
-  parseRustOnlySync,
-} from './parsers/json';
+export { parseJsonAsync, parseJsonSync } from './parsers/json';
 export {
   parseOffsetsAsync,
   parseOffsetsRustOnlySync,
