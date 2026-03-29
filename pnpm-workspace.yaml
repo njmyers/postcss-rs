@@ -1,4 +1,4 @@
 packages:
-  - "packages/node-postcss"
-  - "tests"
-  - "packages/docs"
+  - 'packages/node-postcss'
+  - 'tests'
+  - 'packages/docs'

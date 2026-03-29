@@ -1,5 +1,12 @@
 import * as postcss from 'postcss';
-import type { Root, Plugin, Processor, ProcessOptions, Stringifier, Syntax } from 'postcss';
+import type {
+  Root,
+  Plugin,
+  Processor,
+  ProcessOptions,
+  Stringifier,
+  Syntax,
+} from 'postcss';
 
 type SyncParseFn = (css: string, opts?: any) => Root;
 type AsyncParseFn = (css: string, opts?: any) => Promise<Root>;
@@ -26,7 +33,7 @@ export type ParseFn = SyncParseFn | AsyncParseFn;
  */
 export function RustProcessorFactory(
   parseFn: ParseFn,
-  stringifyFn: Stringifier | Syntax = postcss.stringify,
+  stringifyFn: Stringifier | Syntax = postcss.stringify
 ): new (plugins?: Plugin[]) => Processor {
   class RustProcessor extends postcss.Processor {
     constructor(plugins: Plugin[] = []) {
@@ -35,7 +42,10 @@ export function RustProcessorFactory(
 
     process(css: string | Root, opts: ProcessOptions = {}): any {
       if (typeof css !== 'string') {
-        return super.process(css, { stringifier: stringifyFn as Stringifier, ...opts });
+        return super.process(css, {
+          stringifier: stringifyFn as Stringifier,
+          ...opts,
+        });
       }
 
       const mergedOpts: ProcessOptions = {
@@ -48,10 +58,12 @@ export function RustProcessorFactory(
       if (parsed instanceof Promise) {
         return {
           async: () =>
-            parsed.then((root: Root) => super.process(root, mergedOpts).async()),
+            parsed.then((root: Root) =>
+              super.process(root, mergedOpts).async()
+            ),
           sync: () => {
             throw new Error(
-              'sync() is not supported when using an async parse function',
+              'sync() is not supported when using an async parse function'
             );
           },
         };
