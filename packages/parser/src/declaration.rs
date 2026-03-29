@@ -7,23 +7,25 @@ use crate::StatementTerminator;
 use serde::Deserialize;
 use serde::Serialize;
 
+use std::borrow::Cow;
+
 use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
 
 /// Data for a CSS property declaration, e.g. `color: red`.
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
-pub struct Declaration {
+pub struct Declaration<'src> {
     /// The property name, e.g. `"color"`.
-    pub prop: String,
+    pub prop: Cow<'src, str>,
     /// `Some(true)` when the declaration contains `!important`, `None` otherwise.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub important: Option<bool>,
     /// The property value, stripped of inline comments, e.g. `"red"`.
-    pub value: String,
+    pub value: Cow<'src, str>,
 }
 
-impl Declaration {
+impl<'src> Declaration<'src> {
     /// Parses a declaration from the token stream.
     ///
     /// `prop` is the first token of the property name (already consumed from
@@ -31,10 +33,10 @@ impl Declaration {
     /// semicolon or closing brace and returns both the resulting [`Node`] and
     /// the [`StatementTerminator`] that ended parsing.
     pub fn create(
-        prop: Token<'_>,
-        tokenizer: &mut Tokenizer<'_>,
-        spaces: &[Token<'_>],
-    ) -> (Node, StatementTerminator) {
+        prop: Token<'src>,
+        tokenizer: &mut Tokenizer<'src>,
+        spaces: &[Token<'src>],
+    ) -> (Node<'src>, StatementTerminator) {
         let mut builder = NodeBuilder::new(&prop, tokenizer, spaces);
         builder.ensure_empty_before();
         builder.ensure_empty_between();
@@ -241,39 +243,33 @@ impl Declaration {
 
         // Determine clean value:
         //  - If no comments were stripped (clean_span returns Some), the clean
-        //    value is a sub-slice of the CSS — still zero allocation.
-        //  - If comments were stripped (gaps exist) we must allocate a String.
-        let clean_value_owned: Option<String>; // only allocated when needed
-        let clean_value_base: &str = match statement.clean_span() {
-            Some((cs, ce)) => &css[cs..ce],
+        //    value is a sub-slice of the CSS — still zero allocation (Cow::Borrowed).
+        //  - If comments were stripped (gaps exist) we must allocate a String (Cow::Owned).
+        let clean_value: Cow<'src, str> = match statement.clean_span() {
+            Some((cs, ce)) => Cow::Borrowed(&css[cs..ce]),
             None => {
-                clean_value_owned = Some(statement.to_string_clean());
-                clean_value_owned.as_deref().unwrap()
+                let clean = statement.to_string_clean();
+                // Trim trailing whitespace only when:
+                // 1. Comments were removed (raw != clean, implied by None branch)
+                // 2. Declaration ends with semicolon
+                // 3. The value has actual content (not just whitespace)
+                let should_trim = terminator.ended_by == Some(Kind::Semicolon)
+                    && !clean.trim().is_empty();
+                if should_trim {
+                    Cow::Owned(clean.trim_end().to_string())
+                } else {
+                    Cow::Owned(clean)
+                }
             }
         };
 
-        // Trim trailing whitespace only when:
-        // 1. Comments were removed (raw != clean)
-        // 2. Declaration ends with semicolon
-        // 3. The value has actual content (not just whitespace)
-        // This handles cases like "a/* comment */ b  " where removing the comment leaves trailing spaces
-        // But preserves whitespace-only values like "/**/ " which should become " "
-        let clean_value: &str = if raw_value != clean_value_base
-            && terminator.ended_by == Some(Kind::Semicolon)
-            && !clean_value_base.trim().is_empty()
-        {
-            clean_value_base.trim_end()
-        } else {
-            clean_value_base
-        };
-
         let important = important_raw.as_ref().map(|_| true);
-        let declaration = Self::new(actual_prop, clean_value, important);
+        let declaration = Self::new(Cow::Borrowed(actual_prop), clean_value.clone(), important);
         builder.declaration(declaration);
 
         // If raw differs from clean (inline comments were stripped or whitespace differs), store both in raws.value
-        if raw_value != clean_value {
-            builder.value_raw(clean_value, raw_value);
+        if raw_value != clean_value.as_ref() {
+            builder.value_raw(clean_value.as_ref(), raw_value);
         }
 
         // If important was found, store the raw important string
@@ -295,11 +291,11 @@ impl Declaration {
         return (node, terminator);
     }
 
-    fn new(prop: &str, value: &str, important: Option<bool>) -> Self {
+    fn new(prop: Cow<'src, str>, value: Cow<'src, str>, important: Option<bool>) -> Self {
         return Self {
-            prop: String::from(prop),
+            prop,
             important,
-            value: String::from(value),
+            value,
         };
     }
 

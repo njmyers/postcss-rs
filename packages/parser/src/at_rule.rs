@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use serde::Serialize;
 
+use std::borrow::Cow;
+
 use crate::Declaration;
 use crate::Node;
 use crate::NodeBuilder;
@@ -15,34 +17,34 @@ use postcss_rs_tokenizer::Tokens;
 
 /// Data for a CSS at-rule, e.g. `@media screen { … }` or `@import "…";`.
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
-pub struct AtRule {
+pub struct AtRule<'src> {
     /// The at-rule name without the leading `@`, e.g. `"media"`.
-    pub name: String,
+    pub name: Cow<'src, str>,
     /// The at-rule parameters (everything between the name and the block or
     /// semicolon), e.g. `"screen"` for `@media screen { … }`.
-    pub params: Option<String>,
+    pub params: Option<Cow<'src, str>>,
     /// `true` when the at-rule is followed by a `{ … }` block.
     #[serde(skip)]
     pub has_block: bool,
 }
 
-impl AtRule {
+impl<'src> AtRule<'src> {
     /// Parses an at-rule from the token stream.
     ///
     /// `token` is the `@name` token (already consumed).  The method reads
     /// optional parameters and an optional block body, returning both the
     /// resulting [`Node`] and the [`StatementTerminator`] that ended parsing.
     pub fn create(
-        token: Token<'_>,
-        tokenizer: &mut Tokenizer<'_>,
-        spaces: &[Token<'_>],
-    ) -> (Node, StatementTerminator) {
+        token: Token<'src>,
+        tokenizer: &mut Tokenizer<'src>,
+        spaces: &[Token<'src>],
+    ) -> (Node<'src>, StatementTerminator) {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
         builder.ensure_empty_before();
         builder.ensure_empty_between();
         builder.ensure_empty_after_name();
 
-        let mut at_rule = Self::new(&token.value[1..]);
+        let mut at_rule = Self::new(Cow::Borrowed(&token.value[1..]));
         let (params, terminator, params_end_pos) = Params::create(&mut builder, tokenizer);
 
         at_rule.set_params(params);
@@ -142,15 +144,15 @@ impl AtRule {
         return (node, terminator);
     }
 
-    fn new(name: &str) -> Self {
+    fn new(name: Cow<'src, str>) -> Self {
         return Self {
-            name: String::from(name),
+            name,
             params: None,
             has_block: false,
         };
     }
 
-    fn set_params(&mut self, params: String) {
+    fn set_params(&mut self, params: Cow<'src, str>) {
         self.params = Some(params);
     }
 }
@@ -210,10 +212,10 @@ impl Params {
         result
     }
 
-    fn create(
-        parent: &mut NodeBuilder,
-        tokenizer: &mut Tokenizer<'_>,
-    ) -> (String, StatementTerminator, Option<crate::Source>) {
+    fn create<'src>(
+        parent: &mut NodeBuilder<'src>,
+        tokenizer: &mut Tokenizer<'src>,
+    ) -> (Cow<'src, str>, StatementTerminator, Option<crate::Source>) {
         let mut spaces = Tokens::new();
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
@@ -305,11 +307,11 @@ impl Params {
         }
         // Otherwise, buffered spaces are trailing and should not be part of the at-rule
 
-        // Build the params string from the raw CSS span when possible (avoids
-        // iterating all tokens and re-concatenating their values).
+        // Build the params Cow from the raw CSS span (avoids allocation for the
+        // common case where no comments are stripped).
         let css = tokenizer.source();
         let (rs, re) = statement.raw_span();
-        let params = css[rs..re].to_string();
+        let params: Cow<'src, str> = Cow::Borrowed(&css[rs..re]);
 
         return (params, terminator, params_end_pos);
     }
@@ -318,7 +320,7 @@ impl Params {
     ///
     /// If an at rule has a parameter value then the spaces will be `after_name`. If not they will
     /// be part of `between`.
-    fn spaces(statement: &Statement<'_>, parent: &mut NodeBuilder, spaces: &Tokens<'_>) {
+    fn spaces<'src>(statement: &Statement<'_>, parent: &mut NodeBuilder<'src>, spaces: &Tokens<'_>) {
         for token in spaces.iter() {
             if !statement.is_empty() {
                 parent.after_name(token);

@@ -7,6 +7,8 @@ use crate::Statement;
 use serde::Deserialize;
 use serde::Serialize;
 
+use std::borrow::Cow;
+
 use postcss_rs_tokenizer::Kind;
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
@@ -23,12 +25,12 @@ use postcss_rs_tokenizer::Tokens;
 /// }
 /// ```
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
-pub struct Rule {
-    pub selector: String,
+pub struct Rule<'src> {
+    pub selector: Cow<'src, str>,
 }
 
-impl Rule {
-    pub fn create(token: Token<'_>, tokenizer: &mut Tokenizer<'_>, spaces: &[Token<'_>]) -> Node {
+impl<'src> Rule<'src> {
+    pub fn create(token: Token<'src>, tokenizer: &mut Tokenizer<'src>, spaces: &[Token<'src>]) -> Node<'src> {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
         let selector = Selector::create(token, tokenizer, &mut builder);
 
@@ -118,15 +120,15 @@ impl Rule {
         return builder.build(tokenizer, &spaces);
     }
 
-    fn new(selector: String) -> Self {
+    fn new(selector: Cow<'src, str>) -> Self {
         return Self { selector };
     }
 
     fn create_comment(
-        token: Token<'_>,
-        tokenizer: &mut Tokenizer<'_>,
-        spaces: &[Token<'_>],
-    ) -> Node {
+        token: Token<'src>,
+        tokenizer: &mut Tokenizer<'src>,
+        spaces: &[Token<'src>],
+    ) -> Node<'src> {
         return crate::Comment::create(token, tokenizer, spaces);
     }
 
@@ -249,16 +251,16 @@ impl Selector {
     }
 
     /// A builder struct used for creating a rule selector.
-    pub fn create(
-        token: Token<'_>,
-        tokenizer: &mut Tokenizer<'_>,
-        builder: &mut NodeBuilder,
-    ) -> String {
+    pub fn create<'src>(
+        token: Token<'src>,
+        tokenizer: &mut Tokenizer<'src>,
+        builder: &mut NodeBuilder<'src>,
+    ) -> Cow<'src, str> {
         if token.kind == Kind::OpenCurly {
             builder.ensure_empty_after();
             builder.ensure_empty_between();
 
-            return String::from(Self::EMPTY_SELECTOR);
+            return Cow::Borrowed(Self::EMPTY_SELECTOR);
         }
 
         let mut statement = Statement::new();
@@ -319,20 +321,16 @@ impl Selector {
         let (rs, re) = statement.raw_span();
         let raw_selector: &str = &css[rs..re];
 
-        let clean_selector_owned: Option<String>;
-        let clean_selector: &str = match statement.clean_span() {
-            Some((cs, ce)) => &css[cs..ce],
-            None => {
-                clean_selector_owned = Some(statement.to_string_clean());
-                clean_selector_owned.as_deref().unwrap()
-            }
+        let selector: Cow<'src, str> = match statement.clean_span() {
+            Some((cs, ce)) => Cow::Borrowed(&css[cs..ce]),
+            None => Cow::Owned(statement.to_string_clean()),
         };
 
         // If raw and clean differ, set the raw selector in builder
-        if raw_selector != clean_selector {
-            builder.selector_raw(clean_selector, raw_selector);
+        if raw_selector != selector.as_ref() {
+            builder.selector_raw(selector.as_ref(), raw_selector);
         }
 
-        return clean_selector.to_string();
+        return selector;
     }
 }

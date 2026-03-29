@@ -1,6 +1,6 @@
 use bytemuck::{Pod, Zeroable};
 use napi_derive::napi;
-use postcss_rs_parser::{Data, Node, Raw};
+use postcss_rs_parser::{AtRule, CommentData, Data, Declaration, Node, Raw, Rule};
 
 /// Sentinel value indicating an absent/null field.
 pub const ABSENT: u32 = u32::MAX;
@@ -254,7 +254,7 @@ pub struct OffsetSerializer;
 
 impl OffsetSerializer {
     /// Serialize `root` into the offset-array binary format.
-    pub fn serialize(root: &Node, css: &str) -> Vec<u8> {
+    pub fn serialize(root: &Node<'_>, css: &str) -> Vec<u8> {
         let mut slots: Vec<NodeSlot> = Vec::new();
         let mut string_table: Vec<u8> = Vec::new();
         Self::visit(root, ABSENT, &mut slots, &mut string_table, css);
@@ -272,7 +272,7 @@ impl OffsetSerializer {
     /// `my_idx = slots.len()` before the push gives the stable index used as
     /// `parent_idx` for all direct children.
     fn visit(
-        node: &Node,
+        node: &Node<'_>,
         parent_idx: u32,
         slots: &mut Vec<NodeSlot>,
         string_table: &mut Vec<u8>,
@@ -362,7 +362,7 @@ impl OffsetSerializer {
         }
     }
 
-    fn serialize_root(node: &Node, src_end: u32, slot: &mut NodeSlot) {
+    fn serialize_root(node: &Node<'_>, src_end: u32, slot: &mut NodeSlot) {
         slot.type_tag = NodeType::ROOT;
         if src_end != ABSENT {
             let (as_, ae) = Self::encode_ends_at(&node.raws.after, src_end);
@@ -372,8 +372,8 @@ impl OffsetSerializer {
     }
 
     fn serialize_rule(
-        node: &Node,
-        rule: &postcss_rs_parser::Rule,
+        node: &Node<'_>,
+        rule: &Rule<'_>,
         css: &str,
         src_start: u32,
         src_end: u32,
@@ -382,7 +382,7 @@ impl OffsetSerializer {
     ) {
         slot.type_tag = NodeType::RULE;
 
-        let sel_raw = node.raws.selector.raw.as_deref().unwrap_or(&rule.selector);
+        let sel_raw = node.raws.selector.raw.as_deref().unwrap_or(rule.selector.as_ref());
         // Selector may be preceded by a non-ASCII prefix (e.g. BOM) that is
         // part of raws.before; find where sel_raw actually starts.
         let (f1s, f1s_byte) = Self::find_field_start(css, src_start, sel_raw);
@@ -426,7 +426,7 @@ impl OffsetSerializer {
                 .selector
                 .value
                 .as_deref()
-                .unwrap_or(&rule.selector);
+                .unwrap_or(rule.selector.as_ref());
             slot.clean_start = string_table.len() as u32;
             string_table.extend_from_slice(clean.as_bytes());
             slot.clean_end = string_table.len() as u32;
@@ -443,8 +443,8 @@ impl OffsetSerializer {
     }
 
     fn serialize_declaration(
-        node: &Node,
-        decl: &postcss_rs_parser::Declaration,
+        node: &Node<'_>,
+        decl: &Declaration<'_>,
         css: &str,
         src_start: u32,
         slot: &mut NodeSlot,
@@ -454,9 +454,9 @@ impl OffsetSerializer {
 
         // IE hack: *color, _background — source.start points to the prefix
         // char, not the prop; find where decl.prop actually begins.
-        let f1s = Self::find_field_js_start(css, src_start, &decl.prop);
+        let f1s = Self::find_field_js_start(css, src_start, decl.prop.as_ref());
         slot.field1_start = f1s;
-        slot.field1_end = f1s + Self::js_len(&decl.prop);
+        slot.field1_end = f1s + Self::js_len(decl.prop.as_ref());
 
         // raws.before ends where the prop starts (overrides default src_start value)
         let (rbs, rbe) = Self::encode_ends_at(&node.raws.before, f1s);
@@ -474,7 +474,7 @@ impl OffsetSerializer {
         slot.raws_between_end = bt_e;
         let value_start = slot.field1_end + between_len;
 
-        let val_raw = node.raws.value.raw.as_deref().unwrap_or(&decl.value);
+        let val_raw = node.raws.value.raw.as_deref().unwrap_or(decl.value.as_ref());
         slot.field2_start = value_start;
         slot.field2_end = value_start + val_raw.len() as u32;
 
@@ -487,7 +487,7 @@ impl OffsetSerializer {
         }
 
         if node.raws.value.raw.is_some() {
-            let clean = node.raws.value.value.as_deref().unwrap_or(&decl.value);
+            let clean = node.raws.value.value.as_deref().unwrap_or(decl.value.as_ref());
             slot.clean_start = string_table.len() as u32;
             string_table.extend_from_slice(clean.as_bytes());
             slot.clean_end = string_table.len() as u32;
@@ -496,8 +496,8 @@ impl OffsetSerializer {
     }
 
     fn serialize_at_rule(
-        node: &Node,
-        at_rule: &postcss_rs_parser::AtRule,
+        node: &Node<'_>,
+        at_rule: &AtRule<'_>,
         _css: &str,
         src_start: u32,
         src_end: u32,
@@ -542,8 +542,8 @@ impl OffsetSerializer {
     }
 
     fn serialize_comment(
-        node: &Node,
-        comment: &postcss_rs_parser::CommentData,
+        node: &Node<'_>,
+        comment: &CommentData<'_>,
         _css: &str,
         src_start: u32,
         src_end: u32,

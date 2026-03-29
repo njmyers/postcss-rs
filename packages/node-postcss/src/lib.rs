@@ -95,7 +95,7 @@ pub mod postcss {
 
     #[napi]
     pub fn stringify(json: String) -> Result<String> {
-        let node: Node = serde_json::from_str(&json)
+        let node: Node<'_> = serde_json::from_str(&json)
             .map_err(|e| napi::Error::from_reason(format!("Failed to parse JSON: {}", e)))?;
         let css = Stringifier::stringify(&node, StringifyOptions::default());
         return Ok(css);

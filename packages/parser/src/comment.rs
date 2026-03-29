@@ -17,7 +17,7 @@ impl Comment {
     /// `token` is the raw comment token (value like `"/* text */"`).
     /// `spaces` are any whitespace tokens that appear before the comment in the
     /// source; they are placed in `raws.before`.
-    pub fn create(token: Token<'_>, tokenizer: &mut Tokenizer<'_>, spaces: &[Token<'_>]) -> Node {
+    pub fn create<'src>(token: Token<'src>, tokenizer: &mut Tokenizer<'src>, spaces: &[Token<'src>]) -> Node<'src> {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
         builder.ensure_empty_before();
 

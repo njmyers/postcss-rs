@@ -4,7 +4,7 @@
 [![npm](https://img.shields.io/npm/v/@postcss-rs/node-postcss)](https://www.npmjs.com/package/@postcss-rs/node-postcss)
 [![license](https://img.shields.io/npm/l/@postcss-rs/node-postcss)](./LICENSE.md)
 
-A drop-in replacement for the PostCSS parser — 100% compatible, performance on par with postcss.
+A drop-in replacement for the PostCSS parser — 100% compatible, ~15% faster than postcss on large CSS.
 
 postcss-rs implements the PostCSS parser in Rust and exposes it to Node.js via NAPI. It returns real PostCSS `Root` instances, so it works with all existing PostCSS plugins and tooling without any migration.
 
@@ -14,13 +14,13 @@ Averages across 5 runs, measured with `pnpm bench` (ops/s, higher is better):
 
 | Mode                     | Small (~200 B) | Medium (~2 KB) | Large (~30 KB) |
 | ------------------------ | -------------- | -------------- | -------------- |
-| postcss-rs offsets sync  | 67,478         | **10,638**     | 621            |
-| postcss-rs offsets async | 12,505         | 4,953          | 614            |
-| postcss-rs json sync     | 38,224         | 5,447          | 320            |
-| postcss-rs json async    | 9,709          | 3,135          | 318            |
-| postcss original         | **70,451**     | 10,538         | **629**        |
+| postcss-rs offsets sync  | 63,552         | **9,878**      | **646**        |
+| postcss-rs offsets async | 13,472         | 5,455          | 639            |
+| postcss-rs json sync     | 33,358         | 5,061          | 305            |
+| postcss-rs json async    | 9,978          | 3,309          | 301            |
+| postcss original         | **67,571**     | 9,488          | 562            |
 
-The offsets sync mode is the fastest mode and performs roughly on par with postcss original across all file sizes (within ~1–4%). The json modes carry additional overhead from full AST serialization and are considerably slower. Performance improvements beyond parity are an active area of development.
+The offsets sync mode is the fastest mode and outperforms postcss original on medium and large CSS (~4% and ~15% faster respectively). For small CSS it is ~6% slower due to NAPI call overhead. The json modes carry additional overhead from full AST serialization and are considerably slower.
 
 ## Installation
 

@@ -34,14 +34,14 @@ impl Stringifier {
     }
 
     /// Main entry point: stringify a node
-    pub fn stringify(node: &Node, options: StringifyOptions) -> String {
+    pub fn stringify(node: &Node<'_>, options: StringifyOptions) -> String {
         let mut stringifier = Self::new(options);
         stringifier.visit_node(node);
         stringifier.output
     }
 
     /// Visit a node and dispatch to appropriate handler
-    fn visit_node(&mut self, node: &Node) {
+    fn visit_node(&mut self, node: &Node<'_>) {
         match &node.data {
             Data::Root => self.visit_root(node),
             Data::Rule(rule) => self.visit_rule(node, rule),
@@ -52,7 +52,7 @@ impl Stringifier {
     }
 
     /// Stringify a root node
-    fn visit_root(&mut self, node: &Node) {
+    fn visit_root(&mut self, node: &Node<'_>) {
         // Add before whitespace
         if let Some(before) = node.raws.before.as_ref() {
             self.output.push_str(before);
@@ -72,7 +72,7 @@ impl Stringifier {
     }
 
     /// Stringify a rule node
-    fn visit_rule(&mut self, node: &Node, rule: &Rule) {
+    fn visit_rule(&mut self, node: &Node<'_>, rule: &Rule<'_>) {
         // Add before whitespace
         if let Some(before) = node.raws.before.as_ref() {
             self.output.push_str(before);
@@ -117,7 +117,7 @@ impl Stringifier {
     }
 
     /// Stringify a declaration node
-    fn visit_declaration(&mut self, node: &Node, decl: &Declaration) {
+    fn visit_declaration(&mut self, node: &Node<'_>, decl: &Declaration<'_>) {
         // Add before whitespace
         if let Some(before) = node.raws.before.as_ref() {
             self.output.push_str(before);
@@ -159,7 +159,7 @@ impl Stringifier {
     }
 
     /// Stringify an at-rule node
-    fn visit_atrule(&mut self, node: &Node, atrule: &AtRule) {
+    fn visit_atrule(&mut self, node: &Node<'_>, atrule: &AtRule<'_>) {
         // Add before whitespace
         if let Some(before) = node.raws.before.as_ref() {
             self.output.push_str(before);
@@ -213,7 +213,7 @@ impl Stringifier {
     }
 
     /// Stringify a comment node
-    fn visit_comment(&mut self, node: &Node, comment: &CommentData) {
+    fn visit_comment(&mut self, node: &Node<'_>, comment: &CommentData<'_>) {
         // Add before whitespace
         if let Some(before) = node.raws.before.as_ref() {
             self.output.push_str(before);
