@@ -381,7 +381,13 @@ impl<'src> Tokenizer<'src> {
         self.index = index;
         self.prev_value = Some(value);
 
-        Token { start, end, kind, value, column }
+        Token {
+            start,
+            end,
+            kind,
+            value,
+            column,
+        }
     }
 
     /// Build a token WITHOUT scanning for newlines.
@@ -404,7 +410,13 @@ impl<'src> Tokenizer<'src> {
         self.index = index;
         self.prev_value = Some(value);
 
-        Token { start, end, kind, value, column }
+        Token {
+            start,
+            end,
+            kind,
+            value,
+            column,
+        }
     }
 }
 

@@ -115,9 +115,7 @@ impl<'src> Statement<'src> {
     #[inline]
     pub fn raw_span(&self) -> (usize, usize) {
         match (self.values.first(), self.values.last()) {
-            (Some(first), Some(last)) => {
-                (first.start, last.start + last.value.len())
-            }
+            (Some(first), Some(last)) => (first.start, last.start + last.value.len()),
             _ => (0, 0),
         }
     }
