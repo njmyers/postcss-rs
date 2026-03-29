@@ -111,19 +111,6 @@ export interface ParseOptions {
   from?: string;
 }
 
-/** Rust parse → JSON string only (no JSON.parse, no buildNode; for benchmarking) */
-export function parseRustOnlySync(
-  css: string,
-  opts: ParseOptions = {}
-): string {
-  return bindings.postcss.parseToJsonSync(css, opts.from ?? null);
-}
-
-/** Rust parse → JSON.parse only (no buildNode; for benchmarking) */
-export function parseJsonOnlySync(css: string, opts: ParseOptions = {}): any {
-  return JSON.parse(bindings.postcss.parseToJsonSync(css, opts.from ?? null));
-}
-
 /** Parse CSS into a PostCSS AST via JSON (async). */
 export async function parseJsonAsync(
   css: string,

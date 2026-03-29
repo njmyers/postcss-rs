@@ -103,7 +103,7 @@ mod tests {
         let mut tokenizer = Tokenizer::new(css);
         let first_token = tokenizer.next().unwrap();
 
-        let result = RuleWord::collect_and_combine(first_token.clone(), &mut tokenizer);
+        let result = RuleWord::collect_and_combine(first_token, &mut tokenizer);
 
         assert_eq!(result.value, "color");
         assert_eq!(result.start, first_token.start);
@@ -135,7 +135,7 @@ mod tests {
         assert_eq!(first_token.kind, Kind::Word);
         assert_eq!(first_token.value, "color");
 
-        let result = RuleWord::collect_and_combine(first_token.clone(), &mut tokenizer);
+        let result = RuleWord::collect_and_combine(first_token, &mut tokenizer);
 
         // Should only include "color", not the colon
         assert_eq!(result.value, "color");

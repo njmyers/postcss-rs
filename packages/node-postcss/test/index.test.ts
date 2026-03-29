@@ -274,7 +274,7 @@ describe('Real-world CSS patterns', () => {
     const css = '.a > .b + .c:hover::before { color: red; }';
     const root = await parse(css);
     const rule = root.first as any;
-    expect(rule.selector).toBe('.a>.b+.c:hover::before');
+    expect(rule.selector).toBe('.a > .b + .c:hover::before');
   });
 
   test('Handles vendor prefixes', async () => {

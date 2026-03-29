@@ -314,14 +314,25 @@ impl Selector {
             };
         }
 
-        let raw_selector = statement.to_string();
-        let clean_selector = statement.to_string_clean();
+        // Slice raw selector directly from CSS to avoid an intermediate String.
+        let css = tokenizer.source();
+        let (rs, re) = statement.raw_span();
+        let raw_selector: &str = &css[rs..re];
+
+        let clean_selector_owned: Option<String>;
+        let clean_selector: &str = match statement.clean_span() {
+            Some((cs, ce)) => &css[cs..ce],
+            None => {
+                clean_selector_owned = Some(statement.to_string_clean());
+                clean_selector_owned.as_deref().unwrap()
+            }
+        };
 
         // If raw and clean differ, set the raw selector in builder
         if raw_selector != clean_selector {
-            builder.selector_raw(&clean_selector, &raw_selector);
+            builder.selector_raw(clean_selector, raw_selector);
         }
 
-        return clean_selector;
+        return clean_selector.to_string();
     }
 }

@@ -3,96 +3,72 @@
  *
  * Run with: pnpm bench
  *
- * Suites are grouped by operation type so related variants are compared
- * directly:
+ * All suites use the real-world async Processor path:
+ *   new Processor().process(css, opts).async()
  *
- *   Sync  — blocking parse to PostCSS AST
- *   Async — non-blocking parse to PostCSS AST
- *   Raw   — Rust serialisation only (no JS tree walk)
+ * This exercises the full pipeline — parse, plugin chain, stringify setup —
+ * under the same Promise/event-loop conditions as production usage.
  */
 
 import b from 'benny';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import postcss from 'postcss';
+import postcss, { type Processor } from 'postcss';
 
 import {
   parseJsonAsync,
-  parseJsonOnlySync,
   parseJsonSync,
   parseOffsetsAsync,
-  parseOffsetsRustOnlySync,
   parseOffsetsSync,
-  parseRustOnlySync,
+  RustProcessorFactory,
 } from '../src/index';
 
 const SMALL_CSS = readFileSync(join(__dirname, 'fixtures/small.css'), 'utf8');
 const MEDIUM_CSS = readFileSync(join(__dirname, 'fixtures/medium.css'), 'utf8');
 const LARGE_CSS = readFileSync(join(__dirname, 'fixtures/large.css'), 'utf8');
 
-const processor = postcss();
+// Build processors once — factory returns a class, instantiate per suite call
+// so each benchmark gets a fresh processor with no shared state.
+const JsonSyncProcessor = RustProcessorFactory(parseJsonSync);
+const JsonAsyncProcessor = RustProcessorFactory(parseJsonAsync);
+const OffsetSyncProcessor = RustProcessorFactory(parseOffsetsSync);
+const OffsetAsyncProcessor = RustProcessorFactory(parseOffsetsAsync);
 
-function makeSyncSuite(name: string, css: string) {
+async function makeSuite(name: string, css: string) {
   return b.suite(
-    `${name} — sync`,
-    b.add('postcss-rs JSON', () => {
-      parseJsonSync(css);
+    name,
+    b.add('postcss-rs json sync', async () => {
+      await run(new JsonSyncProcessor(), css);
     }),
-    b.add('postcss-rs Offsets', () => {
-      parseOffsetsSync(css);
+    b.add('postcss-rs json async', async () => {
+      await run(new JsonAsyncProcessor(), css);
     }),
-    b.add('postcss (JS)', () => {
-      processor.process(css, { from: undefined }).sync().root;
+    b.add('postcss-rs offsets sync', async () => {
+      await run(new OffsetSyncProcessor(), css);
+    }),
+    b.add('postcss-rs offsets async', async () => {
+      await run(new OffsetAsyncProcessor(), css);
+    }),
+    b.add('postcss original', async () => {
+      await run(postcss(), css);
     }),
     b.cycle(),
     b.complete()
   );
 }
 
-function makeAsyncSuite(name: string, css: string) {
-  return b.suite(
-    `${name} — async`,
-    b.add('postcss-rs JSON', async () => {
-      await parseJsonAsync(css);
-    }),
-    b.add('postcss-rs Offsets', async () => {
-      await parseOffsetsAsync(css);
-    }),
-    b.add('postcss (JS)', async () => {
-      (await processor.process(css, { from: undefined }).async()).root;
-    }),
-    b.cycle(),
-    b.complete()
-  );
+async function run(processor: Processor, css: string) {
+  const result = await processor.process(css, { from: undefined }).async();
+  return result.root;
 }
 
-function makeRawSuite(name: string, css: string) {
-  return b.suite(
-    `${name} — raw (Rust serialisation only, no JS tree walk)`,
-    b.add('JSON string', () => {
-      parseRustOnlySync(css);
-    }),
-    b.add('JSON.parse', () => {
-      parseJsonOnlySync(css);
-    }),
-    b.add('Offsets buffer', () => {
-      parseOffsetsRustOnlySync(css);
-    }),
-    b.cycle(),
-    b.complete()
-  );
-}
-
-makeSyncSuite('Small (~200 B)', SMALL_CSS)
-  .then(() => makeSyncSuite('Medium (~2 KB)', MEDIUM_CSS))
-  .then(() => makeSyncSuite('Large (~30 KB)', LARGE_CSS))
-  .then(() => makeAsyncSuite('Small (~200 B)', SMALL_CSS))
-  .then(() => makeAsyncSuite('Medium (~2 KB)', MEDIUM_CSS))
-  .then(() => makeAsyncSuite('Large (~30 KB)', LARGE_CSS))
-  .then(() => makeRawSuite('Small (~200 B)', SMALL_CSS))
-  .then(() => makeRawSuite('Medium (~2 KB)', MEDIUM_CSS))
-  .then(() => makeRawSuite('Large (~30 KB)', LARGE_CSS))
-  .catch((err: Error) => {
+(async () => {
+  try {
+    await makeSuite('Small (~200 B)', SMALL_CSS);
+    await makeSuite('Medium (~2 KB)', MEDIUM_CSS);
+    await makeSuite('Large (~30 KB)', LARGE_CSS);
+  } catch (err) {
     console.error(err);
     process.exit(1);
-  });
+  }
+})();

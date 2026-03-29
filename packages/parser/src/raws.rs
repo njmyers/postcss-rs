@@ -105,8 +105,25 @@ impl Raw {
     }
 
     pub fn push_tokens(&mut self, tokens: &[Token<'_>]) {
-        for token in tokens {
-            self.push(token);
+        if tokens.is_empty() {
+            return;
+        }
+        // Pre-compute total length so we only allocate once.
+        let total: usize = tokens.iter().map(|t| t.value.len()).sum();
+        match self.0 {
+            Some(ref mut value) => {
+                value.reserve(total);
+                for token in tokens {
+                    value.push_str(token.value);
+                }
+            }
+            None => {
+                let mut s = String::with_capacity(total);
+                for token in tokens {
+                    s.push_str(token.value);
+                }
+                self.0 = Some(s);
+            }
         }
     }
 

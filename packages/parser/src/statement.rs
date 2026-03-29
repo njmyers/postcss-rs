@@ -6,9 +6,11 @@ use postcss_rs_tokenizer::Tokens;
 
 /// Accumulates tokens that form a single CSS statement value or selector.
 ///
-/// Two parallel token lists are maintained:
-/// - `values` — the raw token stream, including inline comments.
-/// - `values_clean` — the same stream with comment tokens omitted.
+/// A raw token list (`values`) is always maintained.  A separate clean list
+/// (`values_clean_inner`) is only created on demand — the first time a
+/// raw-only (comment) token is pushed via [`Statement::push_raw_only`].
+/// For the common case of no inline comments this avoids all token clones
+/// and the second `Vec` allocation entirely.
 ///
 /// A `BracketDepth` tracker is kept in sync so callers can test whether the
 /// current position is inside a nested bracket group ([`Statement::is_open`]).
@@ -18,110 +20,179 @@ pub struct Statement<'src> {
     pub brackets: BracketDepth,
     /// Raw token sequence (includes comments).
     pub values: Tokens<'src>,
-    /// Clean token sequence (comments excluded via [`Statement::push_raw_only`]).
-    pub values_clean: Tokens<'src>,
+    /// Clean token sequence (comments excluded).
+    /// `None` until the first [`push_raw_only`] call; when `None` the clean
+    /// sequence is identical to `values`.
+    values_clean_inner: Option<Tokens<'src>>,
 }
 
 impl<'src> Statement<'src> {
     /// Creates a new, empty `Statement`.
     pub fn new() -> Self {
-        return Self::default();
+        Self::default()
     }
 
     /// Pushes an opening bracket token, updating the bracket depth.
     pub fn open(&mut self, token: Token<'src>) {
         self.brackets.process(&token);
-        self.values_clean.push(token.clone());
+        if let Some(clean) = &mut self.values_clean_inner {
+            clean.push(token);
+        }
         self.values.push(token);
     }
 
     /// Pushes a closing bracket token, updating the bracket depth.
     pub fn close(&mut self, token: Token<'src>) {
         self.brackets.process(&token);
-        self.values_clean.push(token.clone());
+        if let Some(clean) = &mut self.values_clean_inner {
+            clean.push(token);
+        }
         self.values.push(token);
     }
 
     /// Pushes a token to both the raw and clean sequences.
     pub fn push(&mut self, token: Token<'src>) {
         self.brackets.process(&token);
-        self.values_clean.push(token.clone());
+        if let Some(clean) = &mut self.values_clean_inner {
+            clean.push(token);
+        }
         self.values.push(token);
     }
 
     /// Pushes a token to the raw sequence only (excluded from the clean copy).
     ///
     /// Used for inline comment tokens that must be preserved in the raw output
-    /// but stripped from the semantic value.
+    /// but stripped from the semantic value.  This call triggers lazy
+    /// initialisation of `values_clean_inner` if it has not been created yet.
     pub fn push_raw_only(&mut self, token: Token<'src>) {
         self.brackets.process(&token);
+        // Lazily initialise the clean Vec on first raw-only token.
+        if self.values_clean_inner.is_none() {
+            let mut clean = Tokens::with_capacity(self.values.len() + 4);
+            for &tok in self.values.iter() {
+                clean.push(tok);
+            }
+            self.values_clean_inner = Some(clean);
+        }
         self.values.push(token);
     }
 
     /// Returns `true` if no tokens have been added yet.
     pub fn is_empty(&self) -> bool {
-        return self.values.is_empty();
+        self.values.is_empty()
+    }
+
+    /// Returns `true` if the clean value is empty.
+    ///
+    /// When no raw-only tokens have been seen this is the same as `is_empty`.
+    #[inline]
+    pub fn clean_is_empty(&self) -> bool {
+        match &self.values_clean_inner {
+            None => self.values.is_empty(),
+            Some(clean) => clean.is_empty(),
+        }
     }
 
     /// Returns `true` if the current position is inside an open bracket group.
     pub fn is_open(&self) -> bool {
-        return self.brackets.is_open();
+        self.brackets.is_open()
     }
 
     /// Returns the comment-stripped value as a `String`.
     pub fn to_string_clean(&self) -> String {
-        return self.values_clean.to_string();
+        match &self.values_clean_inner {
+            None => self.values.to_string(),
+            Some(clean) => clean.to_string(),
+        }
     }
 
-    /// Collect and remove trailing space tokens, returning them as a string
+    /// Returns the (start, end_exclusive) byte span of the raw token sequence
+    /// within the original CSS source.  Since tokens are produced sequentially
+    /// by the tokenizer they are always contiguous, so `css[start..end]` equals
+    /// `self.to_string()` without any allocation.
+    ///
+    /// Returns `(0, 0)` when there are no tokens.
+    #[inline]
+    pub fn raw_span(&self) -> (usize, usize) {
+        match (self.values.first(), self.values.last()) {
+            (Some(first), Some(last)) => (first.start, last.start + last.value.len()),
+            _ => (0, 0),
+        }
+    }
+
+    /// Returns the (start, end_exclusive) byte span of the clean token sequence.
+    /// When no `push_raw_only` has been called this is identical to `raw_span`.
+    ///
+    /// Returns `None` when a clean string cannot be represented as a single
+    /// contiguous CSS span (i.e. comments were stripped leaving gaps).
+    #[inline]
+    pub fn clean_span(&self) -> Option<(usize, usize)> {
+        match &self.values_clean_inner {
+            // No comments stripped → clean == raw, same span
+            None => Some(self.raw_span()),
+            // Comments stripped → gaps exist, cannot use a single span
+            Some(_) => None,
+        }
+    }
+
+    /// Collect and remove trailing space tokens, returning them as a string.
+    ///
+    /// Avoids intermediate allocations by building the result string directly.
     pub fn collect_trailing_spaces(&mut self) -> String {
-        let mut spaces: Vec<&str> = Vec::new();
+        // Find where trailing spaces start (scanning from end)
+        let start = self
+            .values
+            .iter()
+            .rposition(|t| t.kind != Kind::Space)
+            .map(|i| i + 1)
+            .unwrap_or(0);
 
-        // Collect from values (raw) - in reverse order
-        while let Some(last) = self.values.last() {
-            if last.kind == Kind::Space {
-                spaces.push(self.values.pop().unwrap().value);
-            } else {
-                break;
-            }
+        let total_len: usize = self.values[start..].iter().map(|t| t.value.len()).sum();
+        let mut result = String::with_capacity(total_len);
+        for tok in &self.values[start..] {
+            result.push_str(tok.value);
         }
 
-        // Also remove from values_clean
-        while let Some(last) = self.values_clean.last() {
-            if last.kind == Kind::Space {
-                self.values_clean.pop();
-            } else {
-                break;
-            }
+        // Truncate values to remove the trailing spaces
+        self.values.truncate(start);
+
+        // Also remove from values_clean if it exists
+        if let Some(clean) = &mut self.values_clean_inner {
+            let cs = clean
+                .iter()
+                .rposition(|t| t.kind != Kind::Space)
+                .map(|i| i + 1)
+                .unwrap_or(0);
+            clean.truncate(cs);
         }
 
-        // Reverse to get correct order and join
-        spaces.reverse();
-        spaces.join("")
+        result
     }
 
     /// Push a sliced portion of a token to both values and values_clean
     /// Preserves accurate source positions from the original token
     pub fn push_token_slice(&mut self, token: &Token<'src>, start: usize, end: usize) {
         let sliced = token.slice(start, end);
-        self.values_clean.push(sliced.clone());
+        if let Some(clean) = &mut self.values_clean_inner {
+            clean.push(sliced);
+        }
         self.values.push(sliced);
     }
 }
 
 impl<'src> Default for Statement<'src> {
     fn default() -> Self {
-        return Self {
+        Self {
             brackets: BracketDepth::new(),
             values: Tokens::with_capacity(8),
-            values_clean: Tokens::with_capacity(8),
-        };
+            values_clean_inner: None,
+        }
     }
 }
 
 impl<'src> fmt::Display for Statement<'src> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        return write!(formatter, "{}", self.values);
+        write!(formatter, "{}", self.values)
     }
 }
 
@@ -129,7 +200,7 @@ impl<'src> fmt::Display for Statement<'src> {
 ///
 /// The parser uses this to communicate to callers whether a declaration or
 /// at-rule ended with a semicolon and which token kind actually closed it.
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone, Default)]
 pub struct StatementTerminator {
     /// `true` if a `;` was encountered during parsing.
     pub semicolon: bool,
@@ -140,7 +211,7 @@ pub struct StatementTerminator {
 impl StatementTerminator {
     /// Creates a new `StatementTerminator` with no semicolon and no end token.
     pub fn new() -> Self {
-        return Self::default();
+        Self::default()
     }
 
     /// Updates the terminator based on `token`; sets `semicolon` if the token
@@ -152,15 +223,6 @@ impl StatementTerminator {
     /// Records that parsing was ended by a token of the given `kind`.
     pub fn set_ended_by(&mut self, kind: Kind) {
         self.ended_by = Some(kind);
-    }
-}
-
-impl Default for StatementTerminator {
-    fn default() -> Self {
-        return Self {
-            semicolon: false,
-            ended_by: None,
-        };
     }
 }
 
@@ -178,12 +240,12 @@ pub struct BracketDepth {
 impl BracketDepth {
     /// Creates a new `BracketDepth` with all depths at zero.
     pub fn new() -> Self {
-        return Self::default();
+        Self::default()
     }
 
     /// Returns `true` if any bracket type has an unclosed opening.
     pub fn is_open(&self) -> bool {
-        return self.curly > 0 || self.square > 0 || self.round > 0;
+        self.curly > 0 || self.square > 0 || self.round > 0
     }
 
     /// Updates bracket depth counts based on `token`'s kind.
@@ -338,5 +400,21 @@ mod tests {
         assert_eq!(spaces, "   ");
         // The trailing spaces should be removed from values
         assert_eq!(s.to_string(), "red");
+    }
+
+    #[test]
+    fn test_clean_is_empty_without_raw_only() {
+        let mut s = Statement::new();
+        assert!(s.clean_is_empty());
+        s.push(make_token(Kind::Word, "red"));
+        assert!(!s.clean_is_empty());
+    }
+
+    #[test]
+    fn test_clean_is_empty_with_raw_only() {
+        let mut s = Statement::new();
+        s.push_raw_only(make_token(Kind::Comment, "/* note */"));
+        // values_clean_inner is now Some(empty vec) since we had no prior tokens
+        assert!(s.clean_is_empty());
     }
 }

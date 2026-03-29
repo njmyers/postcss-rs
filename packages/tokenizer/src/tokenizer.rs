@@ -71,7 +71,7 @@ impl fmt::Display for Kind {
 }
 
 /// A single CSS token produced by the [`Tokenizer`].
-#[derive(PartialEq, Eq, Debug, Serialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Clone, Copy)]
 pub struct Token<'src> {
     /// Byte offset of the first character of this token in the source.
     pub start: usize,
@@ -211,6 +211,11 @@ impl<'src> Tokens<'src> {
     pub fn last(&self) -> Option<&Token<'src>> {
         self.0.last()
     }
+
+    /// Truncates the collection to `len` tokens, dropping any beyond that.
+    pub fn truncate(&mut self, len: usize) {
+        self.0.truncate(len);
+    }
 }
 
 impl<'src> fmt::Display for Tokens<'src> {
@@ -284,6 +289,11 @@ impl<'src> Tokenizer<'src> {
         };
     }
 
+    /// Returns a reference to the full CSS source string.
+    pub fn source(&self) -> &'src str {
+        self.css
+    }
+
     /// Returns the value of the most recently produced token.
     pub fn prev(&self) -> Option<&str> {
         self.prev_value
@@ -352,6 +362,9 @@ impl<'src> Tokenizer<'src> {
         token
     }
 
+    /// Build a token and scan its bytes for newlines (updating line tracking).
+    /// Use this for tokens that may contain newline characters.
+    #[inline]
     fn create(&mut self, length: usize, kind: Kind) -> Token<'src> {
         let column = self.lines.offset(self.index);
         let start = self.index;
@@ -366,16 +379,44 @@ impl<'src> Tokenizer<'src> {
         }
 
         self.index = index;
-
         self.prev_value = Some(value);
 
-        return Token {
+        Token {
             start,
             end,
             kind,
             value,
             column,
-        };
+        }
+    }
+
+    /// Build a token WITHOUT scanning for newlines.
+    ///
+    /// Safe to use for token kinds that can never contain `\n` or `\r`:
+    ///  - Regular CSS identifiers/keywords (`Word` from `Word::test`)
+    ///  - At-rule names (`AtWord`)
+    ///  - All single-byte symbol tokens (Colon, Semicolon, `{`, `}`, …)
+    ///
+    /// Do NOT use for `Escape`-produced Word tokens or for Space/Comment/String/
+    /// Brackets, which may carry embedded newlines.
+    #[inline]
+    fn create_fast(&mut self, length: usize, kind: Kind) -> Token<'src> {
+        let column = self.lines.offset(self.index);
+        let start = self.index;
+        let end = start + length;
+        let index = end + 1;
+        let value = &self.css[start..index];
+
+        self.index = index;
+        self.prev_value = Some(value);
+
+        Token {
+            start,
+            end,
+            kind,
+            value,
+            column,
+        }
     }
 }
 
@@ -389,123 +430,82 @@ impl<'src> Iterator for Tokenizer<'src> {
         let next = remaining.get(1).copied().unwrap_or(0);
 
         match byte {
+            // Space/whitespace — may contain newlines (\n, \r)
             b if Whitespace::test(b) => {
                 let length = Whitespace::tokenize(remaining);
-                let token = self.create(length, Kind::Space);
-
-                return Some(token);
+                return Some(self.create(length, Kind::Space));
             }
 
+            // At-rule name, e.g. @media — identifiers never contain newlines
             b if AtWord::test(b, next) => {
                 let length = AtWord::tokenize(remaining);
-                let token = self.create(length, Kind::AtWord);
-
-                return Some(token);
+                return Some(self.create_fast(length, Kind::AtWord));
             }
 
+            // Regular CSS identifier/keyword — never contains newlines
             b if Word::test(b, next) => {
                 let length = Word::tokenize(remaining);
-                let token = self.create(length, Kind::Word);
-
-                return Some(token);
+                return Some(self.create_fast(length, Kind::Word));
             }
 
+            // Balanced brackets e.g. url(...) — may contain strings with newlines
             b if Bracket::test(b, next, self.prev()) => {
                 let length = Bracket::tokenize(remaining);
-                let token = self.create(length, Kind::Brackets);
-
-                return Some(token);
+                return Some(self.create(length, Kind::Brackets));
             }
 
+            // Single-byte symbol tokens — never newlines, use fast path
             b if OpenCurly::test(b) => {
-                let length = OpenCurly::tokenize(remaining);
-                let token = self.create(length, Kind::OpenCurly);
-
-                return Some(token);
+                return Some(self.create_fast(0, Kind::OpenCurly));
             }
-
             b if CloseCurly::test(b) => {
-                let length = CloseCurly::tokenize(remaining);
-                let token = self.create(length, Kind::CloseCurly);
-
-                return Some(token);
+                return Some(self.create_fast(0, Kind::CloseCurly));
             }
-
             b if OpenSquare::test(b) => {
-                let length = OpenSquare::tokenize(remaining);
-                let token = self.create(length, Kind::OpenSquare);
-
-                return Some(token);
+                return Some(self.create_fast(0, Kind::OpenSquare));
             }
-
             b if CloseSquare::test(b) => {
-                let length = CloseSquare::tokenize(remaining);
-                let token = self.create(length, Kind::CloseSquare);
-
-                return Some(token);
+                return Some(self.create_fast(0, Kind::CloseSquare));
             }
-
             b if OpenCurvy::test(b) => {
-                let length = OpenCurvy::tokenize(remaining);
-                let token = self.create(length, Kind::OpenCurvy);
-
-                return Some(token);
+                return Some(self.create_fast(0, Kind::OpenCurvy));
             }
-
             b if CloseCurvy::test(b) => {
-                let length = CloseCurvy::tokenize(remaining);
-                let token = self.create(length, Kind::CloseCurvy);
-
-                return Some(token);
+                return Some(self.create_fast(0, Kind::CloseCurvy));
             }
-
             b if Semicolon::test(b) => {
-                let length = Semicolon::tokenize(remaining);
-                let token = self.create(length, Kind::Semicolon);
-
-                return Some(token);
+                return Some(self.create_fast(0, Kind::Semicolon));
             }
-
             b if Colon::test(b) => {
-                let length = Colon::tokenize(remaining);
-                let token = self.create(length, Kind::Colon);
-
-                return Some(token);
+                return Some(self.create_fast(0, Kind::Colon));
             }
 
+            // Block comment /* … */ — may span multiple lines
             b if Comment::test(b, next) => {
                 let length = Comment::tokenize(&remaining[2..]);
-                let token = self.create(length + 3, Kind::Comment);
-
-                return Some(token);
+                return Some(self.create(length + 3, Kind::Comment));
             }
 
+            // CSS escape sequence `\` — hex escapes like `\62\n` contain newlines
             b if Escape::test(b) => {
                 let length = Escape::tokenize(remaining);
-                let token = self.create(length, Kind::Word);
-
-                return Some(token);
+                return Some(self.create(length, Kind::Word));
             }
 
+            // Quoted strings — may contain escaped newlines
             b if SingleString::test(b) => {
                 let length = SingleString::tokenize(remaining);
-                let token = self.create(length, Kind::String);
-
-                return Some(token);
+                return Some(self.create(length, Kind::String));
             }
-
             b if DoubleString::test(b) => {
                 let length = DoubleString::tokenize(remaining);
-                let token = self.create(length, Kind::String);
-
-                return Some(token);
+                return Some(self.create(length, Kind::String));
             }
 
+            // Catch-all: treat as word (unknown bytes, never newlines in practice)
             _ => {
                 let length = Word::tokenize(remaining);
-                let token = self.create(length, Kind::Word);
-
-                return Some(token);
+                return Some(self.create_fast(length, Kind::Word));
             }
         }
     }
