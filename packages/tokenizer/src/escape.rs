@@ -30,8 +30,8 @@ impl HexEscape {
 
         // Count consecutive hex digits (up to 6)
         let mut hex_count = 0usize;
-        for i in 1..count.min(7) {
-            if bytes[i].is_ascii_hexdigit() {
+        for byte in bytes.iter().take(count.min(7)).skip(1) {
+            if byte.is_ascii_hexdigit() {
                 hex_count += 1;
             } else {
                 break;

@@ -11,16 +11,17 @@
  */
 
 import b from 'benny';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import postcss, { type Processor } from 'postcss';
+
 import {
   RustProcessorFactory,
   parseJsonAsync,
   parseJsonSync,
-  parseOffsetsSync,
   parseOffsetsAsync,
+  parseOffsetsSync,
 } from '../src/index';
-import postcss, { Processor } from 'postcss';
 
 const SMALL_CSS = readFileSync(join(__dirname, 'fixtures/small.css'), 'utf8');
 const MEDIUM_CSS = readFileSync(join(__dirname, 'fixtures/medium.css'), 'utf8');

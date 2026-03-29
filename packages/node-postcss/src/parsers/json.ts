@@ -2,14 +2,14 @@
  * JSON parse path: Rust parse → JSON string → JSON.parse → buildNode.
  */
 
+import * as path from 'node:path';
 import * as postcss from 'postcss';
 import type { Root } from 'postcss';
-import * as path from 'path';
 
 const bindings = require(path.join(__dirname, '../../index.js')) as {
   postcss: {
-    parseToJsonAsync: (css: string, from?: string | null) => Promise<string>;
-    parseToJsonSync: (css: string, from?: string | null) => string;
+    parseToJsonAsync: (css: string, from?: null | string) => Promise<string>;
+    parseToJsonSync: (css: string, from?: null | string) => string;
   };
 };
 
@@ -28,6 +28,38 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
   let node: any;
 
   switch (json.type) {
+    case 'atrule': {
+      node = Object.create(AtRuleProto);
+      node.raws = {};
+      node[isClean] = false;
+      node[my] = true;
+      node.type = 'atrule';
+      node.name = json.name;
+      node.params = json.params;
+      break;
+    }
+    case 'comment': {
+      node = Object.create(CommentProto);
+      node.raws = {};
+      node[isClean] = false;
+      node[my] = true;
+      node.type = 'comment';
+      node.text = json.text;
+      break;
+    }
+    case 'decl': {
+      node = Object.create(DeclProto);
+      node.raws = {};
+      node[isClean] = false;
+      node[my] = true;
+      node.type = 'decl';
+      node.prop = json.prop;
+      node.value = json.value;
+      if (json.important) {
+        node.important = json.important;
+      }
+      break;
+    }
     case 'root': {
       node = Object.create(RootProto);
       node.raws = {};
@@ -47,38 +79,6 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
       node.selector = json.selector;
       break;
     }
-    case 'atrule': {
-      node = Object.create(AtRuleProto);
-      node.raws = {};
-      node[isClean] = false;
-      node[my] = true;
-      node.type = 'atrule';
-      node.name = json.name;
-      node.params = json.params;
-      break;
-    }
-    case 'decl': {
-      node = Object.create(DeclProto);
-      node.raws = {};
-      node[isClean] = false;
-      node[my] = true;
-      node.type = 'decl';
-      node.prop = json.prop;
-      node.value = json.value;
-      if (json.important) {
-        node.important = json.important;
-      }
-      break;
-    }
-    case 'comment': {
-      node = Object.create(CommentProto);
-      node.raws = {};
-      node[isClean] = false;
-      node[my] = true;
-      node.type = 'comment';
-      node.text = json.text;
-      break;
-    }
     default:
       throw new Error(`Unknown node type: ${json.type}`);
   }
@@ -87,8 +87,8 @@ function buildNode(json: any, input: postcss.Input, parent: any): any {
 
   const s = json.source;
   node.source = s.end
-    ? { start: s.start, end: s.end, input }
-    : { start: s.start, input };
+    ? { end: s.end, input, start: s.start }
+    : { input, start: s.start };
 
   if (parent !== undefined) {
     node.parent = parent;
@@ -122,6 +122,16 @@ export async function parseJsonAsync(
   );
   const input = new postcss.Input(css, { from: opts.from });
   return buildNode(JSON.parse(jsonStr), input, undefined) as Root;
+}
+
+/** Rust parse → raw JSON string only (no JS tree walk; for benchmarking). */
+export function parseRustOnlySync(css: string, opts: ParseOptions = {}): string {
+  return bindings.postcss.parseToJsonSync(css, opts.from ?? null);
+}
+
+/** Rust parse → parsed JSON object only (no PostCSS node building; for benchmarking). */
+export function parseJsonOnlySync(css: string, opts: ParseOptions = {}): any {
+  return JSON.parse(bindings.postcss.parseToJsonSync(css, opts.from ?? null));
 }
 
 /** Parse CSS into a PostCSS AST via JSON (sync, blocks the event loop). */

@@ -11,14 +11,16 @@
   "scripts": {
     "test": "pnpm --recursive --sort run test",
     "build:debug": "pnpm --recursive --sort run build:debug",
-    "build:release": "pnpm --recursive --sort run build:release"
+    "build:release": "pnpm --recursive --sort run build:release",
+    "lint:prettier": "prettier --check \"**/*.{ts,js,mjs,json,md}\" --ignore-path .gitignore"
   },
   "engines": {
     "node": ">=20.12",
     "pnpm": ">=8"
   },
   "devDependencies": {
-    "@napi-rs/cli": "^3.0.0"
+    "@napi-rs/cli": "^3.0.0",
+    "prettier": "^3.0.0"
   },
   "dependencies": {
     "autoprefixer": "^10.4.23",

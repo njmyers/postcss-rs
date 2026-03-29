@@ -1,0 +1,11 @@
+node_modules/
+**/node_modules/
+target/
+**/target/
+dist/
+**/dist/
+*.node
+output/
+packages/docs/public/rustdoc/
+packages/docs/.vitepress/cache/
+pnpm-lock.yaml

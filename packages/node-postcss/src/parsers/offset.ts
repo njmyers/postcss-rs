@@ -9,16 +9,17 @@
  *   [u32 node_count] [node_count × STRIDE u32s] [UTF-8 string table]
  */
 
+import * as path from 'node:path';
 import * as postcss from 'postcss';
 import type { Root } from 'postcss';
-import * as path from 'path';
+
 import type { NodeSlotLayout } from '../../index';
 
 const bindings = require(path.join(__dirname, '../../index.js')) as {
   postcss: {
-    parseToOffsetsSync: (css: string, from?: string | null) => Buffer;
-    parseToOffsetsAsync: (css: string, from?: string | null) => Promise<Buffer>;
     nodeSlotLayout: () => NodeSlotLayout;
+    parseToOffsetsAsync: (css: string, from?: null | string) => Promise<Buffer>;
+    parseToOffsetsSync: (css: string, from?: null | string) => Buffer;
   };
 };
 
@@ -80,94 +81,164 @@ const { isClean, my } = require('postcss/lib/symbols') as {
 };
 
 class OffsetParser {
-  private static parseRoot(raws: any): any {
-    const node = Object.create(RootProto);
-    node[isClean] = false;
-    node[my] = true;
-    node.type = 'root';
-    node.nodes = [];
-    node.raws = raws;
-    return node;
-  }
-
-  private static parseRule(
-    buf: Buffer,
-    css: string,
-    stringTableBase: number,
-    field1Start: number,
-    field1End: number,
-    rawsExtra1Start: number,
-    rawsExtra1End: number,
-    flags: number,
-    cleanStart: number,
-    cleanEnd: number,
-    raws: any
-  ): any {
-    const node = Object.create(RuleProto);
-    node[isClean] = false;
-    node[my] = true;
-    node.type = 'rule';
-    node.nodes = [];
-    const rawSelector = css.slice(field1Start, field1End);
-    if (flags & FLAG_HAS_CLEAN_STRING) {
-      const cleanSelector = buf.toString(
-        'utf8',
-        stringTableBase + cleanStart,
-        stringTableBase + cleanEnd
-      );
-      node.selector = cleanSelector;
-      raws.selector = { value: cleanSelector, raw: rawSelector };
+  static parse(buf: Buffer, css: string, input: postcss.Input): Root {
+    // Align-safe Uint32Array view (host is LE on all Node.js platforms we target)
+    let view: Uint32Array;
+    if (buf.byteOffset % 4 === 0) {
+      view = new Uint32Array(buf.buffer, buf.byteOffset, buf.byteLength >>> 2);
     } else {
-      node.selector = rawSelector;
+      const copy = new Uint8Array(buf.byteLength);
+      copy.set(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
+      view = new Uint32Array(copy.buffer);
     }
-    // rawsExtra1 holds ownSemicolon for RULE (unused slot repurposed)
-    if (rawsExtra1Start !== ABSENT) {
-      raws.ownSemicolon = css.slice(rawsExtra1Start, rawsExtra1End);
-    }
-    node.raws = raws;
-    return node;
-  }
 
-  private static parseDeclaration(
-    buf: Buffer,
-    css: string,
-    stringTableBase: number,
-    field1Start: number,
-    field1End: number,
-    field2Start: number,
-    field2End: number,
-    rawsExtra2Start: number,
-    rawsExtra2End: number,
-    flags: number,
-    cleanStart: number,
-    cleanEnd: number,
-    raws: any
-  ): any {
-    const node = Object.create(DeclProto);
-    node[isClean] = false;
-    node[my] = true;
-    node.type = 'decl';
-    node.prop = css.slice(field1Start, field1End);
-    const rawValue = css.slice(field2Start, field2End);
-    if (flags & FLAG_HAS_CLEAN_STRING) {
-      const cleanValue = buf.toString(
-        'utf8',
-        stringTableBase + cleanStart,
-        stringTableBase + cleanEnd
-      );
-      node.value = cleanValue;
-      raws.value = { value: cleanValue, raw: rawValue };
-    } else {
-      node.value = rawValue;
+    const nodeCount = view[0];
+    const stringTableBase = (1 + nodeCount * STRIDE) * 4;
+    const nodes: any[] = new Array(nodeCount);
+
+    for (let i = 0; i < nodeCount; i++) {
+      const slotOffset = 1 + i * STRIDE;
+
+      const type = view[slotOffset + IDX_TYPE_TAG];
+      const parentIdx = view[slotOffset + IDX_PARENT_IDX];
+      const sourceStartOffset = view[slotOffset + IDX_SOURCE_START_OFFSET];
+      const sourceStartLine = view[slotOffset + IDX_SOURCE_START_LINE];
+      const sourceStartColumn = view[slotOffset + IDX_SOURCE_START_COLUMN];
+      const sourceEndOffset = view[slotOffset + IDX_SOURCE_END_OFFSET];
+      const sourceEndLine = view[slotOffset + IDX_SOURCE_END_LINE];
+      const sourceEndColumn = view[slotOffset + IDX_SOURCE_END_COLUMN];
+      const field1Start = view[slotOffset + IDX_FIELD1_START];
+      const field1End = view[slotOffset + IDX_FIELD1_END];
+      const field2Start = view[slotOffset + IDX_FIELD2_START];
+      const field2End = view[slotOffset + IDX_FIELD2_END];
+      const rawsBeforeStart = view[slotOffset + IDX_RAWS_BEFORE_START];
+      const rawsBeforeEnd = view[slotOffset + IDX_RAWS_BEFORE_END];
+      const rawsBetweenStart = view[slotOffset + IDX_RAWS_BETWEEN_START];
+      const rawsBetweenEnd = view[slotOffset + IDX_RAWS_BETWEEN_END];
+      const rawsAfterStart = view[slotOffset + IDX_RAWS_AFTER_START];
+      const rawsAfterEnd = view[slotOffset + IDX_RAWS_AFTER_END];
+      const rawsExtra1Start = view[slotOffset + IDX_RAWS_EXTRA1_START];
+      const rawsExtra1End = view[slotOffset + IDX_RAWS_EXTRA1_END];
+      const rawsExtra2Start = view[slotOffset + IDX_RAWS_EXTRA2_START];
+      const rawsExtra2End = view[slotOffset + IDX_RAWS_EXTRA2_END];
+      const flags = view[slotOffset + IDX_FLAGS];
+      const cleanStart = view[slotOffset + IDX_CLEAN_START];
+      const cleanEnd = view[slotOffset + IDX_CLEAN_END];
+
+      const start = {
+        column: sourceStartColumn,
+        line: sourceStartLine,
+        offset: sourceStartOffset,
+      };
+      const source: any =
+        sourceEndOffset !== ABSENT
+          ? {
+              end: {
+                column: sourceEndColumn,
+                line: sourceEndLine,
+                offset: sourceEndOffset,
+              },
+              input,
+              start,
+            }
+          : { input, start };
+
+      const raws: any = {};
+      if (rawsBeforeStart !== ABSENT) {
+        raws.before = css.slice(rawsBeforeStart, rawsBeforeEnd);
+      }
+      if (rawsBetweenStart !== ABSENT) {
+        raws.between = css.slice(rawsBetweenStart, rawsBetweenEnd);
+      }
+      if (rawsAfterStart !== ABSENT) {
+        raws.after = css.slice(rawsAfterStart, rawsAfterEnd);
+      }
+      if (flags & FLAG_SEMI_PRESENT) {
+        raws.semicolon = (flags & FLAG_SEMI_VALUE) !== 0;
+      }
+
+      let node: any;
+
+      switch (type) {
+        case TYPE_ATRULE:
+          node = OffsetParser.parseAtRule(
+            css,
+            field1Start,
+            field1End,
+            field2Start,
+            field2End,
+            rawsExtra1Start,
+            rawsExtra1End,
+            flags,
+            raws
+          );
+          break;
+        case TYPE_COMMENT:
+          node = OffsetParser.parseComment(
+            css,
+            field1Start,
+            field1End,
+            rawsExtra1Start,
+            rawsExtra1End,
+            rawsExtra2Start,
+            rawsExtra2End,
+            raws
+          );
+          break;
+        case TYPE_DECL:
+          node = OffsetParser.parseDeclaration(
+            buf,
+            css,
+            stringTableBase,
+            field1Start,
+            field1End,
+            field2Start,
+            field2End,
+            rawsExtra2Start,
+            rawsExtra2End,
+            flags,
+            cleanStart,
+            cleanEnd,
+            raws
+          );
+          break;
+        case TYPE_ROOT:
+          node = OffsetParser.parseRoot(raws);
+          break;
+        case TYPE_RULE:
+          node = OffsetParser.parseRule(
+            buf,
+            css,
+            stringTableBase,
+            field1Start,
+            field1End,
+            rawsExtra1Start,
+            rawsExtra1End,
+            flags,
+            cleanStart,
+            cleanEnd,
+            raws
+          );
+          break;
+        default:
+          throw new Error(`Unknown offset node type: ${type}`);
+      }
+
+      node.source = source;
+
+      if (parentIdx !== ABSENT) {
+        const parent = nodes[parentIdx];
+        if (parent.nodes === undefined) {
+          parent.nodes = [];
+        }
+        parent.nodes.push(node);
+        node.parent = parent;
+      }
+
+      nodes[i] = node;
     }
-    if (flags & FLAG_IMPORTANT) {
-      node.important = true;
-    }
-    if (rawsExtra2Start !== ABSENT) {
-      raws.important = css.slice(rawsExtra2Start, rawsExtra2End);
-    }
-    node.raws = raws;
-    return node;
+
+    return nodes[0] as Root;
   }
 
   private static parseAtRule(
@@ -223,164 +294,94 @@ class OffsetParser {
     return node;
   }
 
-  static parse(buf: Buffer, css: string, input: postcss.Input): Root {
-    // Align-safe Uint32Array view (host is LE on all Node.js platforms we target)
-    let view: Uint32Array;
-    if (buf.byteOffset % 4 === 0) {
-      view = new Uint32Array(buf.buffer, buf.byteOffset, buf.byteLength >>> 2);
+  private static parseDeclaration(
+    buf: Buffer,
+    css: string,
+    stringTableBase: number,
+    field1Start: number,
+    field1End: number,
+    field2Start: number,
+    field2End: number,
+    rawsExtra2Start: number,
+    rawsExtra2End: number,
+    flags: number,
+    cleanStart: number,
+    cleanEnd: number,
+    raws: any
+  ): any {
+    const node = Object.create(DeclProto);
+    node[isClean] = false;
+    node[my] = true;
+    node.type = 'decl';
+    node.prop = css.slice(field1Start, field1End);
+    const rawValue = css.slice(field2Start, field2End);
+    if (flags & FLAG_HAS_CLEAN_STRING) {
+      const cleanValue = buf.toString(
+        'utf8',
+        stringTableBase + cleanStart,
+        stringTableBase + cleanEnd
+      );
+      node.value = cleanValue;
+      raws.value = { raw: rawValue, value: cleanValue };
     } else {
-      const copy = new Uint8Array(buf.byteLength);
-      copy.set(new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength));
-      view = new Uint32Array(copy.buffer);
+      node.value = rawValue;
     }
-
-    const nodeCount = view[0];
-    const stringTableBase = (1 + nodeCount * STRIDE) * 4;
-    const nodes: any[] = new Array(nodeCount);
-
-    for (let i = 0; i < nodeCount; i++) {
-      const slotOffset = 1 + i * STRIDE;
-
-      const type = view[slotOffset + IDX_TYPE_TAG];
-      const parentIdx = view[slotOffset + IDX_PARENT_IDX];
-      const sourceStartOffset = view[slotOffset + IDX_SOURCE_START_OFFSET];
-      const sourceStartLine = view[slotOffset + IDX_SOURCE_START_LINE];
-      const sourceStartColumn = view[slotOffset + IDX_SOURCE_START_COLUMN];
-      const sourceEndOffset = view[slotOffset + IDX_SOURCE_END_OFFSET];
-      const sourceEndLine = view[slotOffset + IDX_SOURCE_END_LINE];
-      const sourceEndColumn = view[slotOffset + IDX_SOURCE_END_COLUMN];
-      const field1Start = view[slotOffset + IDX_FIELD1_START];
-      const field1End = view[slotOffset + IDX_FIELD1_END];
-      const field2Start = view[slotOffset + IDX_FIELD2_START];
-      const field2End = view[slotOffset + IDX_FIELD2_END];
-      const rawsBeforeStart = view[slotOffset + IDX_RAWS_BEFORE_START];
-      const rawsBeforeEnd = view[slotOffset + IDX_RAWS_BEFORE_END];
-      const rawsBetweenStart = view[slotOffset + IDX_RAWS_BETWEEN_START];
-      const rawsBetweenEnd = view[slotOffset + IDX_RAWS_BETWEEN_END];
-      const rawsAfterStart = view[slotOffset + IDX_RAWS_AFTER_START];
-      const rawsAfterEnd = view[slotOffset + IDX_RAWS_AFTER_END];
-      const rawsExtra1Start = view[slotOffset + IDX_RAWS_EXTRA1_START];
-      const rawsExtra1End = view[slotOffset + IDX_RAWS_EXTRA1_END];
-      const rawsExtra2Start = view[slotOffset + IDX_RAWS_EXTRA2_START];
-      const rawsExtra2End = view[slotOffset + IDX_RAWS_EXTRA2_END];
-      const flags = view[slotOffset + IDX_FLAGS];
-      const cleanStart = view[slotOffset + IDX_CLEAN_START];
-      const cleanEnd = view[slotOffset + IDX_CLEAN_END];
-
-      const start = {
-        offset: sourceStartOffset,
-        line: sourceStartLine,
-        column: sourceStartColumn,
-      };
-      const source: any =
-        sourceEndOffset !== ABSENT
-          ? {
-              start,
-              end: {
-                offset: sourceEndOffset,
-                line: sourceEndLine,
-                column: sourceEndColumn,
-              },
-              input,
-            }
-          : { start, input };
-
-      const raws: any = {};
-      if (rawsBeforeStart !== ABSENT) {
-        raws.before = css.slice(rawsBeforeStart, rawsBeforeEnd);
-      }
-      if (rawsBetweenStart !== ABSENT) {
-        raws.between = css.slice(rawsBetweenStart, rawsBetweenEnd);
-      }
-      if (rawsAfterStart !== ABSENT) {
-        raws.after = css.slice(rawsAfterStart, rawsAfterEnd);
-      }
-      if (flags & FLAG_SEMI_PRESENT) {
-        raws.semicolon = (flags & FLAG_SEMI_VALUE) !== 0;
-      }
-
-      let node: any;
-
-      switch (type) {
-        case TYPE_ROOT:
-          node = OffsetParser.parseRoot(raws);
-          break;
-        case TYPE_RULE:
-          node = OffsetParser.parseRule(
-            buf,
-            css,
-            stringTableBase,
-            field1Start,
-            field1End,
-            rawsExtra1Start,
-            rawsExtra1End,
-            flags,
-            cleanStart,
-            cleanEnd,
-            raws
-          );
-          break;
-        case TYPE_DECL:
-          node = OffsetParser.parseDeclaration(
-            buf,
-            css,
-            stringTableBase,
-            field1Start,
-            field1End,
-            field2Start,
-            field2End,
-            rawsExtra2Start,
-            rawsExtra2End,
-            flags,
-            cleanStart,
-            cleanEnd,
-            raws
-          );
-          break;
-        case TYPE_ATRULE:
-          node = OffsetParser.parseAtRule(
-            css,
-            field1Start,
-            field1End,
-            field2Start,
-            field2End,
-            rawsExtra1Start,
-            rawsExtra1End,
-            flags,
-            raws
-          );
-          break;
-        case TYPE_COMMENT:
-          node = OffsetParser.parseComment(
-            css,
-            field1Start,
-            field1End,
-            rawsExtra1Start,
-            rawsExtra1End,
-            rawsExtra2Start,
-            rawsExtra2End,
-            raws
-          );
-          break;
-        default:
-          throw new Error(`Unknown offset node type: ${type}`);
-      }
-
-      node.source = source;
-
-      if (parentIdx !== ABSENT) {
-        const parent = nodes[parentIdx];
-        if (parent.nodes === undefined) {
-          parent.nodes = [];
-        }
-        parent.nodes.push(node);
-        node.parent = parent;
-      }
-
-      nodes[i] = node;
+    if (flags & FLAG_IMPORTANT) {
+      node.important = true;
     }
+    if (rawsExtra2Start !== ABSENT) {
+      raws.important = css.slice(rawsExtra2Start, rawsExtra2End);
+    }
+    node.raws = raws;
+    return node;
+  }
 
-    return nodes[0] as Root;
+  private static parseRoot(raws: any): any {
+    const node = Object.create(RootProto);
+    node[isClean] = false;
+    node[my] = true;
+    node.type = 'root';
+    node.nodes = [];
+    node.raws = raws;
+    return node;
+  }
+
+  private static parseRule(
+    buf: Buffer,
+    css: string,
+    stringTableBase: number,
+    field1Start: number,
+    field1End: number,
+    rawsExtra1Start: number,
+    rawsExtra1End: number,
+    flags: number,
+    cleanStart: number,
+    cleanEnd: number,
+    raws: any
+  ): any {
+    const node = Object.create(RuleProto);
+    node[isClean] = false;
+    node[my] = true;
+    node.type = 'rule';
+    node.nodes = [];
+    const rawSelector = css.slice(field1Start, field1End);
+    if (flags & FLAG_HAS_CLEAN_STRING) {
+      const cleanSelector = buf.toString(
+        'utf8',
+        stringTableBase + cleanStart,
+        stringTableBase + cleanEnd
+      );
+      node.selector = cleanSelector;
+      raws.selector = { raw: rawSelector, value: cleanSelector };
+    } else {
+      node.selector = rawSelector;
+    }
+    // rawsExtra1 holds ownSemicolon for RULE (unused slot repurposed)
+    if (rawsExtra1Start !== ABSENT) {
+      raws.ownSemicolon = css.slice(rawsExtra1Start, rawsExtra1End);
+    }
+    node.raws = raws;
+    return node;
   }
 }
 

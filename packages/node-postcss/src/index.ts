@@ -16,11 +16,16 @@ import * as postcss from 'postcss';
 import type { Plugin, Processor } from 'postcss';
 
 export type { ParseOptions } from './parsers/json';
-export { parseJsonAsync, parseJsonSync } from './parsers/json';
 export {
-  parseOffsetsSync,
+  parseJsonAsync,
+  parseJsonOnlySync,
+  parseJsonSync,
+  parseRustOnlySync,
+} from './parsers/json';
+export {
   parseOffsetsAsync,
   parseOffsetsRustOnlySync,
+  parseOffsetsSync,
 } from './parsers/offset';
 export { RustProcessorFactory } from './processor';
 export type { ParseFn } from './processor';
@@ -52,13 +57,13 @@ export const PostCSSContainer = postcss.Container;
 export const PostCSSNode = postcss.Node;
 
 export type {
-  Root,
-  Rule,
   AtRule,
-  Declaration,
   Comment,
   Container,
+  Declaration,
   Node,
   Plugin,
   Processor,
+  Root,
+  Rule,
 } from 'postcss';

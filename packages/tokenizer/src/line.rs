@@ -36,6 +36,11 @@ impl Lines {
         self.lines.len()
     }
 
+    /// Returns `true` if no newlines have been recorded yet.
+    pub fn is_empty(&self) -> bool {
+        self.lines.borrow().is_empty()
+    }
+
     /// Truncates the newline records to `len` entries.
     ///
     /// Used by [`Tokenizer::rewind`] to restore line-tracking state.
