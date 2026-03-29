@@ -16,11 +16,11 @@ import { join } from 'node:path';
 import postcss, { type Processor } from 'postcss';
 
 import {
-  RustProcessorFactory,
   parseJsonAsync,
   parseJsonSync,
   parseOffsetsAsync,
   parseOffsetsSync,
+  RustProcessorFactory,
 } from '../src/index';
 
 const SMALL_CSS = readFileSync(join(__dirname, 'fixtures/small.css'), 'utf8');
