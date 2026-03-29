@@ -38,7 +38,7 @@ impl Lines {
 
     /// Returns `true` if no newlines have been recorded yet.
     pub fn is_empty(&self) -> bool {
-        self.lines.borrow().is_empty()
+        self.lines.is_empty()
     }
 
     /// Truncates the newline records to `len` entries.
