@@ -200,7 +200,7 @@ impl<'src> fmt::Display for Statement<'src> {
 ///
 /// The parser uses this to communicate to callers whether a declaration or
 /// at-rule ended with a semicolon and which token kind actually closed it.
-#[derive(PartialEq, Eq, Debug, Clone)]
+#[derive(PartialEq, Eq, Debug, Clone, Default)]
 pub struct StatementTerminator {
     /// `true` if a `;` was encountered during parsing.
     pub semicolon: bool,
@@ -223,15 +223,6 @@ impl StatementTerminator {
     /// Records that parsing was ended by a token of the given `kind`.
     pub fn set_ended_by(&mut self, kind: Kind) {
         self.ended_by = Some(kind);
-    }
-}
-
-impl Default for StatementTerminator {
-    fn default() -> Self {
-        Self {
-            semicolon: false,
-            ended_by: None,
-        }
     }
 }
 
