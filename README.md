@@ -4,23 +4,23 @@
 [![npm](https://img.shields.io/npm/v/@postcss-rs/node-postcss)](https://www.npmjs.com/package/@postcss-rs/node-postcss)
 [![license](https://img.shields.io/npm/l/@postcss-rs/node-postcss)](./LICENSE.md)
 
-A drop-in replacement for the PostCSS parser — 100% compatible, faster for large CSS files.
+A drop-in replacement for the PostCSS parser — 100% compatible, performance on par with postcss.
 
 postcss-rs implements the PostCSS parser in Rust and exposes it to Node.js via NAPI. It returns real PostCSS `Root` instances, so it works with all existing PostCSS plugins and tooling without any migration.
 
 ## Benchmark Results
 
-Performance vs. postcss original, measured with `pnpm bench` (ops/s, higher is better):
+Averages across 5 runs, measured with `pnpm bench` (ops/s, higher is better):
 
 | Mode                     | Small (~200 B) | Medium (~2 KB) | Large (~30 KB) |
 | ------------------------ | -------------- | -------------- | -------------- |
-| postcss-rs offsets sync  | 65,756         | 11,242         | **706**        |
-| postcss-rs offsets async | 11,887         | 5,634          | 676            |
-| postcss-rs json sync     | 37,423         | 5,661          | 320            |
-| postcss-rs json async    | 10,219         | 3,565          | 335            |
-| postcss original         | **74,975**     | **10,839**     | 633            |
+| postcss-rs offsets sync  | 67,478         | **10,638**     | 621            |
+| postcss-rs offsets async | 12,505         | 4,953          | 614            |
+| postcss-rs json sync     | 38,224         | 5,447          | 320            |
+| postcss-rs json async    | 9,709          | 3,135          | 318            |
+| postcss original         | **70,451**     | 10,538         | **629**        |
 
-The offsets sync parser is the fastest mode. It is **~12% faster than postcss for large CSS files (~30 KB+)** and roughly on par for medium-sized files (~2 KB). For small CSS files, postcss original is faster due to the Rust/JS boundary overhead.
+The offsets sync mode is the fastest mode and performs roughly on par with postcss original across all file sizes (within ~1–4%). The json modes carry additional overhead from full AST serialization and are considerably slower. Performance improvements beyond parity are an active area of development.
 
 ## Installation
 
