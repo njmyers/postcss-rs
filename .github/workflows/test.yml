@@ -47,6 +47,14 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
 
+      - name: Setup Node
+        uses: ./.github/actions/setup-node
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        run: pnpm install
+
       - name: Test Rust
         run: cargo test --all-features
 
