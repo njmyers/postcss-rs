@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 const dir = fileURLToPath(new URL('.', import.meta.url));
 
 export default [
+  { ignores: ['index.js', 'index.d.ts'] },
   ...loguxTsConfig,
   prettierPlugin,
   {
