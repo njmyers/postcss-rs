@@ -3,12 +3,13 @@
 
 mod json;
 mod offset;
+mod offset_sink;
 
 pub use offset::NodeSlotLayout;
 
 use napi::{Env, Result, Task};
 use napi_derive::napi;
-use postcss_rs_parser::{Node, Parser};
+use postcss_rs_parser::{Node, ParseSink, Parser};
 use postcss_rs_stringifier::{Stringifier, StringifyOptions};
 
 pub struct JsonTask {
@@ -42,9 +43,10 @@ impl Task for OffsetTask {
     type JsValue = napi::bindgen_prelude::Buffer;
 
     fn compute(&mut self) -> Result<Self::Output> {
+        let mut sink = offset_sink::OffsetSink::new(&self.css);
         let mut parser = Parser::new(&self.css).unwrap();
-        let node = parser.parse();
-        return Ok(offset::OffsetSerializer::serialize(&node, &self.css));
+        parser.parse_into(&mut sink);
+        return Ok(sink.finish());
     }
 
     fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
@@ -81,9 +83,10 @@ pub mod postcss {
     /// never needs to call `JSON.parse()`.
     #[napi]
     pub fn parse_to_offsets_sync(css: String, _from: Option<String>) -> Result<Buffer> {
+        let mut sink = offset_sink::OffsetSink::new(&css);
         let mut parser = Parser::new(&css).unwrap();
-        let node = parser.parse();
-        return Ok(offset::OffsetSerializer::serialize(&node, &css).into());
+        parser.parse_into(&mut sink);
+        return Ok(sink.finish().into());
     }
 
     /// Async offset-array parse.  Same output as `parse_to_offsets_sync` but

@@ -1,8 +1,11 @@
 use std::str;
 use std::str::Utf8Error;
 
+use crate::node::Source;
+use crate::sink::{ContainerClose, ContainerOpen, ParseSink};
 use crate::AtRule;
 use crate::Comment;
+use crate::Declaration;
 use crate::Node;
 use crate::NodeBuilder;
 use crate::Rule;
@@ -92,6 +95,99 @@ impl<'a> Parser<'a> {
         }
 
         return root.build_root(&tokenizer, &spaces);
+    }
+
+    /// Parse CSS into any [`ParseSink`], driving `sink` directly without
+    /// building an intermediate `Node<'a>` tree.
+    ///
+    /// This is the generic counterpart of [`parse`].  Use it when you want to
+    /// stream the parsed AST into a custom output (e.g. the flat offset-array
+    /// buffer produced by `OffsetSink`).
+    pub fn parse_into<S: ParseSink<'a>>(&mut self, sink: &mut S) {
+        let mut tokenizer = Tokenizer::new(self.css);
+        let mut spaces = Tokens::new();
+
+        // Track last-child info so close_container for Root can compute source.end.
+        let mut last_child_end: Option<Source> = None;
+        let mut root_semicolon: Option<bool> = None;
+
+        let root_start = Source::default();
+        let root_handle = sink.open_container(S::NodeRef::default(), ContainerOpen::Root {
+            source_start: root_start,
+        });
+
+        while let Some(token) = tokenizer.next() {
+            match token.kind {
+                Kind::AtWord => {
+                    let (end, term) = AtRule::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
+                    root_semicolon = Some(term.semicolon);
+                    last_child_end = Some(end);
+                    spaces.clear();
+                }
+                Kind::Word => match Self::classify(&mut tokenizer) {
+                    RootStatementType::Declaration => {
+                        let (end, term) = Declaration::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
+                        root_semicolon = Some(term.semicolon);
+                        last_child_end = Some(end);
+                        spaces.clear();
+                    }
+                    RootStatementType::Rule => {
+                        let end = Rule::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
+                        root_semicolon = Some(false);
+                        last_child_end = Some(end);
+                        spaces.clear();
+                    }
+                },
+                Kind::OpenCurly | Kind::OpenSquare => {
+                    let end = Rule::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
+                    root_semicolon = Some(false);
+                    last_child_end = Some(end);
+                    spaces.clear();
+                }
+                Kind::Comment => {
+                    let end = Comment::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
+                    last_child_end = Some(end);
+                    spaces.clear();
+                }
+                Kind::Space => spaces.push(token),
+                _ => (),
+            }
+        }
+
+        let has_children = last_child_end.is_some();
+
+        // Compute raws_after for root (mirrors build_root logic)
+        let raws_after = if has_children {
+            Some(String::new())
+        } else {
+            Some(spaces.iter().map(|t| t.value).collect::<String>())
+        };
+
+        // Compute semicolon (mirrors build_root logic):
+        // only set when children exist; value = last child's semicolon status.
+        let semicolon = if has_children {
+            Some(root_semicolon.unwrap_or(false))
+        } else {
+            None
+        };
+
+        // Compute source_end
+        let source_end = if let Some(last) = last_child_end {
+            Source {
+                offset: last.offset,
+                line: last.line,
+                column: last.column + 1,
+            }
+        } else {
+            Source::create_end(&tokenizer)
+        };
+
+        sink.close_container(root_handle, ContainerClose {
+            source_end,
+            raws_after,
+            semicolon,
+            own_semicolon: None,
+        });
     }
 
     /// Classify a Word token as either a declaration or rule by peeking ahead.

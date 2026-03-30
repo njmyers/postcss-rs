@@ -1,4 +1,6 @@
 use crate::characters;
+use crate::node::Source;
+use crate::sink::{LeafNode, ParseSink};
 use crate::Node;
 use crate::NodeBuilder;
 use crate::Statement;
@@ -289,6 +291,215 @@ impl<'src> Declaration<'src> {
         }
 
         return (node, terminator);
+    }
+
+    /// Generic version: parse a declaration and emit it to `sink`.
+    ///
+    /// Returns `(source_end, terminator)` so the caller can update the parent
+    /// container's position and semicolon tracking.
+    pub fn create_into<S: ParseSink<'src>>(
+        prop: Token<'src>,
+        tokenizer: &mut Tokenizer<'src>,
+        spaces: &[Token<'src>],
+        sink: &mut S,
+        parent: S::NodeRef,
+    ) -> (Source, StatementTerminator) {
+        let source_start = Source::create_start(&prop, tokenizer);
+        let mut raws_before: String = spaces.iter().map(|t| t.value).collect();
+        let mut raws_between = String::new();
+
+        let (actual_prop, ie_hack_prefix) = Self::extract_ie_hack_prefix(prop.value);
+        if let Some(prefix) = ie_hack_prefix {
+            raws_before.push_str(prefix);
+        }
+
+        // Phase 1: consume up to and including the colon
+        let first_value_token: Option<Token<'src>> = {
+            let mut result = None;
+            for token in tokenizer.by_ref() {
+                match token.kind {
+                    Kind::Colon => {
+                        raws_between.push_str(token.value);
+                        break;
+                    }
+                    Kind::Word if token.value.starts_with(':') => {
+                        let (colon_token, value_token) = token.split(1, Kind::Colon, Kind::Word);
+                        raws_between.push_str(colon_token.value);
+                        result = value_token;
+                        break;
+                    }
+                    _ => raws_between.push_str(token.value),
+                }
+            }
+            result
+        };
+
+        // Phase 2: collect value tokens
+        let mut statement = Statement::new();
+        let mut terminator = StatementTerminator::new();
+        let mut pending_spaces: Vec<Token<'src>> = Vec::new();
+        let mut important_raw: Option<String> = None;
+
+        if let Some(value_token) = first_value_token {
+            statement.push(value_token);
+        }
+
+        while let Some(peeked) = tokenizer.peek() {
+            match peeked.kind {
+                Kind::CloseCurly if !statement.is_open() => {
+                    terminator.set_ended_by(Kind::CloseCurly);
+                    break;
+                }
+                Kind::Space if peeked.value == characters::NEWLINE && !statement.is_open() => break,
+                Kind::Space
+                    if peeked.value.starts_with(characters::NEWLINE) && !statement.is_open() =>
+                {
+                    if matches!(
+                        Self::peek_second_kind(tokenizer),
+                        Some(Kind::Comment) | Some(Kind::CloseCurly)
+                    ) {
+                        break;
+                    }
+                }
+                Kind::Space if !statement.is_open() => {
+                    if Self::peek_second_kind(tokenizer) == Some(Kind::CloseCurly) {
+                        terminator.set_ended_by(Kind::CloseCurly);
+                        break;
+                    }
+                }
+                _ => {}
+            }
+
+            let token = tokenizer.next().unwrap();
+            terminator.process(&token);
+
+            match token.kind {
+                Kind::OpenCurly => statement.open(token),
+                Kind::CloseCurly if statement.is_open() => statement.close(token),
+                Kind::Semicolon if !statement.is_open() => {
+                    terminator.set_ended_by(Kind::Semicolon);
+                    break;
+                }
+                Kind::Comment => {
+                    let before_content = statement.clean_is_empty() && !statement.is_open();
+                    let next_is_fn = Self::next_is_open_bracket(tokenizer);
+                    match (before_content, next_is_fn) {
+                        (true, true) => {
+                            for space in pending_spaces.drain(..) {
+                                raws_between.push_str(space.value);
+                            }
+                            statement.push(token);
+                        }
+                        (true, false) => {
+                            for space in pending_spaces.drain(..) {
+                                statement.push(space);
+                            }
+                            statement.push_raw_only(token);
+                        }
+                        (false, true) => statement.push(token),
+                        (false, false) => statement.push_raw_only(token),
+                    }
+                }
+                Kind::Space => {
+                    if statement.clean_is_empty() && !statement.is_open() {
+                        pending_spaces.push(token);
+                    } else {
+                        statement.push(token);
+                    }
+                }
+                Kind::Word if token.value.contains('!') => {
+                    let (result, bang_pos) = Self::check_important(token.value, tokenizer);
+                    match result {
+                        ImportantResult::Found(raw) => {
+                            let trailing_spaces = statement.collect_trailing_spaces();
+                            if bang_pos > 0 {
+                                statement.push_token_slice(&token, 0, bang_pos);
+                            }
+                            let mut imp = String::with_capacity(trailing_spaces.len() + raw.len());
+                            imp.push_str(&trailing_spaces);
+                            imp.push_str(&raw);
+                            important_raw = Some(imp);
+                        }
+                        ImportantResult::NotImportant => {
+                            for space in pending_spaces.drain(..) {
+                                raws_between.push_str(space.value);
+                            }
+                            statement.push(token);
+                        }
+                    }
+                }
+                _ => {
+                    for space in pending_spaces.drain(..) {
+                        raws_between.push_str(space.value);
+                    }
+                    statement.push(token);
+                }
+            }
+        }
+
+        if terminator.ended_by == Some(Kind::CloseCurly) {
+            if let Some(space_token) = tokenizer.peek() {
+                if space_token.kind == Kind::Space {
+                    pending_spaces.push(space_token);
+                }
+            }
+        }
+        if !pending_spaces.is_empty() {
+            for space in pending_spaces.iter() {
+                statement.push(*space);
+            }
+        }
+
+        let css = tokenizer.source();
+        let (raw_start, raw_end) = statement.raw_span();
+        let raw_value: &str = &css[raw_start..raw_end];
+
+        let clean_value: Cow<'src, str> = match statement.clean_span() {
+            Some((cs, ce)) => Cow::Borrowed(&css[cs..ce]),
+            None => {
+                let clean = statement.to_string_clean();
+                let should_trim = terminator.ended_by == Some(Kind::Semicolon)
+                    && !clean.trim().is_empty();
+                if should_trim {
+                    Cow::Owned(clean.trim_end().to_string())
+                } else {
+                    Cow::Owned(clean)
+                }
+            }
+        };
+
+        let raws_value_raw: Option<String> = if raw_value != clean_value.as_ref() {
+            Some(raw_value.to_string())
+        } else {
+            None
+        };
+
+        let important = important_raw.as_ref().map(|_| true);
+
+        let source_end = Source::create_end(tokenizer);
+
+        // Consume the trailing space after CloseCurly
+        if terminator.ended_by == Some(Kind::CloseCurly) {
+            if let Some(space_token) = tokenizer.peek() {
+                if space_token.kind == Kind::Space {
+                    tokenizer.next();
+                }
+            }
+        }
+
+        sink.emit_leaf(parent, LeafNode::Declaration {
+            source_start,
+            source_end: source_end.clone(),
+            raws_before: Some(raws_before),
+            prop: Cow::Borrowed(actual_prop),
+            raws_between: Some(raws_between),
+            value: clean_value,
+            raws_value_raw,
+            important,
+            raws_important: important_raw,
+        });
+
+        (source_end, terminator)
     }
 
     fn new(prop: Cow<'src, str>, value: Cow<'src, str>, important: Option<bool>) -> Self {

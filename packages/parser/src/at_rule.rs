@@ -3,6 +3,8 @@ use serde::Serialize;
 
 use std::borrow::Cow;
 
+use crate::node::Source;
+use crate::sink::{ContainerClose, ContainerOpen, LeafNode, ParseSink};
 use crate::Declaration;
 use crate::Node;
 use crate::NodeBuilder;
@@ -142,6 +144,177 @@ impl<'src> AtRule<'src> {
         };
 
         return (node, terminator);
+    }
+
+    /// Generic version: parse an at-rule and emit/open it to `sink`.
+    ///
+    /// Returns `(source_end, terminator)` for the caller's tracking.
+    /// For at-rules with a block body, children are also emitted directly into
+    /// `sink` by this method.
+    pub fn create_into<S: ParseSink<'src>>(
+        token: Token<'src>,
+        tokenizer: &mut Tokenizer<'src>,
+        spaces: &[Token<'src>],
+        sink: &mut S,
+        parent: S::NodeRef,
+    ) -> (Source, StatementTerminator) {
+        let source_start = Source::create_start(&token, tokenizer);
+        let raws_before: Option<String> = Some(spaces.iter().map(|t| t.value).collect());
+        let name = &token.value[1..]; // strip '@'
+
+        // Build a temporary NodeBuilder just to drive Params::create (which
+        // currently mutates a NodeBuilder for after_name and between).
+        // We capture the raws from the builder after Params::create returns.
+        let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
+        builder.ensure_empty_before();
+        builder.ensure_empty_between();
+        builder.ensure_empty_after_name();
+
+        let (params, terminator, params_end_pos) = Params::create(&mut builder, tokenizer);
+
+        // Extract accumulated raws from the builder
+        let raws_after_name: Option<String> = builder.node.raws.after_name.as_deref().map(|s| s.to_string());
+        let raws_between: Option<String> = builder.node.raws.between.as_deref().map(|s| s.to_string());
+
+        let params_cow: Option<Cow<'src, str>> = if params.is_empty() {
+            None
+        } else {
+            Some(params)
+        };
+
+        match terminator.ended_by {
+            Some(Kind::OpenCurly) => {
+                // At-rule with body block
+                // Consume the OpenCurly
+                tokenizer.next();
+
+                let handle = sink.open_container(parent, ContainerOpen::AtRule {
+                    source_start,
+                    raws_before,
+                    name,
+                    raws_after_name,
+                    params: params_cow,
+                    raws_between,
+                });
+
+                let mut body_terminator: Option<StatementTerminator> = None;
+                let mut last_child_end: Option<Source> = None;
+                let mut spaces_buf = Tokens::new();
+
+                while let Some(body_token) = tokenizer.next() {
+                    match body_token.kind {
+                        Kind::Word => {
+                            if AtRuleDeclaration::test(tokenizer) {
+                                let (child_end, child_term) = Declaration::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
+                                body_terminator = Some(child_term);
+                                last_child_end = Some(child_end);
+                                spaces_buf.clear();
+                            } else {
+                                let child_end = Rule::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
+                                body_terminator = Some(StatementTerminator::new());
+                                last_child_end = Some(child_end);
+                                spaces_buf.clear();
+                            }
+                        }
+                        Kind::AtWord => {
+                            let (child_end, child_term) = AtRule::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
+                            body_terminator = Some(child_term);
+                            last_child_end = Some(child_end);
+                            spaces_buf.clear();
+                        }
+                        Kind::OpenSquare | Kind::OpenCurly => {
+                            let child_end = Rule::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
+                            body_terminator = Some(StatementTerminator::new());
+                            last_child_end = Some(child_end);
+                            spaces_buf.clear();
+                        }
+                        Kind::Comment => {
+                            use crate::comment::Comment;
+                            let child_end = Comment::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
+                            last_child_end = Some(child_end);
+                            spaces_buf.clear();
+                        }
+                        Kind::Space => spaces_buf.push(body_token),
+                        Kind::CloseCurly => break,
+                        _ => break,
+                    }
+                }
+
+                let source_end = Source::create_end(tokenizer);
+
+                // raws_after = trailing spaces before '}' inside the block
+                let raws_after: String = spaces_buf.iter().map(|t| t.value).collect();
+                let semicolon = body_terminator.map(|bt| bt.semicolon);
+
+                sink.close_container(handle, ContainerClose {
+                    source_end: source_end.clone(),
+                    raws_after: Some(raws_after),
+                    semicolon,
+                    own_semicolon: None,
+                });
+
+                (source_end, terminator)
+            }
+
+            Some(Kind::CloseCurly) => {
+                // Statement at-rule terminated by parent's closing brace.
+                // PostCSS leaves source.end absent in this case, so we pass None.
+                let source_end = Source::create_end(tokenizer);
+
+                // Consume trailing spaces and add to raws_between
+                let mut extra_between = String::new();
+                while let Some(peeked) = tokenizer.peek() {
+                    if peeked.kind == Kind::Space {
+                        let space_token = tokenizer.next().unwrap();
+                        extra_between.push_str(space_token.value);
+                    } else {
+                        break;
+                    }
+                }
+
+                let raws_between_final = match (&raws_between, extra_between.is_empty()) {
+                    (Some(b), false) => Some(format!("{}{}", b, extra_between)),
+                    (None, false) => Some(extra_between),
+                    _ => raws_between,
+                };
+
+                sink.emit_leaf(parent, LeafNode::AtRuleStatement {
+                    source_start,
+                    // params_end_pos is Some when params exist (e.g. @import "a.css"}),
+                    // None when there are no params (e.g. @content}).
+                    // PostCSS only sets source.end when params are present.
+                    source_end: params_end_pos,
+                    raws_before,
+                    name,
+                    raws_after_name,
+                    params: params_cow,
+                    raws_between: raws_between_final,
+                });
+
+                (source_end, terminator)
+            }
+
+            _ => {
+                // Statement at-rule (semicolon or end-of-input)
+                let source_end = if let Some(end_pos) = params_end_pos {
+                    end_pos
+                } else {
+                    Source::create_end(tokenizer)
+                };
+
+                sink.emit_leaf(parent, LeafNode::AtRuleStatement {
+                    source_start,
+                    source_end: Some(source_end.clone()),
+                    raws_before,
+                    name,
+                    raws_after_name,
+                    params: params_cow,
+                    raws_between,
+                });
+
+                (source_end, terminator)
+            }
+        }
     }
 
     fn new(name: Cow<'src, str>) -> Self {

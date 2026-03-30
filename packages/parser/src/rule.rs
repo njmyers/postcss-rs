@@ -1,4 +1,7 @@
+use crate::comment::Comment;
+use crate::node::Source;
 use crate::rule_word::RuleWord;
+use crate::sink::{ContainerClose, ContainerOpen, ParseSink};
 use crate::Declaration;
 use crate::Node;
 use crate::NodeBuilder;
@@ -118,6 +121,112 @@ impl<'src> Rule<'src> {
         }
 
         return builder.build(tokenizer, &spaces);
+    }
+
+    /// Generic version: parse a rule and emit it + all children to `sink`.
+    ///
+    /// Returns `source_end` for the caller's last-child tracking.
+    pub fn create_into<S: ParseSink<'src>>(
+        token: Token<'src>,
+        tokenizer: &mut Tokenizer<'src>,
+        spaces: &[Token<'src>],
+        sink: &mut S,
+        parent: S::NodeRef,
+    ) -> Source {
+        // Use a temporary NodeBuilder to drive Selector::create (which mutates builder).
+        // We extract the accumulated raws afterwards.
+        let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
+        builder.ensure_empty_before();
+        builder.ensure_empty_between();
+        builder.ensure_empty_after();
+
+        let source_start = builder.node.source.start.clone();
+        let selector = Selector::create(token, tokenizer, &mut builder);
+
+        let raws_before: Option<String> = builder.node.raws.before.as_deref().map(|s| s.to_string());
+        let raws_selector_raw: Option<String> = builder.node.raws.selector.raw.clone();
+        let raws_between: Option<String> = builder.node.raws.between.as_deref().map(|s| s.to_string());
+
+        let handle = sink.open_container(parent, ContainerOpen::Rule {
+            source_start,
+            raws_before,
+            selector,
+            raws_selector_raw,
+            raws_between,
+        });
+
+        let mut spaces_buf = Tokens::new();
+        let mut last_child_end: Option<Source> = None;
+        let mut body_terminator: Option<crate::StatementTerminator> = None;
+
+        while let Some(body_token) = tokenizer.next() {
+            match body_token.kind {
+                Kind::Word => {
+                    let prop = RuleWord::collect_and_combine(body_token, tokenizer);
+                    if Self::peek_for_nested_rule(tokenizer) {
+                        let child_end = Self::create_into(prop, tokenizer, &spaces_buf, sink, handle);
+                        body_terminator = Some(crate::StatementTerminator::new());
+                        last_child_end = Some(child_end);
+                        spaces_buf.clear();
+                    } else {
+                        let (child_end, child_term) = Declaration::create_into(prop, tokenizer, &spaces_buf, sink, handle);
+                        body_terminator = Some(child_term);
+                        last_child_end = Some(child_end);
+                        spaces_buf.clear();
+                    }
+                }
+                Kind::AtWord => {
+                    use crate::at_rule::AtRule;
+                    let (child_end, child_term) = AtRule::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
+
+                    // For at-rules terminated by CloseCurly, the trailing spaces
+                    // are already consumed inside AtRule::create_into.
+                    if matches!(child_term.ended_by, Some(Kind::CloseCurly)) {
+                        // child_end already accounts for this case
+                    }
+
+                    body_terminator = Some(child_term);
+                    last_child_end = Some(child_end);
+                    spaces_buf.clear();
+                }
+                Kind::Comment => {
+                    let child_end = Comment::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
+                    last_child_end = Some(child_end);
+                    spaces_buf.clear();
+                }
+                Kind::Space => spaces_buf.push(body_token),
+                Kind::Semicolon => spaces_buf.push(body_token),
+                Kind::CloseCurly => break,
+                _ => break,
+            }
+        }
+
+        // Check for trailing semicolon (ownSemicolon)
+        if let Some((end_source, own_semicolon)) = Self::consume_trailing_semicolon(tokenizer) {
+            let raws_after: String = spaces_buf.iter().map(|t| t.value).collect();
+            let semicolon = body_terminator.map(|bt| bt.semicolon);
+            sink.close_container(handle, ContainerClose {
+                source_end: end_source.clone(),
+                raws_after: Some(raws_after),
+                semicolon,
+                own_semicolon: Some(own_semicolon),
+            });
+            return end_source;
+        }
+
+        let source_end = Source::create_end(tokenizer);
+        // raws.after = trailing spaces before '}' (includes semicolons too per PostCSS)
+        let raws_after = Some(spaces_buf.iter().map(|t| t.value).collect::<String>());
+        let semicolon = body_terminator.map(|bt| bt.semicolon);
+
+        sink.close_container(handle, ContainerClose {
+            source_end: source_end.clone(),
+            raws_after,
+            semicolon,
+            own_semicolon: None,
+        });
+
+        source_end
     }
 
     fn new(selector: Cow<'src, str>) -> Self {
