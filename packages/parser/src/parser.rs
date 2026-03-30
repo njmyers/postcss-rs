@@ -372,25 +372,30 @@ mod tests {
 
     fn parse_and_read(css_path: &str, json_path: &str) -> (serde_json::Value, serde_json::Value) {
         let css = read(css_path);
-        let mut parser = Parser::new(&css).unwrap();
+        let mut parser = Parser::new(&css).expect("Failed to create parser");
         let ast = parser.parse();
-        let json = serde_json::to_string_pretty(&ast).unwrap();
+        let json = serde_json::to_string_pretty(&ast).expect("Failed to serialize AST");
 
         #[cfg(feature = "output")]
         write(json_path, &json);
 
         // Parse both as JSON Values for field-order-independent comparison
-        let actual_value: serde_json::Value = serde_json::from_str(&json).unwrap();
-        let expected_value: serde_json::Value = serde_json::from_str(&read(json_path)).unwrap();
+        let actual_value: serde_json::Value =
+            serde_json::from_str(&json).expect("Failed to parse actual JSON");
+
+        let expected_value: serde_json::Value =
+            serde_json::from_str(&read(json_path)).expect("Failed to parse expected JSON");
 
         return (actual_value, expected_value);
     }
 
     fn read(file: &str) -> String {
-        let test_path = path::Path::new("./node_modules/postcss-parser-tests/cases/")
+        let test_path = path::Path::new("./node_modules/postcss-parser-tests/cases")
             .join(path::Path::new(file));
+
         let content = fs::read_to_string(test_path);
-        return content.ok().unwrap();
+
+        return content.expect("Failed to read test file");
     }
 
     fn write(file: &str, contents: &str) {
