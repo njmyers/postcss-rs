@@ -250,8 +250,13 @@ const _STRIDE_CHECK: () = assert!(std::mem::size_of::<NodeSlot>() / 4 == 25);
 ///
 /// All CSS-offset fields are 0-indexed byte offsets into the source string.
 /// `ABSENT` (0xFFFF_FFFF) signals a field that is not present.
+///
+/// This struct is used by the criterion benchmarks for comparison against
+/// [`crate::offset_sink::OffsetSink`].
+#[allow(dead_code)]
 pub struct OffsetSerializer;
 
+#[allow(dead_code)]
 impl OffsetSerializer {
     /// Serialize `root` into the offset-array binary format.
     pub fn serialize(root: &Node<'_>, css: &str) -> Vec<u8> {

@@ -177,7 +177,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
     type NodeRef = ();
     type Output = Node<'src>;
 
-    fn open_container(&mut self, _parent: (), open: ContainerOpen<'src>) -> () {
+    fn open_container(&mut self, _parent: (), open: ContainerOpen<'src>) {
         let node = match open {
             ContainerOpen::Root { source_start } => {
                 let mut n = Node::new(Data::Root);

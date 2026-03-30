@@ -207,14 +207,13 @@ impl<'src> AtRule<'src> {
                 );
 
                 let mut body_terminator: Option<StatementTerminator> = None;
-                let mut last_child_end: Option<Source> = None;
                 let mut spaces_buf = Tokens::new();
 
                 while let Some(body_token) = tokenizer.next() {
                     match body_token.kind {
                         Kind::Word => {
                             if AtRuleDeclaration::test(tokenizer) {
-                                let (child_end, child_term) = Declaration::create_into(
+                                let (_, child_term) = Declaration::create_into(
                                     body_token,
                                     tokenizer,
                                     &spaces_buf,
@@ -222,10 +221,9 @@ impl<'src> AtRule<'src> {
                                     handle,
                                 );
                                 body_terminator = Some(child_term);
-                                last_child_end = Some(child_end);
                                 spaces_buf.clear();
                             } else {
-                                let child_end = Rule::create_into(
+                                Rule::create_into(
                                     body_token,
                                     tokenizer,
                                     &spaces_buf,
@@ -233,12 +231,11 @@ impl<'src> AtRule<'src> {
                                     handle,
                                 );
                                 body_terminator = Some(StatementTerminator::new());
-                                last_child_end = Some(child_end);
                                 spaces_buf.clear();
                             }
                         }
                         Kind::AtWord => {
-                            let (child_end, child_term) = AtRule::create_into(
+                            let (_, child_term) = AtRule::create_into(
                                 body_token,
                                 tokenizer,
                                 &spaces_buf,
@@ -246,26 +243,22 @@ impl<'src> AtRule<'src> {
                                 handle,
                             );
                             body_terminator = Some(child_term);
-                            last_child_end = Some(child_end);
                             spaces_buf.clear();
                         }
                         Kind::OpenSquare | Kind::OpenCurly => {
-                            let child_end =
-                                Rule::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
+                            Rule::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
                             body_terminator = Some(StatementTerminator::new());
-                            last_child_end = Some(child_end);
                             spaces_buf.clear();
                         }
                         Kind::Comment => {
                             use crate::comment::Comment;
-                            let child_end = Comment::create_into(
+                            Comment::create_into(
                                 body_token,
                                 tokenizer,
                                 &spaces_buf,
                                 sink,
                                 handle,
                             );
-                            last_child_end = Some(child_end);
                             spaces_buf.clear();
                         }
                         Kind::Space => spaces_buf.push(body_token),

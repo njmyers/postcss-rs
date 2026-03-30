@@ -165,7 +165,6 @@ impl<'src> Rule<'src> {
         );
 
         let mut spaces_buf = Tokens::new();
-        let mut last_child_end: Option<Source> = None;
         let mut body_terminator: Option<crate::StatementTerminator> = None;
 
         while let Some(body_token) = tokenizer.next() {
@@ -173,38 +172,25 @@ impl<'src> Rule<'src> {
                 Kind::Word => {
                     let prop = RuleWord::collect_and_combine(body_token, tokenizer);
                     if Self::peek_for_nested_rule(tokenizer) {
-                        let child_end =
-                            Self::create_into(prop, tokenizer, &spaces_buf, sink, handle);
+                        Self::create_into(prop, tokenizer, &spaces_buf, sink, handle);
                         body_terminator = Some(crate::StatementTerminator::new());
-                        last_child_end = Some(child_end);
                         spaces_buf.clear();
                     } else {
-                        let (child_end, child_term) =
+                        let (_, child_term) =
                             Declaration::create_into(prop, tokenizer, &spaces_buf, sink, handle);
                         body_terminator = Some(child_term);
-                        last_child_end = Some(child_end);
                         spaces_buf.clear();
                     }
                 }
                 Kind::AtWord => {
                     use crate::at_rule::AtRule;
-                    let (child_end, child_term) =
+                    let (_, child_term) =
                         AtRule::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
-
-                    // For at-rules terminated by CloseCurly, the trailing spaces
-                    // are already consumed inside AtRule::create_into.
-                    if matches!(child_term.ended_by, Some(Kind::CloseCurly)) {
-                        // child_end already accounts for this case
-                    }
-
                     body_terminator = Some(child_term);
-                    last_child_end = Some(child_end);
                     spaces_buf.clear();
                 }
                 Kind::Comment => {
-                    let child_end =
-                        Comment::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
-                    last_child_end = Some(child_end);
+                    Comment::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
                     spaces_buf.clear();
                 }
                 Kind::Space => spaces_buf.push(body_token),
