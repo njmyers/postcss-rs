@@ -223,13 +223,7 @@ impl<'src> AtRule<'src> {
                                 body_terminator = Some(child_term);
                                 spaces_buf.clear();
                             } else {
-                                Rule::create_into(
-                                    body_token,
-                                    tokenizer,
-                                    &spaces_buf,
-                                    sink,
-                                    handle,
-                                );
+                                Rule::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
                                 body_terminator = Some(StatementTerminator::new());
                                 spaces_buf.clear();
                             }
@@ -252,13 +246,7 @@ impl<'src> AtRule<'src> {
                         }
                         Kind::Comment => {
                             use crate::comment::Comment;
-                            Comment::create_into(
-                                body_token,
-                                tokenizer,
-                                &spaces_buf,
-                                sink,
-                                handle,
-                            );
+                            Comment::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
                             spaces_buf.clear();
                         }
                         Kind::Space => spaces_buf.push(body_token),
