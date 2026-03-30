@@ -101,6 +101,12 @@ importers:
         specifier: 8.9.0
         version: 8.9.0
 
+  packages/tokenizer:
+    devDependencies:
+      postcss-parser-tests:
+        specifier: 8.9.0
+        version: 8.9.0
+
 packages:
 
   '@algolia/abtesting@1.15.2':

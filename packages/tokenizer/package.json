@@ -1,0 +1,17 @@
+{
+  "name": "@postcss-rs/tokenizer",
+  "version": "0.1.0",
+  "description": "High-performance PostCSS-compatible tokenizer powered by Rust",
+  "keywords": [
+    "postcss",
+    "css",
+    "tokenizer",
+    "rust",
+    "performance",
+    "napi"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "postcss-parser-tests": "8.9.0"
+  }
+}
