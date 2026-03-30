@@ -38,7 +38,7 @@
     "eslint": "^9.20.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
-    "postcss-parser-tests": "workspace:^",
+    "postcss-parser-tests": "8.9.0",
     "prettier": "^3.0.0",
     "tsx": "^4.21.0",
     "typescript": "^5.0.0",

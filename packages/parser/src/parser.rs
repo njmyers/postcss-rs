@@ -387,7 +387,8 @@ mod tests {
     }
 
     fn read(file: &str) -> String {
-        let test_path = path::Path::new("../../tests/cases").join(path::Path::new(file));
+        let test_path = path::Path::new("./node_modules/postcss-parser-tests/cases/")
+            .join(path::Path::new(file));
         let content = fs::read_to_string(test_path);
         return content.ok().unwrap();
     }
