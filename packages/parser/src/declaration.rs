@@ -255,8 +255,8 @@ impl<'src> Declaration<'src> {
                 // 1. Comments were removed (raw != clean, implied by None branch)
                 // 2. Declaration ends with semicolon
                 // 3. The value has actual content (not just whitespace)
-                let should_trim = terminator.ended_by == Some(Kind::Semicolon)
-                    && !clean.trim().is_empty();
+                let should_trim =
+                    terminator.ended_by == Some(Kind::Semicolon) && !clean.trim().is_empty();
                 if should_trim {
                     Cow::Owned(clean.trim_end().to_string())
                 } else {
@@ -458,8 +458,8 @@ impl<'src> Declaration<'src> {
             Some((cs, ce)) => Cow::Borrowed(&css[cs..ce]),
             None => {
                 let clean = statement.to_string_clean();
-                let should_trim = terminator.ended_by == Some(Kind::Semicolon)
-                    && !clean.trim().is_empty();
+                let should_trim =
+                    terminator.ended_by == Some(Kind::Semicolon) && !clean.trim().is_empty();
                 if should_trim {
                     Cow::Owned(clean.trim_end().to_string())
                 } else {
@@ -487,17 +487,20 @@ impl<'src> Declaration<'src> {
             }
         }
 
-        sink.emit_leaf(parent, LeafNode::Declaration {
-            source_start,
-            source_end: source_end.clone(),
-            raws_before: Some(raws_before),
-            prop: Cow::Borrowed(actual_prop),
-            raws_between: Some(raws_between),
-            value: clean_value,
-            raws_value_raw,
-            important,
-            raws_important: important_raw,
-        });
+        sink.emit_leaf(
+            parent,
+            LeafNode::Declaration {
+                source_start,
+                source_end: source_end.clone(),
+                raws_before: Some(raws_before),
+                prop: Cow::Borrowed(actual_prop),
+                raws_between: Some(raws_between),
+                value: clean_value,
+                raws_value_raw,
+                important,
+                raws_important: important_raw,
+            },
+        );
 
         (source_end, terminator)
     }

@@ -382,7 +382,12 @@ impl OffsetSerializer {
     ) {
         slot.type_tag = NodeType::RULE;
 
-        let sel_raw = node.raws.selector.raw.as_deref().unwrap_or(rule.selector.as_ref());
+        let sel_raw = node
+            .raws
+            .selector
+            .raw
+            .as_deref()
+            .unwrap_or(rule.selector.as_ref());
         // Selector may be preceded by a non-ASCII prefix (e.g. BOM) that is
         // part of raws.before; find where sel_raw actually starts.
         let (f1s, f1s_byte) = Self::find_field_start(css, src_start, sel_raw);
@@ -474,7 +479,12 @@ impl OffsetSerializer {
         slot.raws_between_end = bt_e;
         let value_start = slot.field1_end + between_len;
 
-        let val_raw = node.raws.value.raw.as_deref().unwrap_or(decl.value.as_ref());
+        let val_raw = node
+            .raws
+            .value
+            .raw
+            .as_deref()
+            .unwrap_or(decl.value.as_ref());
         slot.field2_start = value_start;
         slot.field2_end = value_start + val_raw.len() as u32;
 
@@ -487,7 +497,12 @@ impl OffsetSerializer {
         }
 
         if node.raws.value.raw.is_some() {
-            let clean = node.raws.value.value.as_deref().unwrap_or(decl.value.as_ref());
+            let clean = node
+                .raws
+                .value
+                .value
+                .as_deref()
+                .unwrap_or(decl.value.as_ref());
             slot.clean_start = string_table.len() as u32;
             string_table.extend_from_slice(clean.as_bytes());
             slot.clean_end = string_table.len() as u32;

@@ -19,7 +19,11 @@ impl Comment {
     /// `token` is the raw comment token (value like `"/* text */"`).
     /// `spaces` are any whitespace tokens that appear before the comment in the
     /// source; they are placed in `raws.before`.
-    pub fn create<'src>(token: Token<'src>, tokenizer: &mut Tokenizer<'src>, spaces: &[Token<'src>]) -> Node<'src> {
+    pub fn create<'src>(
+        token: Token<'src>,
+        tokenizer: &mut Tokenizer<'src>,
+        spaces: &[Token<'src>],
+    ) -> Node<'src> {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
         builder.ensure_empty_before();
 
@@ -85,8 +89,16 @@ impl Comment {
             let left_count = inner.chars().take_while(|c| c.is_whitespace()).count();
             let left = &inner[..left_count];
             let remaining = &inner[left_count..];
-            let right_count = remaining.chars().rev().take_while(|c| c.is_whitespace()).count();
-            let right = if right_count > 0 { &remaining[remaining.len() - right_count..] } else { "" };
+            let right_count = remaining
+                .chars()
+                .rev()
+                .take_while(|c| c.is_whitespace())
+                .count();
+            let right = if right_count > 0 {
+                &remaining[remaining.len() - right_count..]
+            } else {
+                ""
+            };
             let text = &remaining[..remaining.len() - right_count];
             (text, left, right)
         } else {
@@ -95,14 +107,17 @@ impl Comment {
 
         let source_end = Source::create_end(tokenizer);
 
-        sink.emit_leaf(parent, LeafNode::Comment {
-            source_start,
-            source_end: source_end.clone(),
-            raws_before,
-            raws_left: Some(left.to_string()),
-            text,
-            raws_right: Some(right.to_string()),
-        });
+        sink.emit_leaf(
+            parent,
+            LeafNode::Comment {
+                source_start,
+                source_end: source_end.clone(),
+                raws_before,
+                raws_left: Some(left.to_string()),
+                text,
+                raws_right: Some(right.to_string()),
+            },
+        );
 
         source_end
     }

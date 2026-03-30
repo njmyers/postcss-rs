@@ -1,7 +1,5 @@
 use bytemuck::Zeroable;
-use postcss_rs_parser::{
-    ContainerClose, ContainerOpen, LeafNode, ParseSink, Source,
-};
+use postcss_rs_parser::{ContainerClose, ContainerOpen, LeafNode, ParseSink, Source};
 
 use crate::offset::{Flags, NodeSlot, NodeType, ABSENT, STRIDE};
 
@@ -208,7 +206,10 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                 let f1s = name_start;
                 let f1e = name_start + Self::js_len(name);
 
-                let after_name_len = raws_after_name.as_deref().map(|s| s.len() as u32).unwrap_or(0);
+                let after_name_len = raws_after_name
+                    .as_deref()
+                    .map(|s| s.len() as u32)
+                    .unwrap_or(0);
                 let (an_s, an_e) = Self::encode_starts_at(raws_after_name.as_deref(), f1e);
                 let params_start = f1e + after_name_len;
 
@@ -409,7 +410,10 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                 let f1s = name_start;
                 let f1e = name_start + Self::js_len(name);
 
-                let after_name_len = raws_after_name.as_deref().map(|s| s.len() as u32).unwrap_or(0);
+                let after_name_len = raws_after_name
+                    .as_deref()
+                    .map(|s| s.len() as u32)
+                    .unwrap_or(0);
                 let (an_s, an_e) = Self::encode_starts_at(raws_after_name.as_deref(), f1e);
                 let params_start = f1e + after_name_len;
 

@@ -112,27 +112,38 @@ impl<'a> Parser<'a> {
         let mut root_semicolon: Option<bool> = None;
 
         let root_start = Source::default();
-        let root_handle = sink.open_container(S::NodeRef::default(), ContainerOpen::Root {
-            source_start: root_start,
-        });
+        let root_handle = sink.open_container(
+            S::NodeRef::default(),
+            ContainerOpen::Root {
+                source_start: root_start,
+            },
+        );
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
                 Kind::AtWord => {
-                    let (end, term) = AtRule::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
+                    let (end, term) =
+                        AtRule::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
                     root_semicolon = Some(term.semicolon);
                     last_child_end = Some(end);
                     spaces.clear();
                 }
                 Kind::Word => match Self::classify(&mut tokenizer) {
                     RootStatementType::Declaration => {
-                        let (end, term) = Declaration::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
+                        let (end, term) = Declaration::create_into(
+                            token,
+                            &mut tokenizer,
+                            &spaces,
+                            sink,
+                            root_handle,
+                        );
                         root_semicolon = Some(term.semicolon);
                         last_child_end = Some(end);
                         spaces.clear();
                     }
                     RootStatementType::Rule => {
-                        let end = Rule::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
+                        let end =
+                            Rule::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
                         root_semicolon = Some(false);
                         last_child_end = Some(end);
                         spaces.clear();
@@ -145,7 +156,8 @@ impl<'a> Parser<'a> {
                     spaces.clear();
                 }
                 Kind::Comment => {
-                    let end = Comment::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
+                    let end =
+                        Comment::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
                     last_child_end = Some(end);
                     spaces.clear();
                 }
@@ -182,12 +194,15 @@ impl<'a> Parser<'a> {
             Source::create_end(&tokenizer)
         };
 
-        sink.close_container(root_handle, ContainerClose {
-            source_end,
-            raws_after,
-            semicolon,
-            own_semicolon: None,
-        });
+        sink.close_container(
+            root_handle,
+            ContainerClose {
+                source_end,
+                raws_after,
+                semicolon,
+                own_semicolon: None,
+            },
+        );
     }
 
     /// Classify a Word token as either a declaration or rule by peeking ahead.
@@ -453,7 +468,10 @@ mod tests {
         assert_eq!(ast, expected);
     }
 
-    fn parse_and_read_json_only(css: String, json_path: &str) -> (serde_json::Value, serde_json::Value) {
+    fn parse_and_read_json_only(
+        css: String,
+        json_path: &str,
+    ) -> (serde_json::Value, serde_json::Value) {
         let mut parser = Parser::new(&css).unwrap();
         let ast = parser.parse();
         let json = serde_json::to_string_pretty(&ast).unwrap();

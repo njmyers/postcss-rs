@@ -1,10 +1,10 @@
 use std::borrow::Cow;
 
+use crate::at_rule::AtRule;
+use crate::declaration::Declaration;
 use crate::node::{CommentData, Data, Node, Source, Sources};
 use crate::raws::{Raw, Semicolon, ValueRaw};
 use crate::rule::Rule;
-use crate::declaration::Declaration;
-use crate::at_rule::AtRule;
 
 // ── Helper ─────────────────────────────────────────────────────────────────
 
@@ -134,7 +134,8 @@ pub trait ParseSink<'src> {
     ///
     /// Returns an opaque `NodeRef` that must be passed back to
     /// [`close_container`] and as the `parent` argument for all child calls.
-    fn open_container(&mut self, parent: Self::NodeRef, open: ContainerOpen<'src>) -> Self::NodeRef;
+    fn open_container(&mut self, parent: Self::NodeRef, open: ContainerOpen<'src>)
+        -> Self::NodeRef;
 
     /// Called after all of a container's children have been parsed.
     fn close_container(&mut self, handle: Self::NodeRef, close: ContainerClose);
@@ -190,7 +191,9 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                 raws_selector_raw,
                 raws_between,
             } => {
-                let mut n = Node::new(Data::Rule(Rule { selector: selector.clone() }));
+                let mut n = Node::new(Data::Rule(Rule {
+                    selector: selector.clone(),
+                }));
                 n.source.start = source_start;
                 apply_raw(&mut n.raws.before, raws_before);
                 apply_raw(&mut n.raws.between, raws_between);
@@ -226,8 +229,16 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
     }
 
     fn close_container(&mut self, _handle: (), close: ContainerClose) {
-        let ContainerClose { source_end, raws_after, semicolon, own_semicolon } = close;
-        let mut node = self.stack.pop().expect("close_container called with empty stack");
+        let ContainerClose {
+            source_end,
+            raws_after,
+            semicolon,
+            own_semicolon,
+        } = close;
+        let mut node = self
+            .stack
+            .pop()
+            .expect("close_container called with empty stack");
         node.source.end = Some(source_end);
         // Override raws.after (may have been pre-initialized to "")
         node.raws.after = Raw::default();
@@ -262,7 +273,10 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                     value: value.clone(),
                 };
                 let mut n = Node::new(Data::Declaration(decl));
-                n.source = Sources { start: source_start, end: Some(source_end) };
+                n.source = Sources {
+                    start: source_start,
+                    end: Some(source_end),
+                };
                 apply_raw(&mut n.raws.before, raws_before);
                 apply_raw(&mut n.raws.between, raws_between);
                 if let Some(raw) = raws_value_raw {
@@ -282,7 +296,10 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                 let mut n = Node::new(Data::Comment(CommentData {
                     text: Cow::Borrowed(text),
                 }));
-                n.source = Sources { start: source_start, end: Some(source_end) };
+                n.source = Sources {
+                    start: source_start,
+                    end: Some(source_end),
+                };
                 apply_raw(&mut n.raws.before, raws_before);
                 apply_raw(&mut n.raws.left, raws_left);
                 apply_raw(&mut n.raws.right, raws_right);
@@ -304,7 +321,10 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                 }));
                 // Statement at-rules have no nodes block
                 n.nodes = None;
-                n.source = Sources { start: source_start, end: source_end };
+                n.source = Sources {
+                    start: source_start,
+                    end: source_end,
+                };
                 apply_raw(&mut n.raws.before, raws_before);
                 apply_raw(&mut n.raws.after_name, raws_after_name);
                 apply_raw(&mut n.raws.between, raws_between);

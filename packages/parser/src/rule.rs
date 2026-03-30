@@ -33,7 +33,11 @@ pub struct Rule<'src> {
 }
 
 impl<'src> Rule<'src> {
-    pub fn create(token: Token<'src>, tokenizer: &mut Tokenizer<'src>, spaces: &[Token<'src>]) -> Node<'src> {
+    pub fn create(
+        token: Token<'src>,
+        tokenizer: &mut Tokenizer<'src>,
+        spaces: &[Token<'src>],
+    ) -> Node<'src> {
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
         let selector = Selector::create(token, tokenizer, &mut builder);
 
@@ -143,17 +147,22 @@ impl<'src> Rule<'src> {
         let source_start = builder.node.source.start.clone();
         let selector = Selector::create(token, tokenizer, &mut builder);
 
-        let raws_before: Option<String> = builder.node.raws.before.as_deref().map(|s| s.to_string());
+        let raws_before: Option<String> =
+            builder.node.raws.before.as_deref().map(|s| s.to_string());
         let raws_selector_raw: Option<String> = builder.node.raws.selector.raw.clone();
-        let raws_between: Option<String> = builder.node.raws.between.as_deref().map(|s| s.to_string());
+        let raws_between: Option<String> =
+            builder.node.raws.between.as_deref().map(|s| s.to_string());
 
-        let handle = sink.open_container(parent, ContainerOpen::Rule {
-            source_start,
-            raws_before,
-            selector,
-            raws_selector_raw,
-            raws_between,
-        });
+        let handle = sink.open_container(
+            parent,
+            ContainerOpen::Rule {
+                source_start,
+                raws_before,
+                selector,
+                raws_selector_raw,
+                raws_between,
+            },
+        );
 
         let mut spaces_buf = Tokens::new();
         let mut last_child_end: Option<Source> = None;
@@ -164,12 +173,14 @@ impl<'src> Rule<'src> {
                 Kind::Word => {
                     let prop = RuleWord::collect_and_combine(body_token, tokenizer);
                     if Self::peek_for_nested_rule(tokenizer) {
-                        let child_end = Self::create_into(prop, tokenizer, &spaces_buf, sink, handle);
+                        let child_end =
+                            Self::create_into(prop, tokenizer, &spaces_buf, sink, handle);
                         body_terminator = Some(crate::StatementTerminator::new());
                         last_child_end = Some(child_end);
                         spaces_buf.clear();
                     } else {
-                        let (child_end, child_term) = Declaration::create_into(prop, tokenizer, &spaces_buf, sink, handle);
+                        let (child_end, child_term) =
+                            Declaration::create_into(prop, tokenizer, &spaces_buf, sink, handle);
                         body_terminator = Some(child_term);
                         last_child_end = Some(child_end);
                         spaces_buf.clear();
@@ -177,7 +188,8 @@ impl<'src> Rule<'src> {
                 }
                 Kind::AtWord => {
                     use crate::at_rule::AtRule;
-                    let (child_end, child_term) = AtRule::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
+                    let (child_end, child_term) =
+                        AtRule::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
 
                     // For at-rules terminated by CloseCurly, the trailing spaces
                     // are already consumed inside AtRule::create_into.
@@ -190,7 +202,8 @@ impl<'src> Rule<'src> {
                     spaces_buf.clear();
                 }
                 Kind::Comment => {
-                    let child_end = Comment::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
+                    let child_end =
+                        Comment::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
                     last_child_end = Some(child_end);
                     spaces_buf.clear();
                 }
@@ -205,12 +218,15 @@ impl<'src> Rule<'src> {
         if let Some((end_source, own_semicolon)) = Self::consume_trailing_semicolon(tokenizer) {
             let raws_after: String = spaces_buf.iter().map(|t| t.value).collect();
             let semicolon = body_terminator.map(|bt| bt.semicolon);
-            sink.close_container(handle, ContainerClose {
-                source_end: end_source.clone(),
-                raws_after: Some(raws_after),
-                semicolon,
-                own_semicolon: Some(own_semicolon),
-            });
+            sink.close_container(
+                handle,
+                ContainerClose {
+                    source_end: end_source.clone(),
+                    raws_after: Some(raws_after),
+                    semicolon,
+                    own_semicolon: Some(own_semicolon),
+                },
+            );
             return end_source;
         }
 
@@ -219,12 +235,15 @@ impl<'src> Rule<'src> {
         let raws_after = Some(spaces_buf.iter().map(|t| t.value).collect::<String>());
         let semicolon = body_terminator.map(|bt| bt.semicolon);
 
-        sink.close_container(handle, ContainerClose {
-            source_end: source_end.clone(),
-            raws_after,
-            semicolon,
-            own_semicolon: None,
-        });
+        sink.close_container(
+            handle,
+            ContainerClose {
+                source_end: source_end.clone(),
+                raws_after,
+                semicolon,
+                own_semicolon: None,
+            },
+        );
 
         source_end
     }
