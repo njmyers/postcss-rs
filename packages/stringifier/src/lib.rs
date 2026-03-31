@@ -239,13 +239,15 @@ impl Stringifier {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use postcss_rs_parser::Parser;
+    use postcss_rs_parser::{sinks::TreeSink, ParseSink, Parser};
 
     #[test]
     fn test_stringify_simple_rule() {
         let css = ".test { color: red; }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         // Parser may not preserve semicolons in all cases
@@ -256,7 +258,9 @@ mod tests {
     fn test_stringify_preserves_whitespace() {
         let css = "\n.test  {  color:  red;  }\n";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         // Note: trailing newline is not preserved in raws.after (PostCSS compatibility)
@@ -267,7 +271,9 @@ mod tests {
     fn test_stringify_at_rule() {
         let css = "@media screen { .test { color: red; } }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, "@media screen { .test { color: red } }");
@@ -277,7 +283,9 @@ mod tests {
     fn test_stringify_comment() {
         let css = "/* comment */ .test { color: red; }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, "/* comment */ .test { color: red }");
@@ -287,7 +295,9 @@ mod tests {
     fn test_stringify_important() {
         let css = ".test { color: red !important; }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, ".test { color: red !important }");
@@ -297,7 +307,9 @@ mod tests {
     fn test_stringify_multiple_declarations() {
         let css = ".a { color: red; background: blue; }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         // Inter-declaration semicolons are consumed by the parser and not stored
@@ -309,7 +321,9 @@ mod tests {
     fn test_stringify_import_at_rule() {
         let css = "@import \"style.css\";";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, "@import \"style.css\";");
@@ -319,7 +333,9 @@ mod tests {
     fn test_stringify_empty_rule() {
         let css = ".empty {}";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, ".empty {}");
@@ -329,7 +345,9 @@ mod tests {
     fn test_stringify_nested_at_rule() {
         let css = "@media (max-width: 600px) { .x { display: none; } }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, "@media (max-width: 600px) { .x { display: none } }");
@@ -339,7 +357,9 @@ mod tests {
     fn test_stringify_multiline_comment() {
         let css = "/* line1\nline2 */";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, "/* line1\nline2 */");
@@ -349,7 +369,9 @@ mod tests {
     fn test_stringify_colon_in_selector() {
         let css = "a:hover { color: green; }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, "a:hover { color: green }");

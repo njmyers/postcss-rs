@@ -3,16 +3,16 @@
 
 mod json;
 mod offset;
-mod offset_sink;
 
 pub use offset::NodeSlotLayout;
 
 use napi::{Env, Result, Task};
 use napi_derive::napi;
-use postcss_rs_parser::{sinks::TreeSink, Node, ParseSink, Parser};
+use postcss_rs_parser::{
+    sinks::{offset::OffsetSink, TreeSink},
+    Node, ParseSink, Parser,
+};
 use postcss_rs_stringifier::{Stringifier, StringifyOptions};
-
-pub use offset_sink::OffsetSink;
 
 pub struct JsonTask {
     css: String,
