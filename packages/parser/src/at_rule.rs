@@ -220,18 +220,6 @@ impl<'src> AtRule<'src> {
             }
         }
     }
-
-    fn new(name: Cow<'src, str>) -> Self {
-        return Self {
-            name,
-            params: None,
-            has_block: false,
-        };
-    }
-
-    fn set_params(&mut self, params: Cow<'src, str>) {
-        self.params = Some(params);
-    }
 }
 
 /// An empty struct representing the rules for determining if a word token following an at rule is

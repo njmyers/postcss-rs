@@ -139,10 +139,6 @@ impl<'src> Rule<'src> {
         source_end
     }
 
-    fn new(selector: Cow<'src, str>) -> Self {
-        return Self { selector };
-    }
-
     /// Detect and consume trailing semicolons after rule bodies (ownSemicolon pattern)
     /// Returns (source_position, semicolon_string) if a trailing semicolon is found, None otherwise
     ///

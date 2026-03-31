@@ -238,14 +238,6 @@ impl<'src> Declaration<'src> {
         (source_end, terminator)
     }
 
-    fn new(prop: Cow<'src, str>, value: Cow<'src, str>, important: Option<bool>) -> Self {
-        return Self {
-            prop,
-            important,
-            value,
-        };
-    }
-
     /// Check if a word token contains !important pattern
     /// Returns (ImportantResult, bang_position)
     fn check_important(word: &str, tokenizer: &mut Tokenizer<'_>) -> (ImportantResult, usize) {
