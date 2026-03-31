@@ -4,7 +4,7 @@ use serde::Serialize;
 use std::borrow::Cow;
 
 use crate::node::Source;
-use crate::sink::{ContainerClose, ContainerOpen, LeafNode, ParseSink};
+use crate::sinks::{ContainerClose, ContainerOpen, LeafNode, ParseSink};
 use crate::Declaration;
 use crate::NodeBuilder;
 use crate::Rule;

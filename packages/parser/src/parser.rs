@@ -2,11 +2,10 @@ use std::str;
 use std::str::Utf8Error;
 
 use crate::node::Source;
-use crate::sink::{ContainerClose, ContainerOpen, ParseSink, TreeSink};
+use crate::sinks::{ContainerClose, ContainerOpen, ParseSink};
 use crate::AtRule;
 use crate::Comment;
 use crate::Declaration;
-use crate::Node;
 use crate::Rule;
 
 use postcss_rs_tokenizer::Kind;
@@ -36,19 +35,7 @@ impl<'a> Parser<'a> {
         });
     }
 
-    pub fn parse(&mut self) -> Node<'a> {
-        let mut sink = TreeSink::new();
-        self.parse_into(&mut sink);
-        sink.finish()
-    }
-
-    /// Parse CSS into any [`ParseSink`], driving `sink` directly without
-    /// building an intermediate `Node<'a>` tree.
-    ///
-    /// This is the generic counterpart of [`parse`].  Use it when you want to
-    /// stream the parsed AST into a custom output (e.g. the flat offset-array
-    /// buffer produced by `OffsetSink`).
-    pub fn parse_into<S: ParseSink<'a>>(&mut self, sink: &mut S) {
+    pub fn parse<S: ParseSink<'a>>(&mut self, sink: &mut S) {
         let mut tokenizer = Tokenizer::new(self.css);
         let mut spaces = Tokens::new();
 
@@ -411,7 +398,9 @@ mod tests {
         json_path: &str,
     ) -> (serde_json::Value, serde_json::Value) {
         let mut parser = Parser::new(&css).unwrap();
-        let ast = parser.parse();
+        let mut sink = crate::sinks::TreeSink::new();
+        parser.parse(&mut sink);
+        let ast = sink.finish();
         let json = serde_json::to_string_pretty(&ast).unwrap();
 
         #[cfg(feature = "output")]
@@ -427,7 +416,9 @@ mod tests {
     fn parse_and_read(css_path: &str, json_path: &str) -> (serde_json::Value, serde_json::Value) {
         let css = read(css_path);
         let mut parser = Parser::new(&css).unwrap();
-        let ast = parser.parse();
+        let mut sink = crate::sinks::TreeSink::new();
+        parser.parse(&mut sink);
+        let ast = sink.finish();
         let json = serde_json::to_string_pretty(&ast).unwrap();
 
         #[cfg(feature = "output")]

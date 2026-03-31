@@ -1,6 +1,6 @@
 use napi_derive::napi;
 
-pub use postcss_rs_parser::offset::{Flags, NodeSlot, NodeType, ABSENT, STRIDE};
+pub use postcss_rs_parser::sinks::offset::{Flags, NodeSlot, NodeType, ABSENT, STRIDE};
 
 /// Binary layout descriptor for the offset-array buffer produced by
 /// `parseOffsetsSync`.  All field indices are u32 slot indices within a

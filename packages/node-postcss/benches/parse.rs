@@ -10,7 +10,7 @@
 /// Run with:
 ///   cargo bench --target x86_64-unknown-linux-gnu -p postcss-rs-node-postcss
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use postcss_rs_parser::{offset_sink::OffsetSink, Parser};
+use postcss_rs_parser::{sinks::offset::OffsetSink, Parser};
 
 // Pull in serialisers without going through the NAPI lib.
 #[path = "../src/json.rs"]
@@ -40,8 +40,10 @@ fn bench_parse(c: &mut Criterion) {
     for (label, css) in fixtures() {
         group.bench_with_input(BenchmarkId::from_parameter(label), css, |b, css| {
             b.iter(|| {
+                let mut sink = postcss_rs_parser::sinks::TreeSink::new();
                 let mut p = Parser::new(black_box(css)).unwrap();
-                black_box(p.parse())
+                p.parse(&mut sink);
+                black_box(sink.finish())
             })
         });
     }
@@ -53,8 +55,10 @@ fn bench_json(c: &mut Criterion) {
     for (label, css) in fixtures() {
         group.bench_with_input(BenchmarkId::from_parameter(label), css, |b, css| {
             b.iter(|| {
+                let mut sink = postcss_rs_parser::sinks::TreeSink::new();
                 let mut p = Parser::new(black_box(css)).unwrap();
-                let node = p.parse();
+                p.parse(&mut sink);
+                let node = sink.finish();
                 black_box(json::serialize(&node, css))
             })
         });
@@ -69,7 +73,7 @@ fn bench_offsets(c: &mut Criterion) {
             b.iter(|| {
                 let mut sink = OffsetSink::new(black_box(css));
                 let mut p = Parser::new(black_box(css)).unwrap();
-                p.parse_into(&mut sink);
+                p.parse(&mut sink);
                 black_box(sink.finish())
             })
         });

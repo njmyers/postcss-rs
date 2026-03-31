@@ -1,7 +1,7 @@
 use crate::comment::Comment;
 use crate::node::Source;
 use crate::rule_word::RuleWord;
-use crate::sink::{ContainerClose, ContainerOpen, ParseSink};
+use crate::sinks::{ContainerClose, ContainerOpen, ParseSink};
 use crate::Declaration;
 use crate::NodeBuilder;
 use crate::Statement;

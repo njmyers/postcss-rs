@@ -1,17 +1,105 @@
-use bytemuck::Zeroable;
+use bytemuck::{Pod, Zeroable};
 
 use crate::node::Source;
-use crate::offset::{Flags, NodeSlot, NodeType, ABSENT, STRIDE};
-use crate::sink::{ContainerClose, ContainerOpen, LeafNode, ParseSink};
+use crate::sinks::parse::{ContainerClose, ContainerOpen, LeafNode, ParseSink};
+
+// ── NodeSlot types ────────────────────────────────────────────────────────────
+
+/// Sentinel value indicating an absent/null field.
+pub const ABSENT: u32 = u32::MAX;
+
+/// Flag bits stored in `NodeSlot::flags`.
+pub struct Flags;
+impl Flags {
+    pub const IMPORTANT: u32 = 0x01;
+    pub const SEMI_PRESENT: u32 = 0x02;
+    pub const SEMI_VALUE: u32 = 0x04;
+    pub const HAS_CLEAN_STR: u32 = 0x08;
+    pub const CLEAN_IS_FIELD2: u32 = 0x10;
+    pub const HAS_NODES: u32 = 0x20;
+}
+
+/// Node type tag values stored in `NodeSlot::type_tag`.
+pub struct NodeType;
+impl NodeType {
+    pub const ROOT: u32 = 0;
+    pub const RULE: u32 = 1;
+    pub const DECL: u32 = 2;
+    pub const ATRULE: u32 = 3;
+    pub const COMMENT: u32 = 4;
+}
+
+/// Flat binary representation of one PostCSS AST node.
+///
+/// `#[repr(C)]` guarantees stable field order; all fields are `u32` so there
+/// is no padding and `bytemuck::cast_slice` can convert `&[NodeSlot]` to
+/// `&[u8]` with zero copies.  Declaration order equals the u32 slot index.
+#[repr(C)]
+#[derive(Clone, Copy, Pod, Zeroable)]
+pub struct NodeSlot {
+    /// Slot 0 — node kind: see `NodeType` constants
+    pub type_tag: u32,
+    /// Slot 1 — index of the parent node in the flat array; ABSENT for root
+    pub parent_idx: u32,
+    /// Slot 2 — CSS byte offset of `source.start` (0-based)
+    pub source_start_off: u32,
+    /// Slot 3 — 1-based line of `source.start`
+    pub source_start_line: u32,
+    /// Slot 4 — 1-based column of `source.start`
+    pub source_start_col: u32,
+    /// Slot 5 — CSS byte offset of `source.end`; ABSENT if missing
+    pub source_end_off: u32,
+    /// Slot 6 — 1-based line of `source.end`
+    pub source_end_line: u32,
+    /// Slot 7 — 1-based column of `source.end`
+    pub source_end_col: u32,
+    /// Slot 8 — start of field1 raw: selector (rule) / prop (decl) / name (atrule) / text (comment)
+    pub field1_start: u32,
+    /// Slot 9 — end of field1 raw
+    pub field1_end: u32,
+    /// Slot 10 — start of field2 raw: value (decl) / params (atrule); ABSENT if absent
+    pub field2_start: u32,
+    /// Slot 11 — end of field2 raw
+    pub field2_end: u32,
+    /// Slot 12 — start of `raws.before`; ABSENT if absent
+    pub raws_before_start: u32,
+    /// Slot 13 — end of `raws.before`
+    pub raws_before_end: u32,
+    /// Slot 14 — start of `raws.between`; ABSENT if absent
+    pub raws_between_start: u32,
+    /// Slot 15 — end of `raws.between`
+    pub raws_between_end: u32,
+    /// Slot 16 — start of `raws.after`; ABSENT if absent
+    pub raws_after_start: u32,
+    /// Slot 17 — end of `raws.after`
+    pub raws_after_end: u32,
+    /// Slot 18 — start of extra1: `raws.afterName` (atrule) / `raws.left` (comment); ABSENT if absent
+    pub raws_extra1_start: u32,
+    /// Slot 19 — end of extra1
+    pub raws_extra1_end: u32,
+    /// Slot 20 — start of extra2: `raws.important` (decl) / `raws.right` (comment); ABSENT if absent
+    pub raws_extra2_start: u32,
+    /// Slot 21 — end of extra2
+    pub raws_extra2_end: u32,
+    /// Slot 22 — bit flags; see `Flags` constants
+    pub flags: u32,
+    /// Slot 23 — start of clean string in the trailing UTF-8 table (when `Flags::HAS_CLEAN_STR` set)
+    pub clean_start: u32,
+    /// Slot 24 — end of clean string in the trailing UTF-8 table
+    pub clean_end: u32,
+}
+
+/// Number of u32 slots per node — derived from the struct size at compile time.
+pub const STRIDE: usize = std::mem::size_of::<NodeSlot>() / 4;
+const _STRIDE_CHECK: () = assert!(std::mem::size_of::<NodeSlot>() / 4 == 25);
+
+// ── OffsetSink ────────────────────────────────────────────────────────────────
 
 /// A [`ParseSink`] that writes flat [`NodeSlot`]s directly during parsing,
 /// without building an intermediate `Node<'src>` tree.
 pub struct OffsetSink<'src> {
-    /// Original CSS source (used for field-offset calculations).
     css: &'src str,
-    /// Flat slot array, pre-order.
     slots: Vec<NodeSlot>,
-    /// UTF-8 string table for clean values that differ from their raw CSS form.
     string_table: Vec<u8>,
 }
 
@@ -24,9 +112,6 @@ impl<'src> OffsetSink<'src> {
         }
     }
 
-    // ── helpers ────────────────────────────────────────────────────────────
-
-    /// Raw that **ends** at `end_pos`.
     #[inline]
     fn encode_ends_at(raw: Option<&str>, end_pos: u32) -> (u32, u32) {
         match raw {
@@ -35,7 +120,6 @@ impl<'src> OffsetSink<'src> {
         }
     }
 
-    /// Raw that **starts** at `start_pos` and extends forward.
     #[inline]
     fn encode_starts_at(raw: Option<&str>, start_pos: u32) -> (u32, u32) {
         match raw {
@@ -44,7 +128,6 @@ impl<'src> OffsetSink<'src> {
         }
     }
 
-    /// Find the JS-char start index AND byte offset of `field` in the CSS.
     fn find_field_start(css: &str, src_start: u32, field: &str) -> (u32, usize) {
         if field.is_empty() {
             return (src_start, src_start as usize);
@@ -63,8 +146,6 @@ impl<'src> OffsetSink<'src> {
         Self::find_field_start(css, src_start, field).0
     }
 
-    /// Walk CSS and `sel_raw` simultaneously to find the true CSS end of the
-    /// selector, skipping whitespace that was moved into `raws.between`.
     fn find_selector_css_end(css: &str, byte_start: usize, f1s: u32, sel_raw: &str) -> u32 {
         let mut css_chars = css[byte_start..].char_indices().peekable();
         let mut sel_chars = sel_raw.chars().peekable();
@@ -87,7 +168,6 @@ impl<'src> OffsetSink<'src> {
         f1s + Self::js_len(&css[byte_start..byte_start + last_byte])
     }
 
-    /// Length of `s` in UTF-16 code units (JavaScript `String.length`).
     #[inline]
     fn js_len(s: &str) -> u32 {
         if s.is_ascii() {
@@ -96,7 +176,6 @@ impl<'src> OffsetSink<'src> {
         s.chars().map(|c| c.len_utf16() as u32).sum()
     }
 
-    /// Build a zero-initialised slot with common source/parent fields set.
     #[inline]
     fn make_slot(parent: u32, type_tag: u32, ss: &Source) -> NodeSlot {
         let mut slot: NodeSlot = Zeroable::zeroed();
@@ -115,7 +194,6 @@ impl<'src> OffsetSink<'src> {
         slot
     }
 
-    /// Record a clean string in the string table; return `(start, end)`.
     #[inline]
     fn push_string(&mut self, s: &str) -> (u32, u32) {
         let start = self.string_table.len() as u32;
@@ -134,7 +212,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
         match open {
             ContainerOpen::Root { source_start } => {
                 let mut slot = Self::make_slot(parent, NodeType::ROOT, &source_start);
-                slot.parent_idx = ABSENT; // root has no parent
+                slot.parent_idx = ABSENT;
                 slot.flags |= Flags::HAS_NODES;
                 self.slots.push(slot);
             }
@@ -159,13 +237,11 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                 let (clean_start, clean_end);
 
                 if raws_selector_raw.is_some() {
-                    // Inline comments in selector: store clean (comment-stripped) value
                     let (cs, ce) = self.push_string(selector.as_ref());
                     clean_start = cs;
                     clean_end = ce;
-                    flags |= Flags::HAS_CLEAN_STR; // field1, no CLEAN_IS_FIELD2
+                    flags |= Flags::HAS_CLEAN_STR;
                 } else if actual_f1e != f1s + Self::js_len(sel_raw) {
-                    // Inter-selector whitespace: CSS span > stored selector
                     let (cs, ce) = self.push_string(sel_raw);
                     clean_start = cs;
                     clean_end = ce;
@@ -198,7 +274,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
             } => {
                 let src_start = source_start.offset as u32;
 
-                let name_start = src_start + 1; // skip '@'
+                let name_start = src_start + 1;
                 let f1s = name_start;
                 let f1e = name_start + Self::js_len(name);
 
@@ -267,7 +343,6 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                     slot.raws_after_start = as_;
                     slot.raws_after_end = ae;
                 }
-                // ownSemicolon stored in raws_extra1 for RULE
                 if let Some(own_semi) = close.own_semicolon {
                     let own_semi_end = match self.css.as_bytes().get(src_end as usize - 1) {
                         Some(b'\n') | Some(b'\r') => src_end - 1,
@@ -361,7 +436,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                 let src_start = source_start.offset as u32;
                 let src_end = source_end.offset as u32;
 
-                let left_start = src_start + 2; // skip '/*'
+                let left_start = src_start + 2;
                 let left_len = raws_left.as_deref().map(|l| l.len() as u32).unwrap_or(0);
                 let (l_s, l_e) = Self::encode_starts_at(raws_left.as_deref(), left_start);
                 let text_start = left_start + left_len;
@@ -402,7 +477,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
             } => {
                 let src_start = source_start.offset as u32;
 
-                let name_start = src_start + 1; // skip '@'
+                let name_start = src_start + 1;
                 let f1s = name_start;
                 let f1e = name_start + Self::js_len(name);
 
@@ -429,7 +504,6 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                     slot.source_end_line = end.line as u32;
                     slot.source_end_col = end.column as u32;
                 }
-                // else: source_end_off stays ABSENT (set by make_slot)
                 slot.field1_start = f1s;
                 slot.field1_end = f1e;
                 slot.field2_start = f2s;
@@ -440,7 +514,6 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                 slot.raws_between_end = bt_e;
                 slot.raws_extra1_start = an_s;
                 slot.raws_extra1_end = an_e;
-                // no HAS_NODES flag for statement at-rules
                 self.slots.push(slot);
             }
         }
@@ -456,6 +529,3 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
         out
     }
 }
-
-/// Constant asserting that the STRIDE matches what TypeScript expects.
-const _STRIDE_CHECK: () = assert!(STRIDE == 25);

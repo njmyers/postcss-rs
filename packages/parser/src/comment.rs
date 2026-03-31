@@ -1,5 +1,5 @@
 use crate::node::Source;
-use crate::sink::{LeafNode, ParseSink};
+use crate::sinks::{LeafNode, ParseSink};
 
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;

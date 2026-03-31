@@ -1,6 +1,6 @@
 use crate::characters;
 use crate::node::Source;
-use crate::sink::{LeafNode, ParseSink};
+use crate::sinks::{LeafNode, ParseSink};
 use crate::Statement;
 use crate::StatementTerminator;
 

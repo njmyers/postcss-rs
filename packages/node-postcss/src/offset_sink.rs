@@ -1,1 +1,1 @@
-pub use postcss_rs_parser::offset_sink::OffsetSink;
+pub use postcss_rs_parser::sinks::offset::OffsetSink;
