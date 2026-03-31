@@ -1,30 +1,7 @@
-use bytemuck::{Pod, Zeroable};
 use napi_derive::napi;
 use postcss_rs_parser::{AtRule, CommentData, Data, Declaration, Node, Raw, Rule};
 
-/// Sentinel value indicating an absent/null field.
-pub const ABSENT: u32 = u32::MAX;
-
-/// Flag bits stored in `NodeSlot::flags`.
-pub struct Flags;
-impl Flags {
-    pub const IMPORTANT: u32 = 0x01;
-    pub const SEMI_PRESENT: u32 = 0x02;
-    pub const SEMI_VALUE: u32 = 0x04;
-    pub const HAS_CLEAN_STR: u32 = 0x08;
-    pub const CLEAN_IS_FIELD2: u32 = 0x10;
-    pub const HAS_NODES: u32 = 0x20;
-}
-
-/// Node type tag values stored in `NodeSlot::type_tag`.
-pub struct NodeType;
-impl NodeType {
-    pub const ROOT: u32 = 0;
-    pub const RULE: u32 = 1;
-    pub const DECL: u32 = 2;
-    pub const ATRULE: u32 = 3;
-    pub const COMMENT: u32 = 4;
-}
+pub use postcss_rs_parser::offset::{Flags, NodeSlot, NodeType, ABSENT, STRIDE};
 
 /// Binary layout descriptor for the offset-array buffer produced by
 /// `parseOffsetsSync`.  All field indices are u32 slot indices within a
@@ -173,70 +150,6 @@ impl NodeSlotLayout {
         }
     }
 }
-
-/// Flat binary representation of one PostCSS AST node.
-///
-/// `#[repr(C)]` guarantees stable field order; all fields are `u32` so there
-/// is no padding and `bytemuck::cast_slice` can convert `&[NodeSlot]` to
-/// `&[u8]` with zero copies.  Declaration order equals the u32 slot index.
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable)]
-pub struct NodeSlot {
-    /// Slot 0 — node kind: see `NodeType` constants
-    pub type_tag: u32,
-    /// Slot 1 — index of the parent node in the flat array; ABSENT for root
-    pub parent_idx: u32,
-    /// Slot 2 — CSS byte offset of `source.start` (0-based)
-    pub source_start_off: u32,
-    /// Slot 3 — 1-based line of `source.start`
-    pub source_start_line: u32,
-    /// Slot 4 — 1-based column of `source.start`
-    pub source_start_col: u32,
-    /// Slot 5 — CSS byte offset of `source.end`; ABSENT if missing
-    pub source_end_off: u32,
-    /// Slot 6 — 1-based line of `source.end`
-    pub source_end_line: u32,
-    /// Slot 7 — 1-based column of `source.end`
-    pub source_end_col: u32,
-    /// Slot 8 — start of field1 raw: selector (rule) / prop (decl) / name (atrule) / text (comment)
-    pub field1_start: u32,
-    /// Slot 9 — end of field1 raw
-    pub field1_end: u32,
-    /// Slot 10 — start of field2 raw: value (decl) / params (atrule); ABSENT if absent
-    pub field2_start: u32,
-    /// Slot 11 — end of field2 raw
-    pub field2_end: u32,
-    /// Slot 12 — start of `raws.before`; ABSENT if absent
-    pub raws_before_start: u32,
-    /// Slot 13 — end of `raws.before`
-    pub raws_before_end: u32,
-    /// Slot 14 — start of `raws.between`; ABSENT if absent
-    pub raws_between_start: u32,
-    /// Slot 15 — end of `raws.between`
-    pub raws_between_end: u32,
-    /// Slot 16 — start of `raws.after`; ABSENT if absent
-    pub raws_after_start: u32,
-    /// Slot 17 — end of `raws.after`
-    pub raws_after_end: u32,
-    /// Slot 18 — start of extra1: `raws.afterName` (atrule) / `raws.left` (comment); ABSENT if absent
-    pub raws_extra1_start: u32,
-    /// Slot 19 — end of extra1
-    pub raws_extra1_end: u32,
-    /// Slot 20 — start of extra2: `raws.important` (decl) / `raws.right` (comment); ABSENT if absent
-    pub raws_extra2_start: u32,
-    /// Slot 21 — end of extra2
-    pub raws_extra2_end: u32,
-    /// Slot 22 — bit flags; see `Flags` constants
-    pub flags: u32,
-    /// Slot 23 — start of clean string in the trailing UTF-8 table (when `Flags::HAS_CLEAN_STR` set)
-    pub clean_start: u32,
-    /// Slot 24 — end of clean string in the trailing UTF-8 table
-    pub clean_end: u32,
-}
-
-/// Number of u32 slots per node — derived from the struct size at compile time.
-pub const STRIDE: usize = std::mem::size_of::<NodeSlot>() / 4;
-const _STRIDE_CHECK: () = assert!(std::mem::size_of::<NodeSlot>() / 4 == 25);
 
 /// Serializes a PostCSS AST into the compact offset-array binary format.
 ///
@@ -393,17 +306,11 @@ impl OffsetSerializer {
             .raw
             .as_deref()
             .unwrap_or(rule.selector.as_ref());
-        // Selector may be preceded by a non-ASCII prefix (e.g. BOM) that is
-        // part of raws.before; find where sel_raw actually starts.
         let (f1s, f1s_byte) = Self::find_field_start(css, src_start, sel_raw);
-        // The parser moves inter-selector whitespace (e.g. the space in ".a, .b")
-        // into raws.between, so sel_raw (".a,.b") can be shorter than the actual
-        // CSS span.  Walk both simultaneously to find the true CSS end.
         let actual_f1e = Self::find_selector_css_end(css, f1s_byte, f1s, sel_raw);
         slot.field1_start = f1s;
         slot.field1_end = actual_f1e;
 
-        // raws.before ends where the selector starts (overrides default src_start value)
         let (rbs, rbe) = Self::encode_ends_at(&node.raws.before, f1s);
         slot.raws_before_start = rbs;
         slot.raws_before_end = rbe;
@@ -417,9 +324,6 @@ impl OffsetSerializer {
             slot.raws_after_start = as_;
             slot.raws_after_end = ae;
 
-            // ownSemicolon stored in raws_extra1 (otherwise unused for RULE).
-            // When ownSemicolon has a preceding space (e.g. " ;"), the parser
-            // folds the trailing newline into src_end; strip it before slicing.
             let own_semi_end = match css.as_bytes().get(src_end as usize - 1) {
                 Some(b'\n') | Some(b'\r') => src_end - 1,
                 _ => src_end,
@@ -430,7 +334,6 @@ impl OffsetSerializer {
         }
 
         if node.raws.selector.raw.is_some() {
-            // Inline comments: raw is sel_raw (with comments), clean is comment-stripped.
             let clean = node
                 .raws
                 .selector
@@ -440,11 +343,8 @@ impl OffsetSerializer {
             slot.clean_start = string_table.len() as u32;
             string_table.extend_from_slice(clean.as_bytes());
             slot.clean_end = string_table.len() as u32;
-            slot.flags |= Flags::HAS_CLEAN_STR; // clean_is_field2 left clear → field1
+            slot.flags |= Flags::HAS_CLEAN_STR;
         } else if actual_f1e != f1s + Self::js_len(sel_raw) {
-            // Inter-selector spaces: CSS span is wider than the stored selector.
-            // Store the normalized selector as the clean value so the JS side
-            // uses it (rule.selector = normalized) rather than the raw CSS slice.
             slot.clean_start = string_table.len() as u32;
             string_table.extend_from_slice(sel_raw.as_bytes());
             slot.clean_end = string_table.len() as u32;
@@ -462,13 +362,10 @@ impl OffsetSerializer {
     ) {
         slot.type_tag = NodeType::DECL;
 
-        // IE hack: *color, _background — source.start points to the prefix
-        // char, not the prop; find where decl.prop actually begins.
         let f1s = Self::find_field_js_start(css, src_start, decl.prop.as_ref());
         slot.field1_start = f1s;
         slot.field1_end = f1s + Self::js_len(decl.prop.as_ref());
 
-        // raws.before ends where the prop starts (overrides default src_start value)
         let (rbs, rbe) = Self::encode_ends_at(&node.raws.before, f1s);
         slot.raws_before_start = rbs;
         slot.raws_before_end = rbe;
@@ -611,15 +508,6 @@ impl OffsetSerializer {
         }
     }
 
-    /// Find the actual CSS end position of a rule selector.
-    ///
-    /// The parser moves inter-selector whitespace (e.g. the ` ` in `.a, .b`) into
-    /// `raws.between`, so the stored `sel_raw` (`.a,.b`) is shorter than the CSS
-    /// span.  This walks both strings simultaneously, skipping CSS whitespace that
-    /// is absent from `sel_raw`, and returns the JS-char end position.
-    ///
-    /// `byte_start` is the **byte** offset in `css` where `sel_raw` begins (may
-    /// differ from the JS-char offset `f1s` for non-ASCII prefixes like BOM).
     fn find_selector_css_end(css: &str, byte_start: usize, f1s: u32, sel_raw: &str) -> u32 {
         let mut css_chars = css[byte_start..].char_indices().peekable();
         let mut sel_chars = sel_raw.chars().peekable();
@@ -643,37 +531,24 @@ impl OffsetSerializer {
         f1s + Self::js_len(&css[byte_start..byte_start + last_byte])
     }
 
-    /// Find the JS-char start index AND byte offset of `field` in the CSS.
-    ///
-    /// Returns `(js_char_start, byte_start)`.  For typical ASCII CSS `field`
-    /// begins right at `src_start` so both values equal `src_start as usize`.
-    /// Edge cases handled:
-    ///  - Non-ASCII BOM or other multi-byte prefix at `src_start` (bom.css)
-    ///  - IE hack prefix chars (`*`, `_`) for declarations (prop.css)
     fn find_field_start(css: &str, src_start: u32, field: &str) -> (u32, usize) {
         if field.is_empty() {
             return (src_start, src_start as usize);
         }
         let byte_pos = src_start as usize;
-        // Fast path: field starts exactly at src_start (all ASCII, no prefix).
         if css.as_bytes().get(byte_pos).copied() == field.as_bytes().first().copied() {
             return (src_start, byte_pos);
         }
-        // Slow path: find field in the CSS from byte_pos, then convert the prefix
-        // length to UTF-16 code units (JS char count) before adding to src_start.
         let prefix_bytes = css.get(byte_pos..).and_then(|s| s.find(field)).unwrap_or(0);
         let prefix_js = Self::js_len(&css[byte_pos..byte_pos + prefix_bytes]);
         (src_start + prefix_js, byte_pos + prefix_bytes)
     }
 
-    /// Convenience wrapper returning only the JS-char start.
     #[inline]
     fn find_field_js_start(css: &str, src_start: u32, field: &str) -> u32 {
         Self::find_field_start(css, src_start, field).0
     }
 
-    /// Length of `s` in UTF-16 code units (i.e. JavaScript `String.length`).
-    /// For pure-ASCII strings this equals the byte length.
     #[inline]
     fn js_len(s: &str) -> u32 {
         if s.is_ascii() {

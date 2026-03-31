@@ -228,10 +228,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
             semicolon,
             own_semicolon,
         } = close;
-        let mut node = self
-            .stack
-            .pop()
-            .expect("close called with empty stack");
+        let mut node = self.stack.pop().expect("close called with empty stack");
         node.source.end = Some(source_end);
         // Override raws.after (may have been pre-initialized to "")
         node.raws.after = Raw::default();

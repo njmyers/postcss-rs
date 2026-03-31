@@ -661,6 +661,7 @@ dependencies = [
 name = "postcss-rs-parser"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
  "criterion",
  "postcss-rs-tokenizer",
  "serde",
