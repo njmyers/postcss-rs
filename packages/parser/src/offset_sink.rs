@@ -6,10 +6,6 @@ use crate::sink::{ContainerClose, ContainerOpen, LeafNode, ParseSink};
 
 /// A [`ParseSink`] that writes flat [`NodeSlot`]s directly during parsing,
 /// without building an intermediate `Node<'src>` tree.
-///
-/// This eliminates the two-pass pipeline that was needed by `OffsetSerializer`
-/// (first build the tree, then DFS-traverse it).  Now parsing and slot-filling
-/// happen in a single pass.
 pub struct OffsetSink<'src> {
     /// Original CSS source (used for field-offset calculations).
     css: &'src str,
@@ -49,7 +45,6 @@ impl<'src> OffsetSink<'src> {
     }
 
     /// Find the JS-char start index AND byte offset of `field` in the CSS.
-    /// Mirrors `OffsetSerializer::find_field_start`.
     fn find_field_start(css: &str, src_start: u32, field: &str) -> (u32, usize) {
         if field.is_empty() {
             return (src_start, src_start as usize);
