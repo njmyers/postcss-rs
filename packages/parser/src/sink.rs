@@ -217,6 +217,8 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                     params: params.clone(),
                     has_block: true,
                 }));
+                // Block at-rules always have a nodes collection (possibly empty).
+                n.nodes = Some(Vec::new());
                 n.source.start = source_start;
                 apply_raw(&mut n.raws.before, raws_before);
                 apply_raw(&mut n.raws.after_name, raws_after_name);

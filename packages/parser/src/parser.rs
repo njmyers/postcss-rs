@@ -2,12 +2,11 @@ use std::str;
 use std::str::Utf8Error;
 
 use crate::node::Source;
-use crate::sink::{ContainerClose, ContainerOpen, ParseSink};
+use crate::sink::{ContainerClose, ContainerOpen, ParseSink, TreeSink};
 use crate::AtRule;
 use crate::Comment;
 use crate::Declaration;
 use crate::Node;
-use crate::NodeBuilder;
 use crate::Rule;
 
 use postcss_rs_tokenizer::Kind;
@@ -38,63 +37,9 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse(&mut self) -> Node<'a> {
-        let mut tokenizer = Tokenizer::new(self.css);
-        let mut spaces = Tokens::new();
-
-        let mut root = NodeBuilder::default();
-        root.ensure_empty_after();
-
-        while let Some(token) = tokenizer.next() {
-            match token.kind {
-                // Handle at-rules (@media, @supports, etc.)
-                Kind::AtWord => {
-                    let (node, terminator) = AtRule::create(token, &mut tokenizer, &spaces);
-                    root.terminator(&terminator);
-                    root.append(node);
-                    spaces.clear();
-                }
-
-                // Handle words - could be rules or root-level declarations
-                Kind::Word => match Self::classify(&mut tokenizer) {
-                    RootStatementType::Declaration => {
-                        let (node, terminator) =
-                            crate::Declaration::create(token, &mut tokenizer, &spaces);
-                        root.terminator(&terminator);
-                        root.append(node);
-                        spaces.clear();
-                    }
-                    RootStatementType::Rule => {
-                        let terminator = crate::StatementTerminator::new();
-                        root.terminator(&terminator);
-                        root.append(Rule::create(token, &mut tokenizer, &spaces));
-                        spaces.clear();
-                    }
-                },
-
-                // Handle rules starting with brackets or braces
-                Kind::OpenCurly | Kind::OpenSquare => {
-                    // Rules don't end with semicolons, so reset the terminator
-                    let terminator = crate::StatementTerminator::new();
-                    root.terminator(&terminator);
-                    root.append(Rule::create(token, &mut tokenizer, &spaces));
-                    spaces.clear();
-                }
-
-                // Handle comments
-                Kind::Comment => {
-                    root.append(Comment::create(token, &mut tokenizer, &spaces));
-                    spaces.clear();
-                }
-
-                // Handle whitespace
-                Kind::Space => spaces.push(token),
-
-                // Ignore other tokens
-                _ => (),
-            };
-        }
-
-        return root.build_root(&tokenizer, &spaces);
+        let mut sink = TreeSink::new();
+        self.parse_into(&mut sink);
+        sink.finish()
     }
 
     /// Parse CSS into any [`ParseSink`], driving `sink` directly without
@@ -123,41 +68,34 @@ impl<'a> Parser<'a> {
             match token.kind {
                 Kind::AtWord => {
                     let (end, term) =
-                        AtRule::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
+                        AtRule::create(token, &mut tokenizer, &spaces, sink, root_handle);
                     root_semicolon = Some(term.semicolon);
                     last_child_end = Some(end);
                     spaces.clear();
                 }
                 Kind::Word => match Self::classify(&mut tokenizer) {
                     RootStatementType::Declaration => {
-                        let (end, term) = Declaration::create_into(
-                            token,
-                            &mut tokenizer,
-                            &spaces,
-                            sink,
-                            root_handle,
-                        );
+                        let (end, term) =
+                            Declaration::create(token, &mut tokenizer, &spaces, sink, root_handle);
                         root_semicolon = Some(term.semicolon);
                         last_child_end = Some(end);
                         spaces.clear();
                     }
                     RootStatementType::Rule => {
-                        let end =
-                            Rule::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
+                        let end = Rule::create(token, &mut tokenizer, &spaces, sink, root_handle);
                         root_semicolon = Some(false);
                         last_child_end = Some(end);
                         spaces.clear();
                     }
                 },
                 Kind::OpenCurly | Kind::OpenSquare => {
-                    let end = Rule::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
+                    let end = Rule::create(token, &mut tokenizer, &spaces, sink, root_handle);
                     root_semicolon = Some(false);
                     last_child_end = Some(end);
                     spaces.clear();
                 }
                 Kind::Comment => {
-                    let end =
-                        Comment::create_into(token, &mut tokenizer, &spaces, sink, root_handle);
+                    let end = Comment::create(token, &mut tokenizer, &spaces, sink, root_handle);
                     last_child_end = Some(end);
                     spaces.clear();
                 }

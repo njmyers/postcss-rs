@@ -3,7 +3,6 @@ use crate::node::Source;
 use crate::rule_word::RuleWord;
 use crate::sink::{ContainerClose, ContainerOpen, ParseSink};
 use crate::Declaration;
-use crate::Node;
 use crate::NodeBuilder;
 use crate::Statement;
 
@@ -33,104 +32,10 @@ pub struct Rule<'src> {
 }
 
 impl<'src> Rule<'src> {
-    pub fn create(
-        token: Token<'src>,
-        tokenizer: &mut Tokenizer<'src>,
-        spaces: &[Token<'src>],
-    ) -> Node<'src> {
-        let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
-        let selector = Selector::create(token, tokenizer, &mut builder);
-
-        builder.ensure_empty_before();
-        builder.ensure_empty_between();
-        builder.ensure_empty_after();
-        builder.rule(Self::new(selector));
-
-        let mut spaces = Tokens::new();
-
-        while let Some(token) = tokenizer.next() {
-            match token.kind {
-                Kind::Word => {
-                    // Combine consecutive Word tokens for property names with escape sequences
-                    let prop = RuleWord::collect_and_combine(token, tokenizer);
-
-                    // Nested rule: word followed by opening brace (possibly with spaces)
-                    if Self::peek_for_nested_rule(tokenizer) {
-                        let nested_rule = Self::create(prop, tokenizer, &spaces);
-                        // Nested rules don't end with semicolons, so reset the terminator
-                        let terminator = crate::StatementTerminator::new();
-                        builder.terminator(&terminator);
-                        builder.append(nested_rule);
-                        spaces.clear();
-                        continue;
-                    }
-
-                    // Declaration: word followed by colon or other tokens
-                    let (child, terminator) = Declaration::create(prop, tokenizer, &spaces);
-                    builder.terminator(&terminator);
-                    builder.append(child);
-                    spaces.clear();
-                }
-
-                Kind::AtWord => {
-                    let (mut node, terminator) = crate::AtRule::create(token, tokenizer, &spaces);
-
-                    // For at-rules inside rules that end with CloseCurly, we need to:
-                    // 1. Set the end source position (before trailing spaces)
-                    // 2. Consume trailing spaces and add to 'between'
-                    if let Some(Kind::CloseCurly) = terminator.ended_by {
-                        if node.source.end.is_none() {
-                            // Save end position before consuming spaces
-                            node.source.end = Some(crate::Source::create_end(tokenizer));
-
-                            // Consume trailing spaces and add to 'between'
-                            while let Some(peeked) = tokenizer.peek() {
-                                match peeked.kind {
-                                    Kind::Space => {
-                                        let space_token = tokenizer.next().unwrap();
-                                        node.raws.between.push(&space_token);
-                                    }
-                                    _ => break,
-                                }
-                            }
-                        }
-                    }
-
-                    builder.terminator(&terminator);
-                    builder.append(node);
-                    spaces.clear();
-                }
-
-                Kind::Comment => {
-                    let comment = Self::create_comment(token, &mut *tokenizer, &spaces);
-                    builder.append(comment);
-                    spaces.clear();
-                }
-
-                Kind::Space => spaces.push(token),
-                Kind::Semicolon => spaces.push(token),
-                Kind::CloseCurly => break,
-                _ => break,
-            };
-        }
-
-        // Check for trailing semicolons (ownSemicolon in PostCSS)
-        // Handles cases like: a{b:c}; or a{b:c} ;
-        if let Some((end_source, own_semicolon)) = Self::consume_trailing_semicolon(tokenizer) {
-            let mut node = builder.node;
-            node.raws.after.push_tokens(&spaces);
-            node.raws.own_semicolon = crate::Raw::new(&own_semicolon);
-            node.source.end = Some(end_source);
-            return node;
-        }
-
-        return builder.build(tokenizer, &spaces);
-    }
-
-    /// Generic version: parse a rule and emit it + all children to `sink`.
+    /// Parse a rule and emit it + all children to `sink`.
     ///
     /// Returns `source_end` for the caller's last-child tracking.
-    pub fn create_into<S: ParseSink<'src>>(
+    pub fn create<S: ParseSink<'src>>(
         token: Token<'src>,
         tokenizer: &mut Tokenizer<'src>,
         spaces: &[Token<'src>],
@@ -172,12 +77,12 @@ impl<'src> Rule<'src> {
                 Kind::Word => {
                     let prop = RuleWord::collect_and_combine(body_token, tokenizer);
                     if Self::peek_for_nested_rule(tokenizer) {
-                        Self::create_into(prop, tokenizer, &spaces_buf, sink, handle);
+                        Self::create(prop, tokenizer, &spaces_buf, sink, handle);
                         body_terminator = Some(crate::StatementTerminator::new());
                         spaces_buf.clear();
                     } else {
                         let (_, child_term) =
-                            Declaration::create_into(prop, tokenizer, &spaces_buf, sink, handle);
+                            Declaration::create(prop, tokenizer, &spaces_buf, sink, handle);
                         body_terminator = Some(child_term);
                         spaces_buf.clear();
                     }
@@ -185,12 +90,12 @@ impl<'src> Rule<'src> {
                 Kind::AtWord => {
                     use crate::at_rule::AtRule;
                     let (_, child_term) =
-                        AtRule::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
+                        AtRule::create(body_token, tokenizer, &spaces_buf, sink, handle);
                     body_terminator = Some(child_term);
                     spaces_buf.clear();
                 }
                 Kind::Comment => {
-                    Comment::create_into(body_token, tokenizer, &spaces_buf, sink, handle);
+                    Comment::create(body_token, tokenizer, &spaces_buf, sink, handle);
                     spaces_buf.clear();
                 }
                 Kind::Space => spaces_buf.push(body_token),
@@ -236,14 +141,6 @@ impl<'src> Rule<'src> {
 
     fn new(selector: Cow<'src, str>) -> Self {
         return Self { selector };
-    }
-
-    fn create_comment(
-        token: Token<'src>,
-        tokenizer: &mut Tokenizer<'src>,
-        spaces: &[Token<'src>],
-    ) -> Node<'src> {
-        return crate::Comment::create(token, tokenizer, spaces);
     }
 
     /// Detect and consume trailing semicolons after rule bodies (ownSemicolon pattern)
