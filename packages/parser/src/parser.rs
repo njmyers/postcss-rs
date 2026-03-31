@@ -2,6 +2,7 @@ use std::str;
 use std::str::Utf8Error;
 
 use crate::node::Source;
+use crate::raws::Raws;
 use crate::sinks::{ContainerClose, ContainerOpen, ParseSink};
 use crate::AtRule;
 use crate::Comment;
@@ -119,13 +120,21 @@ impl<'a> Parser<'a> {
             Source::create_end(&tokenizer)
         };
 
+        let mut close_raws = Raws::default();
+        close_raws
+            .after
+            .push_str(raws_after.as_deref().unwrap_or(""));
+        match semicolon {
+            Some(true) => close_raws.semicolon.set_true(),
+            Some(false) => close_raws.semicolon.set_false(),
+            None => {}
+        }
+
         sink.close(
             root_handle,
             ContainerClose {
                 source_end,
-                raws_after,
-                semicolon,
-                own_semicolon: None,
+                raws: close_raws,
             },
         );
     }

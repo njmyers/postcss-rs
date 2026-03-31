@@ -1,5 +1,6 @@
 use crate::characters;
-use crate::node::Source;
+use crate::node::{Source, Sources};
+use crate::raws::{Raws, ValueRaw};
 use crate::sinks::{LeafNode, ParseSink};
 use crate::Statement;
 use crate::StatementTerminator;
@@ -220,18 +221,27 @@ impl<'src> Declaration<'src> {
             }
         }
 
+        let mut emit_raws = Raws::default();
+        emit_raws.before.push_str(&raws_before);
+        emit_raws.between.push_str(&raws_between);
+        if let Some(raw_val) = raws_value_raw {
+            emit_raws.value = ValueRaw::new(clean_value.to_string(), raw_val);
+        }
+        if let Some(ref imp) = important_raw {
+            emit_raws.important.push_str(imp);
+        }
+
         sink.emit(
             parent,
             LeafNode::Declaration {
-                source_start,
-                source_end: source_end.clone(),
-                raws_before: Some(raws_before),
+                sources: Sources {
+                    start: source_start,
+                    end: Some(source_end.clone()),
+                },
                 prop: Cow::Borrowed(actual_prop),
-                raws_between: Some(raws_between),
                 value: clean_value,
-                raws_value_raw,
                 important,
-                raws_important: important_raw,
+                raws: emit_raws,
             },
         );
 

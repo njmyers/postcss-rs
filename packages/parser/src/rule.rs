@@ -1,5 +1,6 @@
 use crate::comment::Comment;
 use crate::node::Source;
+use crate::raws::Raws;
 use crate::rule_word::RuleWord;
 use crate::sinks::{ContainerClose, ContainerOpen, ParseSink};
 use crate::Declaration;
@@ -52,20 +53,13 @@ impl<'src> Rule<'src> {
         let source_start = builder.node.source.start.clone();
         let selector = Selector::create(token, tokenizer, &mut builder);
 
-        let raws_before: Option<String> =
-            builder.node.raws.before.as_deref().map(|s| s.to_string());
-        let raws_selector_raw: Option<String> = builder.node.raws.selector.raw.clone();
-        let raws_between: Option<String> =
-            builder.node.raws.between.as_deref().map(|s| s.to_string());
-
+        let open_raws = builder.node.raws;
         let handle = sink.open(
             parent,
             ContainerOpen::Rule {
                 source_start,
-                raws_before,
                 selector,
-                raws_selector_raw,
-                raws_between,
+                raws: open_raws,
             },
         );
 
@@ -109,30 +103,39 @@ impl<'src> Rule<'src> {
         if let Some((end_source, own_semicolon)) = Self::consume_trailing_semicolon(tokenizer) {
             let raws_after: String = spaces_buf.iter().map(|t| t.value).collect();
             let semicolon = body_terminator.map(|bt| bt.semicolon);
+            let mut close_raws = Raws::default();
+            close_raws.after.push_str(&raws_after);
+            match semicolon {
+                Some(true) => close_raws.semicolon.set_true(),
+                Some(false) => close_raws.semicolon.set_false(),
+                None => {}
+            }
+            close_raws.own_semicolon.push_str(&own_semicolon);
             sink.close(
                 handle,
                 ContainerClose {
                     source_end: end_source.clone(),
-                    raws_after: Some(raws_after),
-                    semicolon,
-                    own_semicolon: Some(own_semicolon),
+                    raws: close_raws,
                 },
             );
             return end_source;
         }
 
         let source_end = Source::create_end(tokenizer);
-        // raws.after = trailing spaces before '}' (includes semicolons too per PostCSS)
-        let raws_after = Some(spaces_buf.iter().map(|t| t.value).collect::<String>());
+        let raws_after: String = spaces_buf.iter().map(|t| t.value).collect();
         let semicolon = body_terminator.map(|bt| bt.semicolon);
-
+        let mut close_raws = Raws::default();
+        close_raws.after.push_str(&raws_after);
+        match semicolon {
+            Some(true) => close_raws.semicolon.set_true(),
+            Some(false) => close_raws.semicolon.set_false(),
+            None => {}
+        }
         sink.close(
             handle,
             ContainerClose {
                 source_end: source_end.clone(),
-                raws_after,
-                semicolon,
-                own_semicolon: None,
+                raws: close_raws,
             },
         );
 

@@ -3,7 +3,8 @@ use serde::Serialize;
 
 use std::borrow::Cow;
 
-use crate::node::Source;
+use crate::node::{Source, Sources};
+use crate::raws::Raws;
 use crate::sinks::{ContainerClose, ContainerOpen, LeafNode, ParseSink};
 use crate::Declaration;
 use crate::NodeBuilder;
@@ -42,13 +43,11 @@ impl<'src> AtRule<'src> {
         sink: &mut S,
         parent: S::NodeRef,
     ) -> (Source, StatementTerminator) {
-        let source_start = Source::create_start(&token, tokenizer);
-        let raws_before: Option<String> = Some(spaces.iter().map(|t| t.value).collect());
         let name = &token.value[1..]; // strip '@'
 
         // Build a temporary NodeBuilder just to drive Params::create (which
-        // currently mutates a NodeBuilder for after_name and between).
-        // We capture the raws from the builder after Params::create returns.
+        // mutates a NodeBuilder for after_name and between).
+        // We move the accumulated raws from the builder after Params::create returns.
         let mut builder = NodeBuilder::new(&token, tokenizer, spaces);
         builder.ensure_empty_before();
         builder.ensure_empty_between();
@@ -56,15 +55,8 @@ impl<'src> AtRule<'src> {
 
         let (params, terminator, params_end_pos) = Params::create(&mut builder, tokenizer);
 
-        // Extract accumulated raws from the builder
-        let raws_after_name: Option<String> = builder
-            .node
-            .raws
-            .after_name
-            .as_deref()
-            .map(|s| s.to_string());
-        let raws_between: Option<String> =
-            builder.node.raws.between.as_deref().map(|s| s.to_string());
+        let source_start = builder.node.source.start.clone();
+        let open_raws = builder.node.raws;
 
         match terminator.ended_by {
             Some(Kind::OpenCurly) => {
@@ -79,11 +71,9 @@ impl<'src> AtRule<'src> {
                     parent,
                     ContainerOpen::AtRule {
                         source_start,
-                        raws_before,
                         name,
-                        raws_after_name,
                         params: params_cow,
-                        raws_between,
+                        raws: open_raws,
                     },
                 );
 
@@ -136,14 +126,19 @@ impl<'src> AtRule<'src> {
                 // raws_after = trailing spaces before '}' inside the block
                 let raws_after: String = spaces_buf.iter().map(|t| t.value).collect();
                 let semicolon = body_terminator.map(|bt| bt.semicolon);
+                let mut close_raws = Raws::default();
+                close_raws.after.push_str(&raws_after);
+                match semicolon {
+                    Some(true) => close_raws.semicolon.set_true(),
+                    Some(false) => close_raws.semicolon.set_false(),
+                    None => {}
+                }
 
                 sink.close(
                     handle,
                     ContainerClose {
                         source_end: source_end.clone(),
-                        raws_after: Some(raws_after),
-                        semicolon,
-                        own_semicolon: None,
+                        raws: close_raws,
                     },
                 );
 
@@ -157,36 +152,30 @@ impl<'src> AtRule<'src> {
 
                 let source_end = Source::create_end(tokenizer);
 
-                // Consume trailing spaces and add to raws_between
-                let mut extra_between = String::new();
+                // Consume trailing spaces and append to raws.between
+                let mut leaf_raws = open_raws;
                 while let Some(peeked) = tokenizer.peek() {
                     if peeked.kind == Kind::Space {
                         let space_token = tokenizer.next().unwrap();
-                        extra_between.push_str(space_token.value);
+                        leaf_raws.between.push_str(space_token.value);
                     } else {
                         break;
                     }
                 }
 
-                let raws_between_final = match (&raws_between, extra_between.is_empty()) {
-                    (Some(b), false) => Some(format!("{}{}", b, extra_between)),
-                    (None, false) => Some(extra_between),
-                    _ => raws_between,
-                };
-
                 sink.emit(
                     parent,
                     LeafNode::AtRuleStatement {
-                        source_start,
                         // params_end_pos is Some when params exist (e.g. @import "a.css"}),
                         // None when there are no params (e.g. @content}).
                         // PostCSS only sets source.end when params are present.
-                        source_end: params_end_pos,
-                        raws_before,
+                        sources: Sources {
+                            start: source_start,
+                            end: params_end_pos,
+                        },
                         name,
-                        raws_after_name,
                         params: params_cow,
-                        raws_between: raws_between_final,
+                        raws: leaf_raws,
                     },
                 );
 
@@ -206,13 +195,13 @@ impl<'src> AtRule<'src> {
                 sink.emit(
                     parent,
                     LeafNode::AtRuleStatement {
-                        source_start,
-                        source_end: Some(source_end.clone()),
-                        raws_before,
+                        sources: Sources {
+                            start: source_start,
+                            end: Some(source_end.clone()),
+                        },
                         name,
-                        raws_after_name,
                         params: params_cow,
-                        raws_between,
+                        raws: open_raws,
                     },
                 );
 

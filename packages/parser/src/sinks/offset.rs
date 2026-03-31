@@ -219,24 +219,22 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
 
             ContainerOpen::Rule {
                 source_start,
-                raws_before,
                 selector,
-                raws_selector_raw,
-                raws_between,
+                raws,
             } => {
                 let src_start = source_start.offset as u32;
-                let sel_raw = raws_selector_raw.as_deref().unwrap_or(selector.as_ref());
+                let sel_raw = raws.selector.raw.as_deref().unwrap_or(selector.as_ref());
 
                 let (f1s, f1s_byte) = Self::find_field_start(self.css, src_start, sel_raw);
                 let actual_f1e = Self::find_selector_css_end(self.css, f1s_byte, f1s, sel_raw);
 
-                let (rbs, rbe) = Self::encode_ends_at(raws_before.as_deref(), f1s);
-                let (bt_s, bt_e) = Self::encode_starts_at(raws_between.as_deref(), actual_f1e);
+                let (rbs, rbe) = Self::encode_ends_at(raws.before.as_deref(), f1s);
+                let (bt_s, bt_e) = Self::encode_starts_at(raws.between.as_deref(), actual_f1e);
 
                 let mut flags = Flags::HAS_NODES;
                 let (clean_start, clean_end);
 
-                if raws_selector_raw.is_some() {
+                if raws.selector.raw.is_some() {
                     let (cs, ce) = self.push_string(selector.as_ref());
                     clean_start = cs;
                     clean_end = ce;
@@ -266,11 +264,9 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
 
             ContainerOpen::AtRule {
                 source_start,
-                raws_before,
                 name,
-                raws_after_name,
                 params,
-                raws_between,
+                raws,
             } => {
                 let src_start = source_start.offset as u32;
 
@@ -278,11 +274,12 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                 let f1s = name_start;
                 let f1e = name_start + Self::js_len(name);
 
-                let after_name_len = raws_after_name
+                let after_name_len = raws
+                    .after_name
                     .as_deref()
                     .map(|s| s.len() as u32)
                     .unwrap_or(0);
-                let (an_s, an_e) = Self::encode_starts_at(raws_after_name.as_deref(), f1e);
+                let (an_s, an_e) = Self::encode_starts_at(raws.after_name.as_deref(), f1e);
                 let params_start = f1e + after_name_len;
 
                 let (f2s, f2e, params_end) = if let Some(p) = &params {
@@ -292,8 +289,8 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                     (ABSENT, 0, params_start)
                 };
 
-                let (bt_s, bt_e) = Self::encode_starts_at(raws_between.as_deref(), params_end);
-                let (rbs, rbe) = Self::encode_ends_at(raws_before.as_deref(), src_start);
+                let (bt_s, bt_e) = Self::encode_starts_at(raws.between.as_deref(), params_end);
+                let (rbs, rbe) = Self::encode_ends_at(raws.before.as_deref(), src_start);
 
                 let mut slot = Self::make_slot(parent, NodeType::ATRULE, &source_start);
                 slot.field1_start = f1s;
@@ -322,7 +319,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
         slot.source_end_line = close.source_end.line as u32;
         slot.source_end_col = close.source_end.column as u32;
 
-        if let Some(semi_val) = close.semicolon {
+        if let Some(semi_val) = *close.raws.semicolon {
             slot.flags |= Flags::SEMI_PRESENT;
             if semi_val {
                 slot.flags |= Flags::SEMI_VALUE;
@@ -332,30 +329,30 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
         match slot.type_tag {
             NodeType::ROOT => {
                 if src_end != ABSENT {
-                    let (as_, ae) = Self::encode_ends_at(close.raws_after.as_deref(), src_end);
+                    let (as_, ae) = Self::encode_ends_at(close.raws.after.as_deref(), src_end);
                     slot.raws_after_start = as_;
                     slot.raws_after_end = ae;
                 }
             }
             NodeType::RULE => {
                 if src_end > 0 {
-                    let (as_, ae) = Self::encode_ends_at(close.raws_after.as_deref(), src_end - 1);
+                    let (as_, ae) = Self::encode_ends_at(close.raws.after.as_deref(), src_end - 1);
                     slot.raws_after_start = as_;
                     slot.raws_after_end = ae;
                 }
-                if let Some(own_semi) = close.own_semicolon {
+                if let Some(own_semi) = close.raws.own_semicolon.as_deref() {
                     let own_semi_end = match self.css.as_bytes().get(src_end as usize - 1) {
                         Some(b'\n') | Some(b'\r') => src_end - 1,
                         _ => src_end,
                     };
-                    let (os, oe) = Self::encode_ends_at(Some(&own_semi), own_semi_end);
+                    let (os, oe) = Self::encode_ends_at(Some(own_semi), own_semi_end);
                     slot.raws_extra1_start = os;
                     slot.raws_extra1_end = oe;
                 }
             }
             NodeType::ATRULE => {
                 if src_end > 0 && slot.flags & Flags::HAS_NODES != 0 {
-                    let (as_, ae) = Self::encode_ends_at(close.raws_after.as_deref(), src_end - 1);
+                    let (as_, ae) = Self::encode_ends_at(close.raws.after.as_deref(), src_end - 1);
                     slot.raws_after_start = as_;
                     slot.raws_after_end = ae;
                 }
@@ -367,37 +364,33 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
     fn emit(&mut self, parent: u32, leaf: LeafNode<'src>) {
         match leaf {
             LeafNode::Declaration {
-                source_start,
-                source_end,
-                raws_before,
+                sources,
                 prop,
-                raws_between,
                 value,
-                raws_value_raw,
                 important,
-                raws_important,
+                raws,
             } => {
-                let src_start = source_start.offset as u32;
+                let src_start = sources.start.offset as u32;
                 let f1s = Self::find_field_js_start(self.css, src_start, prop.as_ref());
                 let f1e = f1s + Self::js_len(prop.as_ref());
 
-                let (rbs, rbe) = Self::encode_ends_at(raws_before.as_deref(), f1s);
-                let between_len = raws_between.as_deref().map(|s| s.len() as u32).unwrap_or(0);
-                let (bt_s, bt_e) = Self::encode_starts_at(raws_between.as_deref(), f1e);
+                let (rbs, rbe) = Self::encode_ends_at(raws.before.as_deref(), f1s);
+                let between_len = raws.between.as_deref().map(|s| s.len() as u32).unwrap_or(0);
+                let (bt_s, bt_e) = Self::encode_starts_at(raws.between.as_deref(), f1e);
                 let value_start = f1e + between_len;
 
-                let val_raw_str = raws_value_raw.as_deref().unwrap_or(value.as_ref());
+                let val_raw_str = raws.value.raw.as_deref().unwrap_or(value.as_ref());
                 let f2s = value_start;
                 let f2e = value_start + val_raw_str.len() as u32;
 
-                let (i_s, i_e) = Self::encode_starts_at(raws_important.as_deref(), f2e);
+                let (i_s, i_e) = Self::encode_starts_at(raws.important.as_deref(), f2e);
 
                 let mut flags = 0u32;
                 if important == Some(true) {
                     flags |= Flags::IMPORTANT;
                 }
 
-                let (clean_start, clean_end) = if raws_value_raw.is_some() {
+                let (clean_start, clean_end) = if raws.value.raw.is_some() {
                     let (cs, ce) = self.push_string(value.as_ref());
                     flags |= Flags::HAS_CLEAN_STR | Flags::CLEAN_IS_FIELD2;
                     (cs, ce)
@@ -405,10 +398,12 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                     (0, 0)
                 };
 
-                let mut slot = Self::make_slot(parent, NodeType::DECL, &source_start);
-                slot.source_end_off = source_end.offset as u32;
-                slot.source_end_line = source_end.line as u32;
-                slot.source_end_col = source_end.column as u32;
+                let mut slot = Self::make_slot(parent, NodeType::DECL, &sources.start);
+                if let Some(ref end) = sources.end {
+                    slot.source_end_off = end.offset as u32;
+                    slot.source_end_line = end.line as u32;
+                    slot.source_end_col = end.column as u32;
+                }
                 slot.field1_start = f1s;
                 slot.field1_end = f1e;
                 slot.field2_start = f2s;
@@ -426,35 +421,34 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
             }
 
             LeafNode::Comment {
-                source_start,
-                source_end,
-                raws_before,
-                raws_left,
+                sources,
                 text,
-                raws_right,
+                raws,
             } => {
-                let src_start = source_start.offset as u32;
-                let src_end = source_end.offset as u32;
+                let src_start = sources.start.offset as u32;
+                let src_end = sources.end.as_ref().map_or(0u32, |e| e.offset as u32);
 
                 let left_start = src_start + 2;
-                let left_len = raws_left.as_deref().map(|l| l.len() as u32).unwrap_or(0);
-                let (l_s, l_e) = Self::encode_starts_at(raws_left.as_deref(), left_start);
+                let left_len = raws.left.as_deref().map(|l| l.len() as u32).unwrap_or(0);
+                let (l_s, l_e) = Self::encode_starts_at(raws.left.as_deref(), left_start);
                 let text_start = left_start + left_len;
 
                 let f1s = text_start;
                 let f1e = text_start + Self::js_len(text);
 
-                let (rbs, rbe) = Self::encode_ends_at(raws_before.as_deref(), src_start);
+                let (rbs, rbe) = Self::encode_ends_at(raws.before.as_deref(), src_start);
                 let (r_s, r_e) = if src_end >= 2 {
-                    Self::encode_ends_at(raws_right.as_deref(), src_end - 2)
+                    Self::encode_ends_at(raws.right.as_deref(), src_end - 2)
                 } else {
                     (ABSENT, 0)
                 };
 
-                let mut slot = Self::make_slot(parent, NodeType::COMMENT, &source_start);
-                slot.source_end_off = src_end;
-                slot.source_end_line = source_end.line as u32;
-                slot.source_end_col = source_end.column as u32;
+                let mut slot = Self::make_slot(parent, NodeType::COMMENT, &sources.start);
+                if let Some(ref end) = sources.end {
+                    slot.source_end_off = end.offset as u32;
+                    slot.source_end_line = end.line as u32;
+                    slot.source_end_col = end.column as u32;
+                }
                 slot.field1_start = f1s;
                 slot.field1_end = f1e;
                 slot.raws_before_start = rbs;
@@ -467,25 +461,23 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
             }
 
             LeafNode::AtRuleStatement {
-                source_start,
-                source_end,
-                raws_before,
+                sources,
                 name,
-                raws_after_name,
                 params,
-                raws_between,
+                raws,
             } => {
-                let src_start = source_start.offset as u32;
+                let src_start = sources.start.offset as u32;
 
                 let name_start = src_start + 1;
                 let f1s = name_start;
                 let f1e = name_start + Self::js_len(name);
 
-                let after_name_len = raws_after_name
+                let after_name_len = raws
+                    .after_name
                     .as_deref()
                     .map(|s| s.len() as u32)
                     .unwrap_or(0);
-                let (an_s, an_e) = Self::encode_starts_at(raws_after_name.as_deref(), f1e);
+                let (an_s, an_e) = Self::encode_starts_at(raws.after_name.as_deref(), f1e);
                 let params_start = f1e + after_name_len;
 
                 let (f2s, f2e, params_end) = if let Some(p) = &params {
@@ -495,11 +487,11 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                     (ABSENT, 0, params_start)
                 };
 
-                let (bt_s, bt_e) = Self::encode_starts_at(raws_between.as_deref(), params_end);
-                let (rbs, rbe) = Self::encode_ends_at(raws_before.as_deref(), src_start);
+                let (bt_s, bt_e) = Self::encode_starts_at(raws.between.as_deref(), params_end);
+                let (rbs, rbe) = Self::encode_ends_at(raws.before.as_deref(), src_start);
 
-                let mut slot = Self::make_slot(parent, NodeType::ATRULE, &source_start);
-                if let Some(ref end) = source_end {
+                let mut slot = Self::make_slot(parent, NodeType::ATRULE, &sources.start);
+                if let Some(ref end) = sources.end {
                     slot.source_end_off = end.offset as u32;
                     slot.source_end_line = end.line as u32;
                     slot.source_end_col = end.column as u32;

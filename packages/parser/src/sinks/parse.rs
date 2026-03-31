@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 
-use crate::node::Source;
+use crate::node::{Source, Sources};
+use crate::raws::Raws;
 
 /// Data carried when a container node is opened (its children have not yet been parsed).
 pub enum ContainerOpen<'src> {
@@ -10,77 +11,55 @@ pub enum ContainerOpen<'src> {
     /// A rule node, e.g. `.foo { … }`.
     Rule {
         source_start: Source,
-        /// Whitespace/comments that appear before the selector; `None` = absent.
-        raws_before: Option<String>,
         /// Comment-stripped selector string.
         selector: Cow<'src, str>,
-        /// Raw selector as it appears in CSS (with inline comments); `None` when
-        /// identical to `selector`.
-        raws_selector_raw: Option<String>,
-        /// Whitespace between the selector and `{`.
-        raws_between: Option<String>,
+        /// Node raws: `before`, `between`, and `selector` (ValueRaw) are populated.
+        raws: Raws,
     },
 
     /// An at-rule with a block body, e.g. `@media screen { … }`.
     AtRule {
         source_start: Source,
-        raws_before: Option<String>,
         /// Name without the leading `@`.
         name: &'src str,
-        /// Whitespace between the name and the params.
-        raws_after_name: Option<String>,
         /// At-rule params; `None` when there are none.
         params: Option<Cow<'src, str>>,
-        /// Whitespace between the params and `{`.
-        raws_between: Option<String>,
+        /// Node raws: `before`, `after_name`, and `between` are populated.
+        raws: Raws,
     },
 }
 
 /// Data carried when a container node is closed (all children have been parsed).
 pub struct ContainerClose {
     pub source_end: Source,
-    /// Trailing whitespace inside the block (before `}`); `None` = absent.
-    pub raws_after: Option<String>,
-    /// Whether the last child was followed by a semicolon.
-    pub semicolon: Option<bool>,
-    /// Trailing semicolon after `}` (Rule-only); `None` = absent.
-    pub own_semicolon: Option<String>,
+    /// Node raws: `after`, `semicolon`, and `own_semicolon` are populated.
+    pub raws: Raws,
 }
 
 /// A leaf (non-container) node.
 pub enum LeafNode<'src> {
     Declaration {
-        source_start: Source,
-        source_end: Source,
-        raws_before: Option<String>,
+        sources: Sources,
         prop: Cow<'src, str>,
-        raws_between: Option<String>,
         /// Comment-stripped value.
         value: Cow<'src, str>,
-        /// Raw value as it appears in CSS; `None` when identical to `value`.
-        raws_value_raw: Option<String>,
         important: Option<bool>,
-        raws_important: Option<String>,
+        /// Node raws: `before`, `between`, `value` (ValueRaw), and `important` are populated.
+        raws: Raws,
     },
     Comment {
-        source_start: Source,
-        source_end: Source,
-        raws_before: Option<String>,
-        raws_left: Option<String>,
+        sources: Sources,
         text: &'src str,
-        raws_right: Option<String>,
+        /// Node raws: `before`, `left`, and `right` are populated.
+        raws: Raws,
     },
     /// A statement at-rule (no block), e.g. `@import "…";`.
     AtRuleStatement {
-        source_start: Source,
-        /// `None` when the at-rule was terminated by a parent `CloseCurly`
-        /// (PostCSS leaves `source.end` absent in that case).
-        source_end: Option<Source>,
-        raws_before: Option<String>,
+        sources: Sources,
         name: &'src str,
-        raws_after_name: Option<String>,
         params: Option<Cow<'src, str>>,
-        raws_between: Option<String>,
+        /// Node raws: `before`, `after_name`, and `between` are populated.
+        raws: Raws,
     },
 }
 

@@ -1,4 +1,5 @@
-use crate::node::Source;
+use crate::node::{Source, Sources};
+use crate::raws::Raws;
 use crate::sinks::{LeafNode, ParseSink};
 
 use postcss_rs_tokenizer::Token;
@@ -50,15 +51,22 @@ impl Comment {
 
         let source_end = Source::create_end(tokenizer);
 
+        let mut emit_raws = Raws::default();
+        emit_raws
+            .before
+            .push_str(raws_before.as_deref().unwrap_or(""));
+        emit_raws.left.push_str(left);
+        emit_raws.right.push_str(right);
+
         sink.emit(
             parent,
             LeafNode::Comment {
-                source_start,
-                source_end: source_end.clone(),
-                raws_before,
-                raws_left: Some(left.to_string()),
+                sources: Sources {
+                    start: source_start,
+                    end: Some(source_end.clone()),
+                },
                 text,
-                raws_right: Some(right.to_string()),
+                raws: emit_raws,
             },
         );
 

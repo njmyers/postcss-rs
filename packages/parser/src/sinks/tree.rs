@@ -2,26 +2,9 @@ use std::borrow::Cow;
 
 use crate::at_rule::AtRule;
 use crate::declaration::Declaration;
-use crate::node::{CommentData, Data, Node, Sources};
-use crate::raws::{Raw, Semicolon, ValueRaw};
+use crate::node::{CommentData, Data, Node};
 use crate::rule::Rule;
 use crate::sinks::parse::{ContainerClose, ContainerOpen, LeafNode, ParseSink};
-
-#[inline]
-fn apply_raw(raw: &mut Raw, value: Option<String>) {
-    if let Some(s) = value {
-        raw.push_str(&s);
-    }
-}
-
-#[inline]
-fn apply_semi(semi: &mut Semicolon, value: Option<bool>) {
-    match value {
-        Some(true) => semi.set_true(),
-        Some(false) => semi.set_false(),
-        None => {}
-    }
-}
 
 /// A [`ParseSink`] that builds the `Node<'src>` tree.
 pub struct TreeSink<'src> {
@@ -57,30 +40,21 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
             }
             ContainerOpen::Rule {
                 source_start,
-                raws_before,
                 selector,
-                raws_selector_raw,
-                raws_between,
+                raws,
             } => {
                 let mut n = Node::new(Data::Rule(Rule {
                     selector: selector.clone(),
                 }));
                 n.source.start = source_start;
-                apply_raw(&mut n.raws.before, raws_before);
-                apply_raw(&mut n.raws.between, raws_between);
-                n.raws.after.push_str("");
-                if let Some(raw) = raws_selector_raw {
-                    n.raws.selector = ValueRaw::new(selector.to_string(), raw);
-                }
+                n.raws = raws;
                 n
             }
             ContainerOpen::AtRule {
                 source_start,
-                raws_before,
                 name,
-                raws_after_name,
                 params,
-                raws_between,
+                raws,
             } => {
                 let mut n = Node::new(Data::AtRule(AtRule {
                     name: Cow::Borrowed(name),
@@ -89,10 +63,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                 }));
                 n.nodes = Some(Vec::new());
                 n.source.start = source_start;
-                apply_raw(&mut n.raws.before, raws_before);
-                apply_raw(&mut n.raws.after_name, raws_after_name);
-                apply_raw(&mut n.raws.between, raws_between);
-                n.raws.after.push_str("");
+                n.raws = raws;
                 n
             }
         };
@@ -100,18 +71,11 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
     }
 
     fn close(&mut self, _handle: (), close: ContainerClose) {
-        let ContainerClose {
-            source_end,
-            raws_after,
-            semicolon,
-            own_semicolon,
-        } = close;
         let mut node = self.stack.pop().expect("close called with empty stack");
-        node.source.end = Some(source_end);
-        node.raws.after = Raw::default();
-        apply_raw(&mut node.raws.after, raws_after);
-        apply_semi(&mut node.raws.semicolon, semicolon);
-        apply_raw(&mut node.raws.own_semicolon, own_semicolon);
+        node.source.end = Some(close.source_end);
+        node.raws.after = close.raws.after;
+        node.raws.semicolon = close.raws.semicolon;
+        node.raws.own_semicolon = close.raws.own_semicolon;
 
         if self.stack.is_empty() {
             self.root = Some(node);
@@ -123,15 +87,11 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
     fn emit(&mut self, _parent: (), leaf: LeafNode<'src>) {
         let node = match leaf {
             LeafNode::Declaration {
-                source_start,
-                source_end,
-                raws_before,
+                sources,
                 prop,
-                raws_between,
                 value,
-                raws_value_raw,
                 important,
-                raws_important,
+                raws,
             } => {
                 let decl = Declaration {
                     prop: prop.clone(),
@@ -139,46 +99,27 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                     value: value.clone(),
                 };
                 let mut n = Node::new(Data::Declaration(decl));
-                n.source = Sources {
-                    start: source_start,
-                    end: Some(source_end),
-                };
-                apply_raw(&mut n.raws.before, raws_before);
-                apply_raw(&mut n.raws.between, raws_between);
-                if let Some(raw) = raws_value_raw {
-                    n.raws.value = ValueRaw::new(value.to_string(), raw);
-                }
-                apply_raw(&mut n.raws.important, raws_important);
+                n.source = sources;
+                n.raws = raws;
                 n
             }
             LeafNode::Comment {
-                source_start,
-                source_end,
-                raws_before,
-                raws_left,
+                sources,
                 text,
-                raws_right,
+                raws,
             } => {
                 let mut n = Node::new(Data::Comment(CommentData {
                     text: Cow::Borrowed(text),
                 }));
-                n.source = Sources {
-                    start: source_start,
-                    end: Some(source_end),
-                };
-                apply_raw(&mut n.raws.before, raws_before);
-                apply_raw(&mut n.raws.left, raws_left);
-                apply_raw(&mut n.raws.right, raws_right);
+                n.source = sources;
+                n.raws = raws;
                 n
             }
             LeafNode::AtRuleStatement {
-                source_start,
-                source_end,
-                raws_before,
+                sources,
                 name,
-                raws_after_name,
                 params,
-                raws_between,
+                raws,
             } => {
                 let mut n = Node::new(Data::AtRule(AtRule {
                     name: Cow::Borrowed(name),
@@ -186,13 +127,8 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                     has_block: false,
                 }));
                 n.nodes = None;
-                n.source = Sources {
-                    start: source_start,
-                    end: source_end,
-                };
-                apply_raw(&mut n.raws.before, raws_before);
-                apply_raw(&mut n.raws.after_name, raws_after_name);
-                apply_raw(&mut n.raws.between, raws_between);
+                n.source = sources;
+                n.raws = raws;
                 n
             }
         };
