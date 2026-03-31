@@ -50,7 +50,7 @@ impl Comment {
 
         let source_end = Source::create_end(tokenizer);
 
-        sink.emit_leaf(
+        sink.emit(
             parent,
             LeafNode::Comment {
                 source_start,

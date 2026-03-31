@@ -132,7 +132,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
     type NodeRef = u32;
     type Output = Vec<u8>;
 
-    fn open_container(&mut self, parent: u32, open: ContainerOpen<'src>) -> u32 {
+    fn open(&mut self, parent: u32, open: ContainerOpen<'src>) -> u32 {
         let my_idx = self.slots.len() as u32;
 
         match open {
@@ -242,7 +242,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
         my_idx
     }
 
-    fn close_container(&mut self, handle: u32, close: ContainerClose) {
+    fn close(&mut self, handle: u32, close: ContainerClose) {
         let src_end = close.source_end.offset as u32;
         let slot = &mut self.slots[handle as usize];
 
@@ -293,7 +293,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
         }
     }
 
-    fn emit_leaf(&mut self, parent: u32, leaf: LeafNode<'src>) {
+    fn emit(&mut self, parent: u32, leaf: LeafNode<'src>) {
         match leaf {
             LeafNode::Declaration {
                 source_start,

@@ -6,8 +6,6 @@ use crate::node::{CommentData, Data, Node, Source, Sources};
 use crate::raws::{Raw, Semicolon, ValueRaw};
 use crate::rule::Rule;
 
-// ── Helper ─────────────────────────────────────────────────────────────────
-
 /// Apply `value` to `raw`: if `Some(s)`, push `s`; if `None`, leave as `Raw(None)`.
 #[inline]
 fn apply_raw(raw: &mut Raw, value: Option<String>) {
@@ -25,8 +23,6 @@ fn apply_semi(semi: &mut Semicolon, value: Option<bool>) {
         None => {}
     }
 }
-
-// ── Public data types passed through the trait ────────────────────────────
 
 /// Data carried when a container node is opened (its children have not yet been parsed).
 pub enum ContainerOpen<'src> {
@@ -110,8 +106,6 @@ pub enum LeafNode<'src> {
     },
 }
 
-// ── Trait ─────────────────────────────────────────────────────────────────
-
 /// Output abstraction for the CSS parser.
 ///
 /// Implement this trait to receive the parsed CSS in a form other than the
@@ -133,21 +127,18 @@ pub trait ParseSink<'src> {
     /// *before* its children are parsed.
     ///
     /// Returns an opaque `NodeRef` that must be passed back to
-    /// [`close_container`] and as the `parent` argument for all child calls.
-    fn open_container(&mut self, parent: Self::NodeRef, open: ContainerOpen<'src>)
-        -> Self::NodeRef;
+    /// [`close`] and as the `parent` argument for all child calls.
+    fn open(&mut self, parent: Self::NodeRef, open: ContainerOpen<'src>) -> Self::NodeRef;
 
     /// Called after all of a container's children have been parsed.
-    fn close_container(&mut self, handle: Self::NodeRef, close: ContainerClose);
+    fn close(&mut self, handle: Self::NodeRef, close: ContainerClose);
 
     /// Called for each leaf node (Declaration, Comment, statement at-rule).
-    fn emit_leaf(&mut self, parent: Self::NodeRef, leaf: LeafNode<'src>);
+    fn emit(&mut self, parent: Self::NodeRef, leaf: LeafNode<'src>);
 
     /// Consume the sink and return the finished output.
     fn finish(self) -> Self::Output;
 }
-
-// ── TreeSink ───────────────────────────────────────────────────────────────
 
 /// A [`ParseSink`] that builds the `Node<'src>` tree (original behaviour).
 pub struct TreeSink<'src> {
@@ -177,7 +168,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
     type NodeRef = ();
     type Output = Node<'src>;
 
-    fn open_container(&mut self, _parent: (), open: ContainerOpen<'src>) {
+    fn open(&mut self, _parent: (), open: ContainerOpen<'src>) {
         let node = match open {
             ContainerOpen::Root { source_start } => {
                 let mut n = Node::new(Data::Root);
@@ -230,7 +221,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
         self.stack.push(node);
     }
 
-    fn close_container(&mut self, _handle: (), close: ContainerClose) {
+    fn close(&mut self, _handle: (), close: ContainerClose) {
         let ContainerClose {
             source_end,
             raws_after,
@@ -240,7 +231,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
         let mut node = self
             .stack
             .pop()
-            .expect("close_container called with empty stack");
+            .expect("close called with empty stack");
         node.source.end = Some(source_end);
         // Override raws.after (may have been pre-initialized to "")
         node.raws.after = Raw::default();
@@ -256,7 +247,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
         }
     }
 
-    fn emit_leaf(&mut self, _parent: (), leaf: LeafNode<'src>) {
+    fn emit(&mut self, _parent: (), leaf: LeafNode<'src>) {
         let node = match leaf {
             LeafNode::Declaration {
                 source_start,

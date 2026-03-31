@@ -75,7 +75,7 @@ impl<'src> AtRule<'src> {
                 // Consume the OpenCurly
                 tokenizer.next();
 
-                let handle = sink.open_container(
+                let handle = sink.open(
                     parent,
                     ContainerOpen::AtRule {
                         source_start,
@@ -137,7 +137,7 @@ impl<'src> AtRule<'src> {
                 let raws_after: String = spaces_buf.iter().map(|t| t.value).collect();
                 let semicolon = body_terminator.map(|bt| bt.semicolon);
 
-                sink.close_container(
+                sink.close(
                     handle,
                     ContainerClose {
                         source_end: source_end.clone(),
@@ -174,7 +174,7 @@ impl<'src> AtRule<'src> {
                     _ => raws_between,
                 };
 
-                sink.emit_leaf(
+                sink.emit(
                     parent,
                     LeafNode::AtRuleStatement {
                         source_start,
@@ -203,7 +203,7 @@ impl<'src> AtRule<'src> {
                     Source::create_end(tokenizer)
                 };
 
-                sink.emit_leaf(
+                sink.emit(
                     parent,
                     LeafNode::AtRuleStatement {
                         source_start,

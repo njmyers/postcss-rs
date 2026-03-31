@@ -57,7 +57,7 @@ impl<'a> Parser<'a> {
         let mut root_semicolon: Option<bool> = None;
 
         let root_start = Source::default();
-        let root_handle = sink.open_container(
+        let root_handle = sink.open(
             S::NodeRef::default(),
             ContainerOpen::Root {
                 source_start: root_start,
@@ -132,7 +132,7 @@ impl<'a> Parser<'a> {
             Source::create_end(&tokenizer)
         };
 
-        sink.close_container(
+        sink.close(
             root_handle,
             ContainerClose {
                 source_end,

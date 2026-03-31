@@ -58,7 +58,7 @@ impl<'src> Rule<'src> {
         let raws_between: Option<String> =
             builder.node.raws.between.as_deref().map(|s| s.to_string());
 
-        let handle = sink.open_container(
+        let handle = sink.open(
             parent,
             ContainerOpen::Rule {
                 source_start,
@@ -109,7 +109,7 @@ impl<'src> Rule<'src> {
         if let Some((end_source, own_semicolon)) = Self::consume_trailing_semicolon(tokenizer) {
             let raws_after: String = spaces_buf.iter().map(|t| t.value).collect();
             let semicolon = body_terminator.map(|bt| bt.semicolon);
-            sink.close_container(
+            sink.close(
                 handle,
                 ContainerClose {
                     source_end: end_source.clone(),
@@ -126,7 +126,7 @@ impl<'src> Rule<'src> {
         let raws_after = Some(spaces_buf.iter().map(|t| t.value).collect::<String>());
         let semicolon = body_terminator.map(|bt| bt.semicolon);
 
-        sink.close_container(
+        sink.close(
             handle,
             ContainerClose {
                 source_end: source_end.clone(),

@@ -220,7 +220,7 @@ impl<'src> Declaration<'src> {
             }
         }
 
-        sink.emit_leaf(
+        sink.emit(
             parent,
             LeafNode::Declaration {
                 source_start,
