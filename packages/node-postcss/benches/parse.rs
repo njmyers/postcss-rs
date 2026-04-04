@@ -10,7 +10,7 @@
 /// Run with:
 ///   cargo bench --target x86_64-unknown-linux-gnu -p postcss-rs-node-postcss
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use postcss_rs_parser::{sinks::offset::OffsetSink, Parser};
+use postcss_rs_parser::{sinks::offset::OffsetSink, ParseSink, Parser};
 
 // Pull in serialisers without going through the NAPI lib.
 #[path = "../src/json.rs"]
