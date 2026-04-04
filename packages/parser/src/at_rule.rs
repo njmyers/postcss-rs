@@ -3,6 +3,7 @@ use serde::Serialize;
 
 use std::borrow::Cow;
 
+use crate::comment::Comment;
 use crate::node::{Source, Sources};
 use crate::raws::Raws;
 use crate::sinks::{ParseSink, SinkNode};
@@ -111,7 +112,6 @@ impl<'src> AtRule<'src> {
                             spaces_buf.clear();
                         }
                         Kind::Comment => {
-                            use crate::comment::Comment;
                             Comment::create(body_token, tokenizer, &spaces_buf, sink, handle);
                             spaces_buf.clear();
                         }
@@ -269,12 +269,12 @@ impl Params {
     fn create<'src>(
         parent: &mut NodeBuilder<'src>,
         tokenizer: &mut Tokenizer<'src>,
-    ) -> (Cow<'src, str>, StatementTerminator, Option<crate::Source>) {
+    ) -> (Cow<'src, str>, StatementTerminator, Option<Source>) {
         let mut spaces = Tokens::new();
         let mut statement = Statement::new();
         let mut terminator = StatementTerminator::new();
         let mut between_buffer = Tokens::new(); // Buffer for potential 'between' spaces
-        let mut params_end_pos: Option<crate::Source> = None; // Track where params actually end
+        let mut params_end_pos: Option<Source> = None; // Track where params actually end
 
         while let Some(token) = tokenizer.peek() {
             // Check if this token should end params without being consumed
@@ -311,14 +311,14 @@ impl Params {
                 // Handle spacing and comments within params - add to statement when brackets are open
                 Kind::Space | Kind::Comment if statement.is_open() => {
                     statement.push(token);
-                    params_end_pos = Some(crate::Source::create_end(tokenizer));
+                    params_end_pos = Some(Source::create_end(tokenizer));
                 }
                 // Handle spacing and comments after params - buffer them for now
                 Kind::Space | Kind::Comment => between_buffer.push(token),
 
                 // Handle semicolon - ends params only when not nested
                 Kind::Semicolon => {
-                    params_end_pos = Some(crate::Source::create_end(tokenizer));
+                    params_end_pos = Some(Source::create_end(tokenizer));
                     if statement.is_open() {
                         statement.push(token);
                     } else {
@@ -340,7 +340,7 @@ impl Params {
                 | Kind::OpenCurly
                 | Kind::CloseCurly => {
                     statement.push(token);
-                    params_end_pos = Some(crate::Source::create_end(tokenizer));
+                    params_end_pos = Some(Source::create_end(tokenizer));
                 }
 
                 // Unreachable: AtWord causes a break in the peek loop before consuming

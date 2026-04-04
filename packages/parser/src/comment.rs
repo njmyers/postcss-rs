@@ -2,22 +2,29 @@ use crate::node::{Source, Sources};
 use crate::raws::Raws;
 use crate::sinks::{ParseSink, SinkNode};
 
+use serde::Deserialize;
+use serde::Serialize;
+
+use std::borrow::Cow;
+
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
 
-/// Parser for CSS block comments.
-///
-/// Extracts the comment text and its surrounding whitespace from a raw
-/// `/* … */` token and builds a [`Node`] with the appropriate `raws.left`
-/// and `raws.right` fields set.
-pub struct Comment;
+/// Text payload for a CSS comment node, e.g. `/* text */`.
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+pub struct Comment<'src> {
+    /// The comment text, without the surrounding `/*` and `*/` delimiters or
+    /// any leading/trailing whitespace (which is stored in `raws.left` /
+    /// `raws.right`).
+    pub text: Cow<'src, str>,
+}
 
-impl Comment {
-    /// Generic version: parse a comment token and emit it to `sink`.
+impl<'src> Comment<'src> {
+    /// Parse a comment token and emit it to `sink`.
     ///
     /// Returns the `source_end` of the produced node (so the caller can update
     /// any last-child tracking).
-    pub fn create<'src, S: ParseSink<'src>>(
+    pub fn create<S: ParseSink<'src>>(
         token: Token<'src>,
         tokenizer: &mut Tokenizer<'src>,
         spaces: &[Token<'src>],
@@ -74,7 +81,7 @@ impl Comment {
     }
 
     /// Build an `Option<String>` from accumulated space tokens (for `raws.before`).
-    pub(crate) fn raws_before(spaces: &[Token<'_>]) -> Option<String> {
+    fn raws_before(spaces: &[Token<'_>]) -> Option<String> {
         // Always Some (ensure_empty_before semantics): even empty → Some("")
         let s: String = spaces.iter().map(|t| t.value).collect();
         Some(s)

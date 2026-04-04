@@ -1,3 +1,5 @@
+use crate::comment::Comment;
+use crate::raws::{Raw, ValueRaw};
 use crate::AtRule;
 use crate::Declaration;
 use crate::Raws;
@@ -107,16 +109,7 @@ pub enum Data<'src> {
     AtRule(AtRule<'src>),
     /// A block comment, e.g. `/* text */`.
     #[serde(rename = "comment")]
-    Comment(CommentData<'src>),
-}
-
-/// Text payload for a CSS comment node.
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
-pub struct CommentData<'src> {
-    /// The comment text, without the surrounding `/*` and `*/` delimiters or
-    /// any leading/trailing whitespace (which is stored in `raws.left` /
-    /// `raws.right`).
-    pub text: Cow<'src, str>,
+    Comment(Comment<'src>),
 }
 
 impl<'src> Default for Data<'src> {
@@ -241,7 +234,7 @@ impl<'src> NodeBuilder<'src> {
     pub fn comment_text(&mut self, text: &'src str) {
         // Comments never have a nodes field
         self.node.nodes = None;
-        self.node.data = Data::Comment(CommentData {
+        self.node.data = Data::Comment(Comment {
             text: Cow::Borrowed(text),
         });
     }
@@ -255,15 +248,15 @@ impl<'src> NodeBuilder<'src> {
     }
 
     pub fn value_raw(&mut self, value: &str, raw: &str) {
-        self.node.raws.value = crate::ValueRaw::new(String::from(value), String::from(raw));
+        self.node.raws.value = ValueRaw::new(String::from(value), String::from(raw));
     }
 
     pub fn selector_raw(&mut self, value: &str, raw: &str) {
-        self.node.raws.selector = crate::ValueRaw::new(String::from(value), String::from(raw));
+        self.node.raws.selector = ValueRaw::new(String::from(value), String::from(raw));
     }
 
     pub fn important_raw(&mut self, value: &str) {
-        self.node.raws.important = crate::Raw::new(value);
+        self.node.raws.important = Raw::new(value);
     }
 
     pub fn ensure_empty_before(&mut self) {

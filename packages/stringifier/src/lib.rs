@@ -5,7 +5,7 @@
  * preserving all original formatting information stored in the `raws` fields.
  */
 
-use postcss_rs_parser::{AtRule, CommentData, Data, Declaration, Node, Rule};
+use postcss_rs_parser::{AtRule, Comment, Data, Declaration, Node, Rule};
 
 /// Options for stringification
 #[derive(Debug, Default)]
@@ -213,7 +213,7 @@ impl Stringifier {
     }
 
     /// Stringify a comment node
-    fn visit_comment(&mut self, node: &Node<'_>, comment: &CommentData<'_>) {
+    fn visit_comment(&mut self, node: &Node<'_>, comment: &Comment<'_>) {
         // Add before whitespace
         if let Some(before) = node.raws.before.as_ref() {
             self.output.push_str(before);

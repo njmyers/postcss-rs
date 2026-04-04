@@ -1,8 +1,9 @@
 use std::borrow::Cow;
 
 use crate::at_rule::AtRule;
+use crate::comment::Comment;
 use crate::declaration::Declaration;
-use crate::node::{CommentData, Data, Node};
+use crate::node::{Data, Node};
 use crate::rule::Rule;
 use crate::sinks::parse::{ParseSink, SinkNode};
 
@@ -112,7 +113,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                 text,
                 raws,
             } => {
-                let mut n = Node::new(Data::Comment(CommentData {
+                let mut n = Node::new(Data::Comment(Comment {
                     text: Cow::Borrowed(text),
                 }));
                 n.source = sources;

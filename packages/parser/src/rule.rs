@@ -1,3 +1,4 @@
+use crate::at_rule::AtRule;
 use crate::comment::Comment;
 use crate::node::Source;
 use crate::raws::Raws;
@@ -6,6 +7,7 @@ use crate::sinks::{ParseSink, SinkNode};
 use crate::Declaration;
 use crate::NodeBuilder;
 use crate::Statement;
+use crate::StatementTerminator;
 
 use serde::Deserialize;
 use serde::Serialize;
@@ -64,7 +66,7 @@ impl<'src> Rule<'src> {
         );
 
         let mut spaces_buf = Tokens::new();
-        let mut body_terminator: Option<crate::StatementTerminator> = None;
+        let mut body_terminator: Option<StatementTerminator> = None;
 
         while let Some(body_token) = tokenizer.next() {
             match body_token.kind {
@@ -72,7 +74,7 @@ impl<'src> Rule<'src> {
                     let prop = RuleWord::collect_and_combine(body_token, tokenizer);
                     if Self::peek_for_nested_rule(tokenizer) {
                         Self::create(prop, tokenizer, &spaces_buf, sink, handle);
-                        body_terminator = Some(crate::StatementTerminator::new());
+                        body_terminator = Some(StatementTerminator::new());
                         spaces_buf.clear();
                     } else {
                         let (_, child_term) =
@@ -82,7 +84,6 @@ impl<'src> Rule<'src> {
                     }
                 }
                 Kind::AtWord => {
-                    use crate::at_rule::AtRule;
                     let (_, child_term) =
                         AtRule::create(body_token, tokenizer, &spaces_buf, sink, handle);
                     body_terminator = Some(child_term);
@@ -150,9 +151,7 @@ impl<'src> Rule<'src> {
     /// - Offset behavior:
     ///   - Just ";": offset points AT the newline
     ///   - " ;": offset points AFTER the newline (without consuming it)
-    fn consume_trailing_semicolon(
-        tokenizer: &mut Tokenizer<'_>,
-    ) -> Option<(crate::Source, String)> {
+    fn consume_trailing_semicolon(tokenizer: &mut Tokenizer<'_>) -> Option<(Source, String)> {
         let cp = tokenizer.checkpoint();
         let mut has_space_before = false;
         let mut own_semicolon = String::new();
@@ -192,7 +191,7 @@ impl<'src> Rule<'src> {
             0
         };
 
-        let source = crate::Source {
+        let source = Source {
             offset: tokenizer.index + newline_len,
             line: tokenizer.lines.value(),
             column: semicolon_col,

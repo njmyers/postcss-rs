@@ -207,6 +207,7 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sinks::TreeSink;
     use std::fs;
     use std::path;
 
@@ -407,7 +408,7 @@ mod tests {
         json_path: &str,
     ) -> (serde_json::Value, serde_json::Value) {
         let mut parser = Parser::new(&css).unwrap();
-        let mut sink = crate::sinks::TreeSink::new();
+        let mut sink = TreeSink::new();
         parser.parse(&mut sink);
         let ast = sink.finish();
         let json = serde_json::to_string_pretty(&ast).unwrap();
@@ -425,7 +426,7 @@ mod tests {
     fn parse_and_read(css_path: &str, json_path: &str) -> (serde_json::Value, serde_json::Value) {
         let css = read(css_path);
         let mut parser = Parser::new(&css).unwrap();
-        let mut sink = crate::sinks::TreeSink::new();
+        let mut sink = TreeSink::new();
         parser.parse(&mut sink);
         let ast = sink.finish();
         let json = serde_json::to_string_pretty(&ast).unwrap();
