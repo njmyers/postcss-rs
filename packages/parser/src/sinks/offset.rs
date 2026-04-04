@@ -1,7 +1,7 @@
 use bytemuck::{Pod, Zeroable};
 
 use crate::node::Source;
-use crate::sinks::parse::{ContainerClose, ContainerOpen, LeafNode, ParseSink};
+use crate::sinks::parse::{ParseSink, SinkNode};
 
 // ── NodeSlot types ────────────────────────────────────────────────────────────
 
@@ -206,18 +206,18 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
     type NodeRef = u32;
     type Output = Vec<u8>;
 
-    fn open(&mut self, parent: u32, open: ContainerOpen<'src>) -> u32 {
+    fn open(&mut self, parent: u32, node: SinkNode<'src>) -> u32 {
         let my_idx = self.slots.len() as u32;
 
-        match open {
-            ContainerOpen::Root { source_start } => {
+        match node {
+            SinkNode::Root { source_start } => {
                 let mut slot = Self::make_slot(parent, NodeType::ROOT, &source_start);
                 slot.parent_idx = ABSENT;
                 slot.flags |= Flags::HAS_NODES;
                 self.slots.push(slot);
             }
 
-            ContainerOpen::Rule {
+            SinkNode::Rule {
                 source_start,
                 selector,
                 raws,
@@ -262,7 +262,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                 self.slots.push(slot);
             }
 
-            ContainerOpen::AtRule {
+            SinkNode::AtRule {
                 source_start,
                 name,
                 params,
@@ -306,20 +306,24 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                 slot.flags = Flags::HAS_NODES;
                 self.slots.push(slot);
             }
+            _ => {}
         }
 
         my_idx
     }
 
-    fn close(&mut self, handle: u32, close: ContainerClose) {
-        let src_end = close.source_end.offset as u32;
+    fn close(&mut self, handle: u32, node: SinkNode<'src>) {
+        let SinkNode::Close { source_end, raws } = node else {
+            return;
+        };
+        let src_end = source_end.offset as u32;
         let slot = &mut self.slots[handle as usize];
 
         slot.source_end_off = src_end;
-        slot.source_end_line = close.source_end.line as u32;
-        slot.source_end_col = close.source_end.column as u32;
+        slot.source_end_line = source_end.line as u32;
+        slot.source_end_col = source_end.column as u32;
 
-        if let Some(semi_val) = *close.raws.semicolon {
+        if let Some(semi_val) = *raws.semicolon {
             slot.flags |= Flags::SEMI_PRESENT;
             if semi_val {
                 slot.flags |= Flags::SEMI_VALUE;
@@ -329,18 +333,18 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
         match slot.type_tag {
             NodeType::ROOT => {
                 if src_end != ABSENT {
-                    let (as_, ae) = Self::encode_ends_at(close.raws.after.as_deref(), src_end);
+                    let (as_, ae) = Self::encode_ends_at(raws.after.as_deref(), src_end);
                     slot.raws_after_start = as_;
                     slot.raws_after_end = ae;
                 }
             }
             NodeType::RULE => {
                 if src_end > 0 {
-                    let (as_, ae) = Self::encode_ends_at(close.raws.after.as_deref(), src_end - 1);
+                    let (as_, ae) = Self::encode_ends_at(raws.after.as_deref(), src_end - 1);
                     slot.raws_after_start = as_;
                     slot.raws_after_end = ae;
                 }
-                if let Some(own_semi) = close.raws.own_semicolon.as_deref() {
+                if let Some(own_semi) = raws.own_semicolon.as_deref() {
                     let own_semi_end = match self.css.as_bytes().get(src_end as usize - 1) {
                         Some(b'\n') | Some(b'\r') => src_end - 1,
                         _ => src_end,
@@ -352,7 +356,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
             }
             NodeType::ATRULE => {
                 if src_end > 0 && slot.flags & Flags::HAS_NODES != 0 {
-                    let (as_, ae) = Self::encode_ends_at(close.raws.after.as_deref(), src_end - 1);
+                    let (as_, ae) = Self::encode_ends_at(raws.after.as_deref(), src_end - 1);
                     slot.raws_after_start = as_;
                     slot.raws_after_end = ae;
                 }
@@ -361,9 +365,9 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
         }
     }
 
-    fn emit(&mut self, parent: u32, leaf: LeafNode<'src>) {
-        match leaf {
-            LeafNode::Declaration {
+    fn emit(&mut self, parent: u32, node: SinkNode<'src>) {
+        match node {
+            SinkNode::Declaration {
                 sources,
                 prop,
                 value,
@@ -420,7 +424,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                 self.slots.push(slot);
             }
 
-            LeafNode::Comment {
+            SinkNode::Comment {
                 sources,
                 text,
                 raws,
@@ -460,7 +464,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                 self.slots.push(slot);
             }
 
-            LeafNode::AtRuleStatement {
+            SinkNode::AtRuleStatement {
                 sources,
                 name,
                 params,
@@ -508,6 +512,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
                 slot.raws_extra1_end = an_e;
                 self.slots.push(slot);
             }
+            _ => {}
         }
     }
 

@@ -4,7 +4,7 @@ use crate::at_rule::AtRule;
 use crate::declaration::Declaration;
 use crate::node::{CommentData, Data, Node};
 use crate::rule::Rule;
-use crate::sinks::parse::{ContainerClose, ContainerOpen, LeafNode, ParseSink};
+use crate::sinks::parse::{ParseSink, SinkNode};
 
 /// A [`ParseSink`] that builds the `Node<'src>` tree.
 pub struct TreeSink<'src> {
@@ -31,14 +31,14 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
     type NodeRef = ();
     type Output = Node<'src>;
 
-    fn open(&mut self, _parent: (), open: ContainerOpen<'src>) {
-        let node = match open {
-            ContainerOpen::Root { source_start } => {
+    fn open(&mut self, _parent: (), node: SinkNode<'src>) {
+        let tree_node = match node {
+            SinkNode::Root { source_start } => {
                 let mut n = Node::new(Data::Root);
                 n.source.start = source_start;
                 n
             }
-            ContainerOpen::Rule {
+            SinkNode::Rule {
                 source_start,
                 selector,
                 raws,
@@ -50,7 +50,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                 n.raws = raws;
                 n
             }
-            ContainerOpen::AtRule {
+            SinkNode::AtRule {
                 source_start,
                 name,
                 params,
@@ -66,27 +66,31 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                 n.raws = raws;
                 n
             }
+            _ => return,
         };
-        self.stack.push(node);
+        self.stack.push(tree_node);
     }
 
-    fn close(&mut self, _handle: (), close: ContainerClose) {
-        let mut node = self.stack.pop().expect("close called with empty stack");
-        node.source.end = Some(close.source_end);
-        node.raws.after = close.raws.after;
-        node.raws.semicolon = close.raws.semicolon;
-        node.raws.own_semicolon = close.raws.own_semicolon;
+    fn close(&mut self, _handle: (), node: SinkNode<'src>) {
+        let SinkNode::Close { source_end, raws } = node else {
+            return;
+        };
+        let mut tree_node = self.stack.pop().expect("close called with empty stack");
+        tree_node.source.end = Some(source_end);
+        tree_node.raws.after = raws.after;
+        tree_node.raws.semicolon = raws.semicolon;
+        tree_node.raws.own_semicolon = raws.own_semicolon;
 
         if self.stack.is_empty() {
-            self.root = Some(node);
+            self.root = Some(tree_node);
         } else {
-            self.stack.last_mut().unwrap().append(node);
+            self.stack.last_mut().unwrap().append(tree_node);
         }
     }
 
-    fn emit(&mut self, _parent: (), leaf: LeafNode<'src>) {
-        let node = match leaf {
-            LeafNode::Declaration {
+    fn emit(&mut self, _parent: (), node: SinkNode<'src>) {
+        let tree_node = match node {
+            SinkNode::Declaration {
                 sources,
                 prop,
                 value,
@@ -103,7 +107,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                 n.raws = raws;
                 n
             }
-            LeafNode::Comment {
+            SinkNode::Comment {
                 sources,
                 text,
                 raws,
@@ -115,7 +119,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                 n.raws = raws;
                 n
             }
-            LeafNode::AtRuleStatement {
+            SinkNode::AtRuleStatement {
                 sources,
                 name,
                 params,
@@ -131,10 +135,11 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                 n.raws = raws;
                 n
             }
+            _ => return,
         };
 
         if let Some(parent) = self.stack.last_mut() {
-            parent.append(node);
+            parent.append(tree_node);
         }
     }
 

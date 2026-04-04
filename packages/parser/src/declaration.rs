@@ -1,7 +1,7 @@
 use crate::characters;
 use crate::node::{Source, Sources};
 use crate::raws::{Raws, ValueRaw};
-use crate::sinks::{LeafNode, ParseSink};
+use crate::sinks::{ParseSink, SinkNode};
 use crate::Statement;
 use crate::StatementTerminator;
 
@@ -233,7 +233,7 @@ impl<'src> Declaration<'src> {
 
         sink.emit(
             parent,
-            LeafNode::Declaration {
+            SinkNode::Declaration {
                 sources: Sources {
                     start: source_start,
                     end: Some(source_end.clone()),

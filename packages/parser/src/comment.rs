@@ -1,6 +1,6 @@
 use crate::node::{Source, Sources};
 use crate::raws::Raws;
-use crate::sinks::{LeafNode, ParseSink};
+use crate::sinks::{ParseSink, SinkNode};
 
 use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
@@ -60,7 +60,7 @@ impl Comment {
 
         sink.emit(
             parent,
-            LeafNode::Comment {
+            SinkNode::Comment {
                 sources: Sources {
                     start: source_start,
                     end: Some(source_end.clone()),

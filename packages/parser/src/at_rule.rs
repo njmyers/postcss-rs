@@ -5,7 +5,7 @@ use std::borrow::Cow;
 
 use crate::node::{Source, Sources};
 use crate::raws::Raws;
-use crate::sinks::{ContainerClose, ContainerOpen, LeafNode, ParseSink};
+use crate::sinks::{ParseSink, SinkNode};
 use crate::Declaration;
 use crate::NodeBuilder;
 use crate::Rule;
@@ -69,7 +69,7 @@ impl<'src> AtRule<'src> {
 
                 let handle = sink.open(
                     parent,
-                    ContainerOpen::AtRule {
+                    SinkNode::AtRule {
                         source_start,
                         name,
                         params: params_cow,
@@ -136,7 +136,7 @@ impl<'src> AtRule<'src> {
 
                 sink.close(
                     handle,
-                    ContainerClose {
+                    SinkNode::Close {
                         source_end: source_end.clone(),
                         raws: close_raws,
                     },
@@ -165,7 +165,7 @@ impl<'src> AtRule<'src> {
 
                 sink.emit(
                     parent,
-                    LeafNode::AtRuleStatement {
+                    SinkNode::AtRuleStatement {
                         // params_end_pos is Some when params exist (e.g. @import "a.css"}),
                         // None when there are no params (e.g. @content}).
                         // PostCSS only sets source.end when params are present.
@@ -194,7 +194,7 @@ impl<'src> AtRule<'src> {
 
                 sink.emit(
                     parent,
-                    LeafNode::AtRuleStatement {
+                    SinkNode::AtRuleStatement {
                         sources: Sources {
                             start: source_start,
                             end: Some(source_end.clone()),

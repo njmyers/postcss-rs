@@ -3,7 +3,7 @@ use std::str::Utf8Error;
 
 use crate::node::Source;
 use crate::raws::Raws;
-use crate::sinks::{ContainerClose, ContainerOpen, ParseSink};
+use crate::sinks::{ParseSink, SinkNode};
 use crate::AtRule;
 use crate::Comment;
 use crate::Declaration;
@@ -47,7 +47,7 @@ impl<'a> Parser<'a> {
         let root_start = Source::default();
         let root_handle = sink.open(
             S::NodeRef::default(),
-            ContainerOpen::Root {
+            SinkNode::Root {
                 source_start: root_start,
             },
         );
@@ -132,7 +132,7 @@ impl<'a> Parser<'a> {
 
         sink.close(
             root_handle,
-            ContainerClose {
+            SinkNode::Close {
                 source_end,
                 raws: close_raws,
             },

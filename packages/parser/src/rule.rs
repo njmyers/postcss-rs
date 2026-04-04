@@ -2,7 +2,7 @@ use crate::comment::Comment;
 use crate::node::Source;
 use crate::raws::Raws;
 use crate::rule_word::RuleWord;
-use crate::sinks::{ContainerClose, ContainerOpen, ParseSink};
+use crate::sinks::{ParseSink, SinkNode};
 use crate::Declaration;
 use crate::NodeBuilder;
 use crate::Statement;
@@ -56,7 +56,7 @@ impl<'src> Rule<'src> {
         let open_raws = builder.node.raws;
         let handle = sink.open(
             parent,
-            ContainerOpen::Rule {
+            SinkNode::Rule {
                 source_start,
                 selector,
                 raws: open_raws,
@@ -113,7 +113,7 @@ impl<'src> Rule<'src> {
             close_raws.own_semicolon.push_str(&own_semicolon);
             sink.close(
                 handle,
-                ContainerClose {
+                SinkNode::Close {
                     source_end: end_source.clone(),
                     raws: close_raws,
                 },
@@ -133,7 +133,7 @@ impl<'src> Rule<'src> {
         }
         sink.close(
             handle,
-            ContainerClose {
+            SinkNode::Close {
                 source_end: source_end.clone(),
                 raws: close_raws,
             },
