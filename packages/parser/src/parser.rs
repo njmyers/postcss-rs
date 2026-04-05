@@ -454,9 +454,7 @@ mod tests {
         let test_path = path::Path::new("./node_modules/postcss-parser-tests/cases")
             .join(path::Path::new(file));
 
-        let content = fs::read_to_string(test_path);
-
-        return content.expect("Failed to read test file");
+        fs::read_to_string(test_path).expect("Failed to read test file")
     }
 
     fn write(file: &str, contents: &str) {
