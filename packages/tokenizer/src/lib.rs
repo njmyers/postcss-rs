@@ -13,4 +13,6 @@ pub mod utils;
 pub mod whitespace;
 pub mod word;
 
-pub use tokenizer::{Checkpoint, Kind, MultiPeekTokenizer, PeekableTokenizer, Token, Tokenizer, Tokens};
+pub use tokenizer::{
+    Checkpoint, Kind, MultiPeekTokenizer, PeekableTokenizer, Token, Tokenizer, Tokens,
+};

@@ -80,9 +80,8 @@ impl Escape {
         // Not a hex escape - handle backslash sequences like \\, \(, \", etc.
         let mut bytes_lookbehind = bytes.iter().zip(bytes.iter().skip(lookbehind));
 
-        let result = bytes_lookbehind.position(|(previous_byte, byte)| {
-            !Self::test(*previous_byte) || !Self::test(*byte)
-        });
+        let result = bytes_lookbehind
+            .position(|(previous_byte, byte)| !Self::test(*previous_byte) || !Self::test(*byte));
 
         let position = utils::unwrap_position(result, bytes.len());
         let string_length = cmp::min(position + lookbehind, count);

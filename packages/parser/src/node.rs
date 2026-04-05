@@ -63,7 +63,7 @@ impl Source {
 }
 
 /// The start and (optional) end source positions of a node.
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Sources {
     /// Position of the first character of the node.
     pub start: Source,
@@ -79,14 +79,6 @@ impl Sources {
     }
 }
 
-impl Default for Sources {
-    fn default() -> Self {
-        Self {
-            start: Source::default(),
-            end: None,
-        }
-    }
-}
 
 /// The type-specific payload of a [`Node`].
 ///

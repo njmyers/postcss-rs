@@ -3,11 +3,10 @@ use postcss_rs_tokenizer::Token;
 use serde::Deserialize;
 use serde::Serialize;
 
-
 /// A struct representing the raws value from the post css grammar
 ///
 /// For specification please see postcss api documentation <https://postcss.org/api/#node-raws>
-#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Raws {
     #[serde(default, skip_serializing_if = "Raw::skip")]
     pub before: Raw,
@@ -33,25 +32,7 @@ pub struct Raws {
     pub selector: ValueRaw,
 }
 
-impl Default for Raws {
-    fn default() -> Self {
-        Self {
-            before: Raw::default(),
-            between: Raw::default(),
-            after_name: Raw::default(),
-            semicolon: Semicolon::default(),
-            after: Raw::default(),
-            left: Raw::default(),
-            right: Raw::default(),
-            important: Raw::default(),
-            own_semicolon: Raw::default(),
-            value: ValueRaw::default(),
-            selector: ValueRaw::default(),
-        }
-    }
-}
-
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Raw(Option<String>);
 
 impl Raw {
@@ -146,12 +127,6 @@ impl Raw {
     }
 }
 
-impl Default for Raw {
-    fn default() -> Self {
-        Self(None)
-    }
-}
-
 impl PartialEq<&str> for Raw {
     fn eq(&self, other: &&str) -> bool {
         match &self.0 {
@@ -166,7 +141,7 @@ impl PartialEq<&str> for Raw {
 /// A semicolon can either be `true`, `false`, or non-existent. Since this is an artifact of the
 /// original JavaScript representation this struct allows for better serialization and
 /// deserialization to match those artifacts.
-#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Semicolon(Option<bool>);
 
 impl Semicolon {
@@ -227,14 +202,8 @@ impl Semicolon {
     }
 }
 
-impl Default for Semicolon {
-    fn default() -> Self {
-        Semicolon(None)
-    }
-}
-
 /// A struct representing value raws with both the raw (with comments) and clean (without comments) versions
-#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone, Default)]
 pub struct ValueRaw {
     /// The comment-stripped (clean) value, e.g. `"red"`.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -256,15 +225,6 @@ impl ValueRaw {
     /// Returns `true` when both `value` and `raw` are absent (skip serialization).
     pub fn skip(&self) -> bool {
         self.value.is_none() && self.raw.is_none()
-    }
-}
-
-impl Default for ValueRaw {
-    fn default() -> Self {
-        Self {
-            value: None,
-            raw: None,
-        }
     }
 }
 
