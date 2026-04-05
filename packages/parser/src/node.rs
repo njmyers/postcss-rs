@@ -28,21 +28,21 @@ pub struct Source {
 
 impl Default for Source {
     fn default() -> Self {
-        return Self {
+        Self {
             offset: 0,
             line: 1,
             column: 1,
-        };
+        }
     }
 }
 
 impl Source {
     pub fn create_start(token: &Token<'_>, tokenizer: &Tokenizer<'_>) -> Self {
-        return Self {
+        Self {
             offset: token.start,
             line: tokenizer.lines.value(),
             column: cmp::max(1, token.column),
-        };
+        }
     }
 
     pub fn create_end(tokenizer: &Tokenizer<'_>) -> Self {
@@ -54,16 +54,16 @@ impl Source {
             0
         };
         let raw_column = tokenizer.lines.offset(column_index);
-        return Self {
+        Self {
             offset: tokenizer.index, // Points after the last character
             line: tokenizer.lines.value(),
             column: cmp::max(1, raw_column), // Ensure column is at least 1
-        };
+        }
     }
 }
 
 /// The start and (optional) end source positions of a node.
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Sources {
     /// Position of the first character of the node.
     pub start: Source,
@@ -75,16 +75,7 @@ pub struct Sources {
 
 impl Sources {
     pub fn skip(source: &Option<Source>) -> bool {
-        return source.is_none();
-    }
-}
-
-impl Default for Sources {
-    fn default() -> Self {
-        return Self {
-            start: Source::default(),
-            end: None,
-        };
+        source.is_none()
     }
 }
 
@@ -114,7 +105,7 @@ pub enum Data<'src> {
 
 impl<'src> Default for Data<'src> {
     fn default() -> Self {
-        return Self::Root;
+        Self::Root
     }
 }
 
@@ -145,12 +136,12 @@ impl<'src> Node<'src> {
             Data::AtRule(_) | Data::Declaration(_) | Data::Comment(_) => None,
         };
 
-        return Node {
+        Node {
             raws: Raws::default(),
             nodes,
             source: Sources::default(),
             data,
-        };
+        }
     }
 
     pub fn append(&mut self, child: Node<'src>) {
@@ -160,47 +151,57 @@ impl<'src> Node<'src> {
     }
 
     pub fn to_json(&self) -> serde_json::Result<String> {
-        return serde_json::to_string(&self);
+        serde_json::to_string(&self)
     }
 
     /// Returns true if this node has a block (`{ }`), even if empty.
     pub fn has_block(&self) -> bool {
-        return self.nodes.is_some();
+        self.nodes.is_some()
     }
 
     /// Returns true if this node has child nodes (i.e., a non-empty block).
     pub fn has_nodes(&self) -> bool {
-        return self.nodes.as_ref().is_some_and(|n| !n.is_empty());
+        self.nodes.as_ref().is_some_and(|n| !n.is_empty())
     }
 
     /// Returns true if this node is a statement without a block.
     pub fn is_statement(&self) -> bool {
-        return self.nodes.is_none();
+        self.nodes.is_none()
     }
 
     /// Returns a slice of child nodes, or `None` if this node has no block.
     pub fn children(&self) -> Option<&[Node<'src>]> {
-        return self.nodes.as_deref();
+        self.nodes.as_deref()
     }
 }
 
 impl<'src> Default for Node<'src> {
     fn default() -> Self {
-        return Self::new(Data::default());
+        Self::new(Data::default())
     }
 }
 
 pub struct NodeBuilder<'src> {
-    pub node: Node<'src>,
+    node: Node<'src>,
 }
 
 impl<'src> NodeBuilder<'src> {
+    /// Returns a clone of the node's source start position.
+    pub fn source_start(&self) -> Source {
+        self.node.source.start.clone()
+    }
+
+    /// Consumes the builder and returns the accumulated `Raws`.
+    pub fn into_raws(self) -> Raws {
+        self.node.raws
+    }
+
     pub fn new(token: &Token<'_>, tokenizer: &mut Tokenizer<'_>, spaces: &[Token<'_>]) -> Self {
         let mut node = Node::default();
         node.source.start = Source::create_start(token, tokenizer);
         node.raws.before.push_tokens(spaces);
 
-        return Self { node };
+        Self { node }
     }
 
     pub fn append(&mut self, child: Node<'src>) {
@@ -311,7 +312,7 @@ impl<'src> NodeBuilder<'src> {
         self.node.raws.after.push_tokens(after);
         self.node.source.end = Some(Source::create_end(tokenizer));
 
-        return self.node;
+        self.node
     }
 
     pub fn build_with_end_index(
@@ -329,11 +330,11 @@ impl<'src> NodeBuilder<'src> {
             column: cmp::max(1, tokenizer.lines.offset(column_index)),
         });
 
-        return self.node;
+        self.node
     }
 
     pub fn build_root(mut self, tokenizer: &Tokenizer<'_>, after: &[Token<'_>]) -> Node<'src> {
-        let semicolon = self.node.raws.semicolon.unwrap_or(false);
+        let semicolon = self.node.raws.semicolon.value().unwrap_or(false);
 
         if self.node.has_nodes() && !semicolon {
             self.node.raws.semicolon.set_false();
@@ -367,15 +368,15 @@ impl<'src> NodeBuilder<'src> {
             };
         }
 
-        return self.node;
+        self.node
     }
 }
 
 impl<'src> Default for NodeBuilder<'src> {
     fn default() -> Self {
-        return Self {
+        Self {
             node: Node::new(Data::Root),
-        };
+        }
     }
 }
 

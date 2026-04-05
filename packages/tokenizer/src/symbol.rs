@@ -13,7 +13,7 @@ impl OpenCurly {
 
     /// Single-byte token; always returns `0`.
     pub fn tokenize(_: &[u8]) -> usize {
-        return 0;
+        0
     }
 }
 
@@ -28,7 +28,7 @@ impl CloseCurly {
 
     /// Single-byte token; always returns `0`.
     pub fn tokenize(_: &[u8]) -> usize {
-        return 0;
+        0
     }
 }
 
@@ -43,7 +43,7 @@ impl OpenSquare {
 
     /// Single-byte token; always returns `0`.
     pub fn tokenize(_: &[u8]) -> usize {
-        return 0;
+        0
     }
 }
 
@@ -58,14 +58,14 @@ impl CloseSquare {
 
     /// Single-byte token; always returns `0`.
     pub fn tokenize(_: &[u8]) -> usize {
-        return 0;
+        0
     }
 }
 
 /// Tokenizer for the opening parenthesis (`(`).
-pub struct OpenCurvy;
+pub struct OpenParen;
 
-impl OpenCurvy {
+impl OpenParen {
     /// Returns `true` if `byte` is an opening parenthesis (`(`).
     pub fn test(byte: u8) -> bool {
         byte == OPEN_PAREN
@@ -73,14 +73,14 @@ impl OpenCurvy {
 
     /// Single-byte token; always returns `0`.
     pub fn tokenize(_: &[u8]) -> usize {
-        return 0;
+        0
     }
 }
 
 /// Tokenizer for the closing parenthesis (`)`).
-pub struct CloseCurvy;
+pub struct CloseParen;
 
-impl CloseCurvy {
+impl CloseParen {
     /// Returns `true` if `byte` is a closing parenthesis (`)`).
     pub fn test(byte: u8) -> bool {
         byte == CLOSE_PAREN
@@ -88,7 +88,7 @@ impl CloseCurvy {
 
     /// Single-byte token; always returns `0`.
     pub fn tokenize(_: &[u8]) -> usize {
-        return 0;
+        0
     }
 }
 
@@ -103,7 +103,7 @@ impl Semicolon {
 
     /// Single-byte token; always returns `0`.
     pub fn tokenize(_: &[u8]) -> usize {
-        return 0;
+        0
     }
 }
 
@@ -118,7 +118,7 @@ impl Colon {
 
     /// Single-byte token; always returns `0`.
     pub fn tokenize(_: &[u8]) -> usize {
-        return 0;
+        0
     }
 }
 
@@ -156,16 +156,16 @@ mod tests {
 
     #[test]
     fn test_open_curvy() {
-        assert!(OpenCurvy::test(b'('));
-        assert!(!OpenCurvy::test(b')'));
-        assert_eq!(OpenCurvy::tokenize(&[]), 0);
+        assert!(OpenParen::test(b'('));
+        assert!(!OpenParen::test(b')'));
+        assert_eq!(OpenParen::tokenize(&[]), 0);
     }
 
     #[test]
     fn test_close_curvy() {
-        assert!(CloseCurvy::test(b')'));
-        assert!(!CloseCurvy::test(b'('));
-        assert_eq!(CloseCurvy::tokenize(&[]), 0);
+        assert!(CloseParen::test(b')'));
+        assert!(!CloseParen::test(b'('));
+        assert_eq!(CloseParen::tokenize(&[]), 0);
     }
 
     #[test]

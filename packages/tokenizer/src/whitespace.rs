@@ -25,7 +25,7 @@ impl Whitespace {
     pub fn tokenize(bytes: &[u8]) -> usize {
         let result = bytes.iter().position(|&b| !Self::test(b));
         let position = utils::unwrap_position(result, bytes.len());
-        return utils::back(position);
+        utils::back(position)
     }
 }
 

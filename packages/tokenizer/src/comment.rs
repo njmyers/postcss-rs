@@ -16,24 +16,24 @@ impl Comment {
     pub fn tokenize(bytes: &[u8]) -> usize {
         let mut iterator = bytes.iter().zip(bytes.iter().skip(1));
         let result = iterator.position(|(&current, &next)| Self::test_end(current, next));
-        return utils::unwrap_position(result, bytes.len());
+        utils::unwrap_position(result, bytes.len())
     }
 
     /// Returns `true` if the two bytes form the start of a CSS comment (`/*`).
     pub fn test(current: u8, next: u8) -> bool {
-        return current == FORWARD_SLASH && next == ASTERISK;
+        current == FORWARD_SLASH && next == ASTERISK
     }
 
     /// Returns `true` if the two bytes form the end of a CSS comment (`*/`).
     fn test_end(current: u8, next: u8) -> bool {
-        return current == ASTERISK && next == FORWARD_SLASH;
+        current == ASTERISK && next == FORWARD_SLASH
     }
 
     /// Returns `true` if the byte is a forward slash (`/`).
     ///
     /// Used when disambiguating between a comment start (`/*`) and a lone `/`.
     pub fn is_forward_slash(byte: u8) -> bool {
-        return byte == FORWARD_SLASH;
+        byte == FORWARD_SLASH
     }
 }
 

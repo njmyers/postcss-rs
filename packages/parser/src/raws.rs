@@ -3,12 +3,10 @@ use postcss_rs_tokenizer::Token;
 use serde::Deserialize;
 use serde::Serialize;
 
-use std::ops::Deref;
-
 /// A struct representing the raws value from the post css grammar
 ///
 /// For specification please see postcss api documentation <https://postcss.org/api/#node-raws>
-#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Raws {
     #[serde(default, skip_serializing_if = "Raw::skip")]
     pub before: Raw,
@@ -34,31 +32,13 @@ pub struct Raws {
     pub selector: ValueRaw,
 }
 
-impl Default for Raws {
-    fn default() -> Self {
-        return Self {
-            before: Raw::default(),
-            between: Raw::default(),
-            after_name: Raw::default(),
-            semicolon: Semicolon::default(),
-            after: Raw::default(),
-            left: Raw::default(),
-            right: Raw::default(),
-            important: Raw::default(),
-            own_semicolon: Raw::default(),
-            value: ValueRaw::default(),
-            selector: ValueRaw::default(),
-        };
-    }
-}
-
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone, Default)]
 pub struct Raw(Option<String>);
 
 impl Raw {
     /// Return a new raw struct
     pub fn new(raw: &str) -> Self {
-        return Self(Some(String::from(raw)));
+        Self(Some(String::from(raw)))
     }
 
     /// Push a new token value to a raw value
@@ -138,32 +118,21 @@ impl Raw {
     /// assert_eq!(raw.skip(), true);
     /// ```
     pub fn skip(&self) -> bool {
-        return self.0.is_none();
+        self.0.is_none()
     }
-}
 
-impl Default for Raw {
-    fn default() -> Self {
-        return Self(None);
-    }
-}
-
-impl Deref for Raw {
-    type Target = Option<String>;
-
-    fn deref(&self) -> &Option<String> {
-        return &self.0;
+    /// Returns the inner string slice, or `None` if unset.
+    pub fn as_deref(&self) -> Option<&str> {
+        self.0.as_deref()
     }
 }
 
 impl PartialEq<&str> for Raw {
     fn eq(&self, other: &&str) -> bool {
-        let option: &Option<String> = self;
-
-        return match option {
+        match &self.0 {
             Some(string) => string == other,
             None => false,
-        };
+        }
     }
 }
 
@@ -172,13 +141,13 @@ impl PartialEq<&str> for Raw {
 /// A semicolon can either be `true`, `false`, or non-existent. Since this is an artifact of the
 /// original JavaScript representation this struct allows for better serialization and
 /// deserialization to match those artifacts.
-#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone, Default)]
 pub struct Semicolon(Option<bool>);
 
 impl Semicolon {
     /// Return a new semicolon struct
     pub fn new(semicolon: bool) -> Self {
-        return Self(Some(semicolon));
+        Self(Some(semicolon))
     }
 
     /// Determine whether to skip serialization for a semicolon value
@@ -192,7 +161,12 @@ impl Semicolon {
     /// assert_eq!(semi.skip(), true);
     /// ```
     pub fn skip(&self) -> bool {
-        return self.0.is_none();
+        self.0.is_none()
+    }
+
+    /// Returns the inner `Option<bool>` value.
+    pub fn value(&self) -> Option<bool> {
+        self.0
     }
 
     /// Set the semicolon value to true
@@ -205,7 +179,7 @@ impl Semicolon {
     /// let mut semi = Semicolon::default();
     /// semi.set_true();
     ///
-    /// assert!(semi.unwrap());
+    /// assert!(semi.value().unwrap());
     /// ```
     pub fn set_true(&mut self) {
         self.0 = Some(true);
@@ -221,29 +195,15 @@ impl Semicolon {
     /// let mut semi = Semicolon::default();
     /// semi.set_false();
     ///
-    /// assert!(!semi.unwrap());
+    /// assert!(!semi.value().unwrap());
     /// ```
     pub fn set_false(&mut self) {
         self.0 = Some(false);
     }
 }
 
-impl Default for Semicolon {
-    fn default() -> Self {
-        return Semicolon(None);
-    }
-}
-
-impl Deref for Semicolon {
-    type Target = Option<bool>;
-
-    fn deref(&self) -> &Option<bool> {
-        return &self.0;
-    }
-}
-
 /// A struct representing value raws with both the raw (with comments) and clean (without comments) versions
-#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone, Default)]
 pub struct ValueRaw {
     /// The comment-stripped (clean) value, e.g. `"red"`.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -256,24 +216,15 @@ pub struct ValueRaw {
 impl ValueRaw {
     /// Creates a new `ValueRaw` with both a clean `value` and a `raw` string.
     pub fn new(value: String, raw: String) -> Self {
-        return Self {
+        Self {
             value: Some(value),
             raw: Some(raw),
-        };
+        }
     }
 
     /// Returns `true` when both `value` and `raw` are absent (skip serialization).
     pub fn skip(&self) -> bool {
-        return self.value.is_none() && self.raw.is_none();
-    }
-}
-
-impl Default for ValueRaw {
-    fn default() -> Self {
-        return Self {
-            value: None,
-            raw: None,
-        };
+        self.value.is_none() && self.raw.is_none()
     }
 }
 
@@ -351,21 +302,21 @@ mod tests {
     fn test_semicolon_new_true() {
         let s = Semicolon::new(true);
         assert!(!s.skip());
-        assert_eq!(*s, Some(true));
+        assert_eq!(s.value(), Some(true));
     }
 
     #[test]
     fn test_semicolon_set_true() {
         let mut s = Semicolon::default();
         s.set_true();
-        assert_eq!(*s, Some(true));
+        assert_eq!(s.value(), Some(true));
     }
 
     #[test]
     fn test_semicolon_set_false() {
         let mut s = Semicolon::default();
         s.set_false();
-        assert_eq!(*s, Some(false));
+        assert_eq!(s.value(), Some(false));
     }
 
     // ---- ValueRaw tests ----
