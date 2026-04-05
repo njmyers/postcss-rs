@@ -4,7 +4,7 @@
 [![npm](https://img.shields.io/npm/v/@postcss-rs/node-postcss)](https://www.npmjs.com/package/@postcss-rs/node-postcss)
 [![license](https://img.shields.io/npm/l/@postcss-rs/node-postcss)](./LICENSE.md)
 
-A drop-in replacement for the PostCSS parser — 100% compatible, 11–36% faster than postcss.
+A drop-in replacement for the PostCSS parser — 100% compatible, 6–39% faster than postcss.
 
 postcss-rs implements the PostCSS parser in Rust and exposes it to Node.js via NAPI. It returns real PostCSS `Root` instances, so it works with all existing PostCSS plugins and tooling without any migration.
 
@@ -14,13 +14,13 @@ Measured with `pnpm bench` (ops/s, higher is better):
 
 | Mode                     | Small (~200 B) | Medium (~2 KB) | Large (~30 KB) |
 | ------------------------ | -------------- | -------------- | -------------- |
-| postcss-rs offsets sync  | **69,311**     | **10,789**     | **738**        |
-| postcss-rs offsets async | 13,838         | 5,541          | 709            |
-| postcss-rs json sync     | 30,960         | 5,015          | 297            |
-| postcss-rs json async    | 9,423          | 3,224          | 294            |
-| postcss original         | 62,288         | 9,240          | 542            |
+| postcss-rs offsets sync  | **73,789**     | **11,102**     | **777**        |
+| postcss-rs offsets async | 13,744         | 5,545          | 721            |
+| postcss-rs json sync     | 34,658         | 5,148          | 307            |
+| postcss-rs json async    | 10,287         | 3,311          | 299            |
+| postcss original         | 69,799         | 9,499          | 558            |
 
-The offsets sync mode is consistently the fastest, outperforming postcss original by ~11% on small CSS, ~17% on medium, and ~36% on large. The single-pass Rust parser eliminates the intermediate AST allocation for the offsets path. The json modes carry additional overhead from full AST serialization and are considerably slower.
+The offsets sync mode is consistently the fastest, outperforming postcss original by ~6% on small CSS, ~17% on medium, and ~39% on large. The single-pass Rust parser eliminates the intermediate AST allocation for the offsets path. The json modes carry additional overhead from full AST serialization and are considerably slower.
 
 ## Installation
 
