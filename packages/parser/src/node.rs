@@ -79,7 +79,6 @@ impl Sources {
     }
 }
 
-
 /// The type-specific payload of a [`Node`].
 ///
 /// Serialises to/from JSON with a `"type"` discriminator field, matching the
