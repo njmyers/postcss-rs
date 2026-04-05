@@ -31,9 +31,9 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn new(css: &'a str) -> Result<Self, Utf8Error> {
-        return Ok(Self {
+        Ok(Self {
             css: Self::clean(css)?,
-        });
+        })
     }
 
     pub fn parse<S: ParseSink<'a>>(&mut self, sink: &mut S) {
@@ -153,23 +153,28 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Scan ahead after a colon to find whether we hit `{` (rule) or `;` (declaration)
+    /// Scan ahead after a colon to find whether we hit `{` (rule) or `;` (declaration).
+    ///
+    /// A hard cap of `MAX_LOOKAHEAD_TOKENS` prevents unbounded scanning on
+    /// pathological or unterminated input; such cases are treated as declarations.
     fn scan_for_terminator(tokenizer: &mut Tokenizer<'_>) -> RootStatementType {
+        const MAX_LOOKAHEAD_TOKENS: usize = 1000;
+
         let cp = tokenizer.checkpoint();
         let mut paren_depth = 0;
         let mut square_depth = 0;
-        let result = (|| {
-            for _ in 0..1000 {
-                let token = match tokenizer.next() {
-                    Some(t) => t,
-                    None => return RootStatementType::Declaration,
+
+        let result = 'scan: {
+            for _ in 0..MAX_LOOKAHEAD_TOKENS {
+                let Some(token) = tokenizer.next() else {
+                    break 'scan RootStatementType::Declaration;
                 };
                 match token.kind {
                     Kind::OpenCurly if paren_depth == 0 && square_depth == 0 => {
-                        return RootStatementType::Rule;
+                        break 'scan RootStatementType::Rule;
                     }
                     Kind::Semicolon if paren_depth == 0 && square_depth == 0 => {
-                        return RootStatementType::Declaration;
+                        break 'scan RootStatementType::Declaration;
                     }
                     Kind::Brackets if token.value.starts_with('(') => paren_depth += 1,
                     Kind::Brackets if token.value.starts_with('[') => square_depth += 1,
@@ -183,7 +188,8 @@ impl<'a> Parser<'a> {
                 }
             }
             RootStatementType::Declaration
-        })();
+        };
+
         tokenizer.rewind(cp);
         result
     }
@@ -198,9 +204,9 @@ impl<'a> Parser<'a> {
         };
 
         // Strip leading newline if present (to match PostCSS behavior)
-        return Ok(css_without_bom
+        Ok(css_without_bom
             .strip_prefix('\n')
-            .unwrap_or(css_without_bom));
+            .unwrap_or(css_without_bom))
     }
 }
 
@@ -393,7 +399,7 @@ mod tests {
 
     #[test]
     fn it_parses_spaces() {
-        let (ast, expected) = parse_and_read_json_only(String::from(" \n"), "spaces.json");
+        let (ast, expected) = parse_and_read_json_only(" \n", "spaces.json");
         assert_eq!(ast, expected);
     }
 
@@ -404,10 +410,10 @@ mod tests {
     }
 
     fn parse_and_read_json_only(
-        css: String,
+        css: &str,
         json_path: &str,
     ) -> (serde_json::Value, serde_json::Value) {
-        let mut parser = Parser::new(&css).unwrap();
+        let mut parser = Parser::new(css).unwrap();
         let mut sink = TreeSink::new();
         parser.parse(&mut sink);
         let ast = sink.finish();
@@ -420,7 +426,7 @@ mod tests {
         let actual_value: serde_json::Value = serde_json::from_str(&json).unwrap();
         let expected_value: serde_json::Value = serde_json::from_str(&read(json_path)).unwrap();
 
-        return (actual_value, expected_value);
+        (actual_value, expected_value)
     }
 
     fn parse_and_read(css_path: &str, json_path: &str) -> (serde_json::Value, serde_json::Value) {
@@ -438,13 +444,12 @@ mod tests {
         let actual_value: serde_json::Value = serde_json::from_str(&json).unwrap();
         let expected_value: serde_json::Value = serde_json::from_str(&read(json_path)).unwrap();
 
-        return (actual_value, expected_value);
+        (actual_value, expected_value)
     }
 
     fn read(file: &str) -> String {
         let test_path = path::Path::new("../../tests/cases").join(path::Path::new(file));
-        let content = fs::read_to_string(test_path);
-        return content.ok().unwrap();
+        fs::read_to_string(test_path).expect("failed to read test fixture")
     }
 
     fn write(file: &str, contents: &str) {

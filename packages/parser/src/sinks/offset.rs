@@ -323,7 +323,7 @@ impl<'src> ParseSink<'src> for OffsetSink<'src> {
         slot.source_end_line = source_end.line as u32;
         slot.source_end_col = source_end.column as u32;
 
-        if let Some(semi_val) = *raws.semicolon {
+        if let Some(semi_val) = raws.semicolon.value() {
             slot.flags |= Flags::SEMI_PRESENT;
             if semi_val {
                 slot.flags |= Flags::SEMI_VALUE;

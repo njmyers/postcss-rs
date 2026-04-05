@@ -1,5 +1,4 @@
 #![deny(clippy::all)]
-#![allow(clippy::needless_return)]
 
 mod json;
 mod offset;
@@ -29,11 +28,12 @@ impl Task for JsonTask {
         parser.parse(&mut sink);
         let node = sink.finish();
         let buf = json::serialize(&node, &self.css);
-        return Ok(unsafe { String::from_utf8_unchecked(buf) });
+        // SAFETY: sonic_rs serializes JSON which is always valid UTF-8.
+        Ok(unsafe { String::from_utf8_unchecked(buf) })
     }
 
     fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
-        return Ok(output);
+        Ok(output)
     }
 }
 
@@ -50,11 +50,11 @@ impl Task for OffsetTask {
         let mut sink = OffsetSink::new(&self.css);
         let mut parser = Parser::new(&self.css).unwrap();
         parser.parse(&mut sink);
-        return Ok(sink.finish());
+        Ok(sink.finish())
     }
 
     fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
-        return Ok(output.into());
+        Ok(output.into())
     }
 }
 
@@ -66,7 +66,7 @@ pub mod postcss {
 
     #[napi]
     pub fn parse_to_json_async(css: String, from: Option<String>) -> AsyncTask<JsonTask> {
-        return AsyncTask::new(JsonTask { css, _from: from });
+        AsyncTask::new(JsonTask { css, _from: from })
     }
 
     /// Synchronous JSON parse. Blocks the event loop while parsing.
@@ -79,7 +79,8 @@ pub mod postcss {
         parser.parse(&mut sink);
         let node = sink.finish();
         let buf = json::serialize(&node, &css);
-        return Ok(unsafe { String::from_utf8_unchecked(buf) });
+        // SAFETY: sonic_rs serializes JSON which is always valid UTF-8.
+        Ok(unsafe { String::from_utf8_unchecked(buf) })
     }
 
     /// Synchronous offset-array parse.  Returns a compact binary buffer
@@ -92,14 +93,14 @@ pub mod postcss {
         let mut sink = OffsetSink::new(&css);
         let mut parser = Parser::new(&css).unwrap();
         parser.parse(&mut sink);
-        return Ok(sink.finish().into());
+        Ok(sink.finish().into())
     }
 
     /// Async offset-array parse.  Same output as `parse_to_offsets_sync` but
     /// runs on the thread pool so the event loop is not blocked.
     #[napi]
     pub fn parse_to_offsets_async(css: String, from: Option<String>) -> AsyncTask<OffsetTask> {
-        return AsyncTask::new(OffsetTask { css, _from: from });
+        AsyncTask::new(OffsetTask { css, _from: from })
     }
 
     #[napi]
@@ -107,7 +108,7 @@ pub mod postcss {
         let node: Node<'_> = serde_json::from_str(&json)
             .map_err(|e| napi::Error::from_reason(format!("Failed to parse JSON: {}", e)))?;
         let css = Stringifier::stringify(&node, StringifyOptions::default());
-        return Ok(css);
+        Ok(css)
     }
 
     /// Return the binary layout descriptor for the offset-array buffer.

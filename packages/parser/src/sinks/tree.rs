@@ -44,9 +44,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                 selector,
                 raws,
             } => {
-                let mut n = Node::new(Data::Rule(Rule {
-                    selector: selector.clone(),
-                }));
+                let mut n = Node::new(Data::Rule(Rule { selector }));
                 n.source.start = source_start;
                 n.raws = raws;
                 n
@@ -59,7 +57,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
             } => {
                 let mut n = Node::new(Data::AtRule(AtRule {
                     name: Cow::Borrowed(name),
-                    params: params.clone(),
+                    params,
                     has_block: true,
                 }));
                 n.nodes = Some(Vec::new());
@@ -99,9 +97,9 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
                 raws,
             } => {
                 let decl = Declaration {
-                    prop: prop.clone(),
+                    prop,
                     important,
-                    value: value.clone(),
+                    value,
                 };
                 let mut n = Node::new(Data::Declaration(decl));
                 n.source = sources;
@@ -128,7 +126,7 @@ impl<'src> ParseSink<'src> for TreeSink<'src> {
             } => {
                 let mut n = Node::new(Data::AtRule(AtRule {
                     name: Cow::Borrowed(name),
-                    params: params.clone(),
+                    params,
                     has_block: false,
                 }));
                 n.nodes = None;

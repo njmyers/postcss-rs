@@ -54,7 +54,7 @@ impl Stringifier {
     /// Stringify a root node
     fn visit_root(&mut self, node: &Node<'_>) {
         // Add before whitespace
-        if let Some(before) = node.raws.before.as_ref() {
+        if let Some(before) = node.raws.before.as_deref() {
             self.output.push_str(before);
         }
 
@@ -66,7 +66,7 @@ impl Stringifier {
         }
 
         // Add after whitespace
-        if let Some(after) = node.raws.after.as_ref() {
+        if let Some(after) = node.raws.after.as_deref() {
             self.output.push_str(after);
         }
     }
@@ -74,7 +74,7 @@ impl Stringifier {
     /// Stringify a rule node
     fn visit_rule(&mut self, node: &Node<'_>, rule: &Rule<'_>) {
         // Add before whitespace
-        if let Some(before) = node.raws.before.as_ref() {
+        if let Some(before) = node.raws.before.as_deref() {
             self.output.push_str(before);
         }
 
@@ -87,7 +87,7 @@ impl Stringifier {
         }
 
         // Add between whitespace (between selector and {)
-        if let Some(between) = node.raws.between.as_ref() {
+        if let Some(between) = node.raws.between.as_deref() {
             self.output.push_str(between);
         }
 
@@ -108,7 +108,7 @@ impl Stringifier {
         self.indent_level -= 1;
 
         // Add after whitespace (before closing brace)
-        if let Some(after) = node.raws.after.as_ref() {
+        if let Some(after) = node.raws.after.as_deref() {
             self.output.push_str(after);
         }
 
@@ -119,7 +119,7 @@ impl Stringifier {
     /// Stringify a declaration node
     fn visit_declaration(&mut self, node: &Node<'_>, decl: &Declaration<'_>) {
         // Add before whitespace
-        if let Some(before) = node.raws.before.as_ref() {
+        if let Some(before) = node.raws.before.as_deref() {
             self.output.push_str(before);
         }
 
@@ -127,7 +127,7 @@ impl Stringifier {
         self.output.push_str(&decl.prop);
 
         // Add between whitespace (between prop and value, typically ": ")
-        if let Some(between) = node.raws.between.as_ref() {
+        if let Some(between) = node.raws.between.as_deref() {
             self.output.push_str(between);
         }
 
@@ -141,7 +141,7 @@ impl Stringifier {
 
         // Add !important if present
         if decl.important.unwrap_or(false) {
-            if let Some(important_raw) = node.raws.important.as_ref() {
+            if let Some(important_raw) = node.raws.important.as_deref() {
                 if !important_raw.is_empty() {
                     self.output.push_str(important_raw);
                 }
@@ -151,7 +151,7 @@ impl Stringifier {
         }
 
         // Add semicolon if needed
-        match node.raws.semicolon.as_ref() {
+        match node.raws.semicolon.value() {
             Some(true) => self.output.push(';'),
             Some(false) => {} // No semicolon
             None => {}        // Default: no semicolon
@@ -161,7 +161,7 @@ impl Stringifier {
     /// Stringify an at-rule node
     fn visit_atrule(&mut self, node: &Node<'_>, atrule: &AtRule<'_>) {
         // Add before whitespace
-        if let Some(before) = node.raws.before.as_ref() {
+        if let Some(before) = node.raws.before.as_deref() {
             self.output.push_str(before);
         }
 
@@ -170,7 +170,7 @@ impl Stringifier {
         self.output.push_str(&atrule.name);
 
         // Add after-name whitespace
-        if let Some(after_name) = node.raws.after_name.as_ref() {
+        if let Some(after_name) = node.raws.after_name.as_deref() {
             self.output.push_str(after_name);
         }
 
@@ -183,7 +183,7 @@ impl Stringifier {
 
         // has_block() encodes whether this is a block at-rule ({ }) or a statement
         if node.has_block() {
-            if let Some(between) = node.raws.between.as_ref() {
+            if let Some(between) = node.raws.between.as_deref() {
                 self.output.push_str(between);
             }
             self.output.push('{');
@@ -198,13 +198,13 @@ impl Stringifier {
 
             self.indent_level -= 1;
 
-            if let Some(after) = node.raws.after.as_ref() {
+            if let Some(after) = node.raws.after.as_deref() {
                 self.output.push_str(after);
             }
             self.output.push('}');
         } else {
             // Statement at-rule - emit semicolon
-            match node.raws.semicolon.as_ref() {
+            match node.raws.semicolon.value() {
                 Some(true) => self.output.push(';'),
                 Some(false) => {}              // No semicolon
                 None => self.output.push(';'), // Default: semicolon for at-rules
@@ -215,13 +215,13 @@ impl Stringifier {
     /// Stringify a comment node
     fn visit_comment(&mut self, node: &Node<'_>, comment: &Comment<'_>) {
         // Add before whitespace
-        if let Some(before) = node.raws.before.as_ref() {
+        if let Some(before) = node.raws.before.as_deref() {
             self.output.push_str(before);
         }
 
         // Add left whitespace inside comment
         self.output.push_str("/*");
-        if let Some(left) = node.raws.left.as_ref() {
+        if let Some(left) = node.raws.left.as_deref() {
             self.output.push_str(left);
         }
 
@@ -229,7 +229,7 @@ impl Stringifier {
         self.output.push_str(&comment.text);
 
         // Add right whitespace inside comment
-        if let Some(right) = node.raws.right.as_ref() {
+        if let Some(right) = node.raws.right.as_deref() {
             self.output.push_str(right);
         }
         self.output.push_str("*/");

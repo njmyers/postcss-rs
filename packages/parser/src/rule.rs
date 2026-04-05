@@ -52,10 +52,10 @@ impl<'src> Rule<'src> {
         builder.ensure_empty_between();
         builder.ensure_empty_after();
 
-        let source_start = builder.node.source.start.clone();
+        let source_start = builder.source_start();
         let selector = Selector::create(token, tokenizer, &mut builder);
 
-        let open_raws = builder.node.raws;
+        let open_raws = builder.into_raws();
         let handle = sink.open(
             parent,
             SinkNode::Rule {
@@ -197,7 +197,7 @@ impl<'src> Rule<'src> {
             column: semicolon_col,
         };
 
-        return Some((source, own_semicolon));
+        Some((source, own_semicolon))
     }
 
     /// Check if a token is a newline character
@@ -245,8 +245,8 @@ impl Selector {
                             | Kind::CloseSquare
                             | Kind::String
                             | Kind::Semicolon
-                            | Kind::OpenCurvy
-                            | Kind::CloseCurvy
+                            | Kind::OpenParen
+                            | Kind::CloseParen
                             | Kind::Comment
                     ) =>
                 {
@@ -284,8 +284,8 @@ impl Selector {
                 Kind::CloseSquare => statement.push(token),
                 Kind::String => statement.push(token),
                 Kind::Semicolon => statement.push(token),
-                Kind::OpenCurvy => statement.push(token),
-                Kind::CloseCurvy => statement.push(token),
+                Kind::OpenParen => statement.push(token),
+                Kind::CloseParen => statement.push(token),
                 Kind::Comment => {
                     // Check if there are more selector tokens after this comment
                     let has_more_selector_tokens = Self::has_selector_tokens_ahead(tokenizer);
@@ -340,6 +340,6 @@ impl Selector {
             builder.selector_raw(selector.as_ref(), raw_selector);
         }
 
-        return selector;
+        selector
     }
 }

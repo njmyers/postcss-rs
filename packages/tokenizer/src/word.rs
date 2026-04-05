@@ -18,10 +18,10 @@ impl Word {
             if current == COLON && next.is_ascii_digit() {
                 return false;
             }
-            return Self::is_word_byte(next) || next == DASH || next == NULL_BYTE;
+            Self::is_word_byte(next) || next == DASH || next == NULL_BYTE
+        } else {
+            Self::is_word_byte(current) || current == DASH || current == NULL_BYTE
         }
-
-        return Self::is_word_byte(current) || current == DASH || current == NULL_BYTE;
     }
 
     pub fn tokenize(bytes: &[u8]) -> usize {
@@ -42,8 +42,8 @@ impl Word {
                 || CloseCurly::test(byte)
                 || OpenSquare::test(byte)
                 || CloseSquare::test(byte)
-                || OpenCurvy::test(byte)
-                || CloseCurvy::test(byte)
+                || OpenParen::test(byte)
+                || CloseParen::test(byte)
                 || Semicolon::test(byte)
                 || Colon::test(byte)
                 || SingleString::test(byte)
@@ -74,11 +74,11 @@ pub struct AtWord;
 
 impl AtWord {
     pub fn test(current: u8, next: u8) -> bool {
-        return current == AT && Word::test(next, NULL_BYTE);
+        current == AT && Word::test(next, NULL_BYTE)
     }
 
     pub fn tokenize(bytes: &[u8]) -> usize {
-        return Word::tokenize(bytes);
+        Word::tokenize(bytes)
     }
 }
 

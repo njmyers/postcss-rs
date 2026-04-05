@@ -230,11 +230,11 @@ impl StatementTerminator {
 #[derive(PartialEq, Eq, Debug, Default)]
 pub struct BracketDepth {
     /// Represents the bracket depth of curly or {} type brackets
-    curly: i32,
+    curly: u32,
     /// Represents the bracket depth of square or [] type brackets
-    square: i32,
+    square: u32,
     /// Represents the bracket depth of round or () type brackets
-    round: i32,
+    round: u32,
 }
 
 impl BracketDepth {
@@ -252,11 +252,11 @@ impl BracketDepth {
     pub fn process(&mut self, token: &Token) {
         match token.kind {
             Kind::OpenCurly => self.curly += 1,
-            Kind::CloseCurly => self.curly = (self.curly - 1).max(0),
-            Kind::OpenCurvy => self.round += 1,
-            Kind::CloseCurvy => self.round = (self.round - 1).max(0),
+            Kind::CloseCurly => self.curly = self.curly.saturating_sub(1),
+            Kind::OpenParen => self.round += 1,
+            Kind::CloseParen => self.round = self.round.saturating_sub(1),
             Kind::OpenSquare => self.square += 1,
-            Kind::CloseSquare => self.square = (self.square - 1).max(0),
+            Kind::CloseSquare => self.square = self.square.saturating_sub(1),
             Kind::Brackets => {
                 // Brackets token contains both open and close
                 // For now, treat as balanced (no net change)
@@ -301,9 +301,9 @@ mod tests {
     #[test]
     fn test_bracket_depth_round() {
         let mut depth = BracketDepth::new();
-        depth.process(&make_token(Kind::OpenCurvy, "("));
+        depth.process(&make_token(Kind::OpenParen, "("));
         assert!(depth.is_open());
-        depth.process(&make_token(Kind::CloseCurvy, ")"));
+        depth.process(&make_token(Kind::CloseParen, ")"));
         assert!(!depth.is_open());
     }
 

@@ -1,4 +1,3 @@
-#![allow(clippy::needless_return)]
 #![allow(clippy::while_let_on_iterator)]
 
 pub mod brackets;
@@ -14,4 +13,4 @@ pub mod utils;
 pub mod whitespace;
 pub mod word;
 
-pub use tokenizer::*;
+pub use tokenizer::{Checkpoint, Kind, MultiPeekTokenizer, PeekableTokenizer, Token, Tokenizer, Tokens};

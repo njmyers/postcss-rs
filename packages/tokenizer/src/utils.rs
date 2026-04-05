@@ -15,7 +15,7 @@ pub fn back(index: usize) -> usize {
         return index;
     }
 
-    return index - 1;
+    index - 1
 }
 
 /// Unwraps an `Option<usize>` position, falling back to `len`.

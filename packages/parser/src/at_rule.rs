@@ -56,8 +56,8 @@ impl<'src> AtRule<'src> {
 
         let (params, terminator, params_end_pos) = Params::create(&mut builder, tokenizer);
 
-        let source_start = builder.node.source.start.clone();
-        let open_raws = builder.node.raws;
+        let source_start = builder.source_start();
+        let open_raws = builder.into_raws();
 
         match terminator.ended_by {
             Some(Kind::OpenCurly) => {
@@ -335,8 +335,8 @@ impl Params {
                 | Kind::String
                 | Kind::OpenSquare
                 | Kind::CloseSquare
-                | Kind::OpenCurvy
-                | Kind::CloseCurvy
+                | Kind::OpenParen
+                | Kind::CloseParen
                 | Kind::OpenCurly
                 | Kind::CloseCurly => {
                     statement.push(token);
@@ -367,7 +367,7 @@ impl Params {
         let (rs, re) = statement.raw_span();
         let params: Cow<'src, str> = Cow::Borrowed(&css[rs..re]);
 
-        return (params, terminator, params_end_pos);
+        (params, terminator, params_end_pos)
     }
 
     /// Set the spaces for the parent node builder depending on whether the param exists or not.
