@@ -1,15 +1,15 @@
 {
-  "name": "@postcss-rs/node-postcss-win32-arm64-msvc",
+  "name": "@postcss-rs/postcss-darwin-arm64",
   "version": "0.0.0",
   "os": [
-    "win32"
+    "darwin"
   ],
   "cpu": [
     "arm64"
   ],
-  "main": "postcss.win32-arm64-msvc.node",
+  "main": "postcss.darwin-arm64.node",
   "files": [
-    "postcss.win32-arm64-msvc.node"
+    "postcss.darwin-arm64.node"
   ],
   "license": "MIT",
   "engines": {

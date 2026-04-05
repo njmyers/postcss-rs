@@ -1,15 +1,15 @@
 {
-  "name": "@postcss-rs/node-postcss-linux-x64-gnu",
+  "name": "@postcss-rs/postcss-linux-arm64-gnu",
   "version": "0.0.0",
   "os": [
     "linux"
   ],
   "cpu": [
-    "x64"
+    "arm64"
   ],
-  "main": "postcss.linux-x64-gnu.node",
+  "main": "postcss.linux-arm64-gnu.node",
   "files": [
-    "postcss.linux-x64-gnu.node"
+    "postcss.linux-arm64-gnu.node"
   ],
   "license": "MIT",
   "engines": {

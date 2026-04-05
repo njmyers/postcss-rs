@@ -643,7 +643,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "postcss-rs-node-postcss"
+name = "postcss-rs-parser"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "criterion",
+ "postcss-rs-tokenizer",
+ "serde",
+ "serde_json",
+ "serde_test",
+ "unicode-bom",
+]
+
+[[package]]
+name = "postcss-rs-postcss"
 version = "0.0.0"
 dependencies = [
  "bytemuck",
@@ -655,19 +668,6 @@ dependencies = [
  "postcss-rs-stringifier",
  "serde_json",
  "sonic-rs",
-]
-
-[[package]]
-name = "postcss-rs-parser"
-version = "0.1.0"
-dependencies = [
- "bytemuck",
- "criterion",
- "postcss-rs-tokenizer",
- "serde",
- "serde_json",
- "serde_test",
- "unicode-bom",
 ]
 
 [[package]]

@@ -25,7 +25,7 @@ export type ParseFn = AsyncParseFn | SyncParseFn;
  *
  * @example
  * ```ts
- * import { RustProcessorFactory, parseOffsetsAsync } from '@postcss-rs/node-postcss';
+ * import { RustProcessorFactory, parseOffsetsAsync } from '@postcss-rs/postcss';
  *
  * const OffsetProcessor = RustProcessorFactory(parseOffsetsAsync);
  * const result = await new OffsetProcessor().process(css, { from: undefined }).async();

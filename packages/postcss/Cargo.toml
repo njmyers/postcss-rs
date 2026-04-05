@@ -1,6 +1,6 @@
 [package]
 edition = "2021"
-name = "postcss-rs-node-postcss"
+name = "postcss-rs-postcss"
 version = "0.0.0"
 
 [lib]
