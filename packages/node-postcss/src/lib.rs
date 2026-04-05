@@ -8,7 +8,10 @@ pub use offset::NodeSlotLayout;
 
 use napi::{Env, Result, Task};
 use napi_derive::napi;
-use postcss_rs_parser::{Node, Parser};
+use postcss_rs_parser::{
+    sinks::{offset::OffsetSink, TreeSink},
+    Node, ParseSink, Parser,
+};
 use postcss_rs_stringifier::{Stringifier, StringifyOptions};
 
 pub struct JsonTask {
@@ -21,8 +24,10 @@ impl Task for JsonTask {
     type JsValue = String;
 
     fn compute(&mut self) -> Result<Self::Output> {
+        let mut sink = TreeSink::new();
         let mut parser = Parser::new(&self.css).unwrap();
-        let node = parser.parse();
+        parser.parse(&mut sink);
+        let node = sink.finish();
         let buf = json::serialize(&node, &self.css);
         return Ok(unsafe { String::from_utf8_unchecked(buf) });
     }
@@ -42,9 +47,10 @@ impl Task for OffsetTask {
     type JsValue = napi::bindgen_prelude::Buffer;
 
     fn compute(&mut self) -> Result<Self::Output> {
+        let mut sink = OffsetSink::new(&self.css);
         let mut parser = Parser::new(&self.css).unwrap();
-        let node = parser.parse();
-        return Ok(offset::OffsetSerializer::serialize(&node, &self.css));
+        parser.parse(&mut sink);
+        return Ok(sink.finish());
     }
 
     fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
@@ -68,8 +74,10 @@ pub mod postcss {
     /// avoids the Promise + thread-pool round-trip overhead (~0.05–0.1 ms).
     #[napi]
     pub fn parse_to_json_sync(css: String, _from: Option<String>) -> Result<String> {
+        let mut sink = TreeSink::new();
         let mut parser = Parser::new(&css).unwrap();
-        let node = parser.parse();
+        parser.parse(&mut sink);
+        let node = sink.finish();
         let buf = json::serialize(&node, &css);
         return Ok(unsafe { String::from_utf8_unchecked(buf) });
     }
@@ -81,9 +89,10 @@ pub mod postcss {
     /// never needs to call `JSON.parse()`.
     #[napi]
     pub fn parse_to_offsets_sync(css: String, _from: Option<String>) -> Result<Buffer> {
+        let mut sink = OffsetSink::new(&css);
         let mut parser = Parser::new(&css).unwrap();
-        let node = parser.parse();
-        return Ok(offset::OffsetSerializer::serialize(&node, &css).into());
+        parser.parse(&mut sink);
+        return Ok(sink.finish().into());
     }
 
     /// Async offset-array parse.  Same output as `parse_to_offsets_sync` but
@@ -95,7 +104,7 @@ pub mod postcss {
 
     #[napi]
     pub fn stringify(json: String) -> Result<String> {
-        let node: Node = serde_json::from_str(&json)
+        let node: Node<'_> = serde_json::from_str(&json)
             .map_err(|e| napi::Error::from_reason(format!("Failed to parse JSON: {}", e)))?;
         let css = Stringifier::stringify(&node, StringifyOptions::default());
         return Ok(css);

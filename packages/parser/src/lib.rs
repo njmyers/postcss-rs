@@ -8,6 +8,7 @@ mod parser;
 mod raws;
 mod rule;
 mod rule_word;
+pub mod sinks;
 mod statement;
 
 pub mod characters;
@@ -19,4 +20,5 @@ pub use node::*;
 pub use parser::*;
 pub use raws::*;
 pub use rule::*;
+pub use sinks::*;
 pub use statement::*;
