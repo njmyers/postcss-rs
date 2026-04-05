@@ -107,7 +107,7 @@ impl Bracket {
             );
         }
 
-        return !matches!(
+        !matches!(
             next,
             OPEN_PAREN
                 | SINGLE_QUOTE
@@ -121,7 +121,7 @@ impl Bracket {
                 | FORM_FEED
                 | CARRIAGE_RETURN
                 | NULL_BYTE
-        );
+        )
     }
 
     /// Return whether a byte is a single opening parenthesis token `(`
@@ -150,11 +150,11 @@ impl Bracket {
             .position(|result| result == BracketResult::Closed);
 
         let length = utils::unwrap_position(result, bytes.len()) + lookbehind;
-        return cmp::min(length, count - lookbehind);
+        cmp::min(length, count - lookbehind)
     }
 
     fn is_prev_url_token(prev: Option<&str>) -> bool {
-        return prev == Some("url");
+        prev == Some("url")
     }
 }
 

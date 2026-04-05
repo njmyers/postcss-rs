@@ -1,10 +1,12 @@
 use std::str;
 use std::str::Utf8Error;
 
+use crate::node::Source;
+use crate::raws::Raws;
+use crate::sinks::{ParseSink, SinkNode};
 use crate::AtRule;
 use crate::Comment;
-use crate::Node;
-use crate::NodeBuilder;
+use crate::Declaration;
 use crate::Rule;
 
 use postcss_rs_tokenizer::Kind;
@@ -29,69 +31,112 @@ pub struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     pub fn new(css: &'a str) -> Result<Self, Utf8Error> {
-        return Ok(Self {
+        Ok(Self {
             css: Self::clean(css)?,
-        });
+        })
     }
 
-    pub fn parse(&mut self) -> Node {
+    pub fn parse<S: ParseSink<'a>>(&mut self, sink: &mut S) {
         let mut tokenizer = Tokenizer::new(self.css);
         let mut spaces = Tokens::new();
 
-        let mut root = NodeBuilder::default();
-        root.ensure_empty_after();
+        // Track last-child info so close_container for Root can compute source.end.
+        let mut last_child_end: Option<Source> = None;
+        let mut root_semicolon: Option<bool> = None;
+
+        let root_start = Source::default();
+        let root_handle = sink.open(
+            S::NodeRef::default(),
+            SinkNode::Root {
+                source_start: root_start,
+            },
+        );
 
         while let Some(token) = tokenizer.next() {
             match token.kind {
-                // Handle at-rules (@media, @supports, etc.)
                 Kind::AtWord => {
-                    let (node, terminator) = AtRule::create(token, &mut tokenizer, &spaces);
-                    root.terminator(&terminator);
-                    root.append(node);
+                    let (end, term) =
+                        AtRule::create(token, &mut tokenizer, &spaces, sink, root_handle);
+                    root_semicolon = Some(term.semicolon);
+                    last_child_end = Some(end);
                     spaces.clear();
                 }
-
-                // Handle words - could be rules or root-level declarations
                 Kind::Word => match Self::classify(&mut tokenizer) {
                     RootStatementType::Declaration => {
-                        let (node, terminator) =
-                            crate::Declaration::create(token, &mut tokenizer, &spaces);
-                        root.terminator(&terminator);
-                        root.append(node);
+                        let (end, term) =
+                            Declaration::create(token, &mut tokenizer, &spaces, sink, root_handle);
+                        root_semicolon = Some(term.semicolon);
+                        last_child_end = Some(end);
                         spaces.clear();
                     }
                     RootStatementType::Rule => {
-                        let terminator = crate::StatementTerminator::new();
-                        root.terminator(&terminator);
-                        root.append(Rule::create(token, &mut tokenizer, &spaces));
+                        let end = Rule::create(token, &mut tokenizer, &spaces, sink, root_handle);
+                        root_semicolon = Some(false);
+                        last_child_end = Some(end);
                         spaces.clear();
                     }
                 },
-
-                // Handle rules starting with brackets or braces
                 Kind::OpenCurly | Kind::OpenSquare => {
-                    // Rules don't end with semicolons, so reset the terminator
-                    let terminator = crate::StatementTerminator::new();
-                    root.terminator(&terminator);
-                    root.append(Rule::create(token, &mut tokenizer, &spaces));
+                    let end = Rule::create(token, &mut tokenizer, &spaces, sink, root_handle);
+                    root_semicolon = Some(false);
+                    last_child_end = Some(end);
                     spaces.clear();
                 }
-
-                // Handle comments
                 Kind::Comment => {
-                    root.append(Comment::create(token, &mut tokenizer, &spaces));
+                    let end = Comment::create(token, &mut tokenizer, &spaces, sink, root_handle);
+                    last_child_end = Some(end);
                     spaces.clear();
                 }
-
-                // Handle whitespace
                 Kind::Space => spaces.push(token),
-
-                // Ignore other tokens
                 _ => (),
-            };
+            }
         }
 
-        return root.build_root(&tokenizer, &spaces);
+        let has_children = last_child_end.is_some();
+
+        // Compute raws_after for root (mirrors build_root logic)
+        let raws_after = if has_children {
+            Some(String::new())
+        } else {
+            Some(spaces.iter().map(|t| t.value).collect::<String>())
+        };
+
+        // Compute semicolon (mirrors build_root logic):
+        // only set when children exist; value = last child's semicolon status.
+        let semicolon = if has_children {
+            Some(root_semicolon.unwrap_or(false))
+        } else {
+            None
+        };
+
+        // Compute source_end
+        let source_end = if let Some(last) = last_child_end {
+            Source {
+                offset: last.offset,
+                line: last.line,
+                column: last.column + 1,
+            }
+        } else {
+            Source::create_end(&tokenizer)
+        };
+
+        let mut close_raws = Raws::default();
+        close_raws
+            .after
+            .push_str(raws_after.as_deref().unwrap_or(""));
+        match semicolon {
+            Some(true) => close_raws.semicolon.set_true(),
+            Some(false) => close_raws.semicolon.set_false(),
+            None => {}
+        }
+
+        sink.close(
+            root_handle,
+            SinkNode::Close {
+                source_end,
+                raws: close_raws,
+            },
+        );
     }
 
     /// Classify a Word token as either a declaration or rule by peeking ahead.
@@ -108,23 +153,28 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Scan ahead after a colon to find whether we hit `{` (rule) or `;` (declaration)
+    /// Scan ahead after a colon to find whether we hit `{` (rule) or `;` (declaration).
+    ///
+    /// A hard cap of `MAX_LOOKAHEAD_TOKENS` prevents unbounded scanning on
+    /// pathological or unterminated input; such cases are treated as declarations.
     fn scan_for_terminator(tokenizer: &mut Tokenizer<'_>) -> RootStatementType {
+        const MAX_LOOKAHEAD_TOKENS: usize = 1000;
+
         let cp = tokenizer.checkpoint();
         let mut paren_depth = 0;
         let mut square_depth = 0;
-        let result = (|| {
-            for _ in 0..1000 {
-                let token = match tokenizer.next() {
-                    Some(t) => t,
-                    None => return RootStatementType::Declaration,
+
+        let result = 'scan: {
+            for _ in 0..MAX_LOOKAHEAD_TOKENS {
+                let Some(token) = tokenizer.next() else {
+                    break 'scan RootStatementType::Declaration;
                 };
                 match token.kind {
                     Kind::OpenCurly if paren_depth == 0 && square_depth == 0 => {
-                        return RootStatementType::Rule;
+                        break 'scan RootStatementType::Rule;
                     }
                     Kind::Semicolon if paren_depth == 0 && square_depth == 0 => {
-                        return RootStatementType::Declaration;
+                        break 'scan RootStatementType::Declaration;
                     }
                     Kind::Brackets if token.value.starts_with('(') => paren_depth += 1,
                     Kind::Brackets if token.value.starts_with('[') => square_depth += 1,
@@ -138,7 +188,8 @@ impl<'a> Parser<'a> {
                 }
             }
             RootStatementType::Declaration
-        })();
+        };
+
         tokenizer.rewind(cp);
         result
     }
@@ -153,15 +204,16 @@ impl<'a> Parser<'a> {
         };
 
         // Strip leading newline if present (to match PostCSS behavior)
-        return Ok(css_without_bom
+        Ok(css_without_bom
             .strip_prefix('\n')
-            .unwrap_or(css_without_bom));
+            .unwrap_or(css_without_bom))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sinks::TreeSink;
     use std::fs;
     use std::path;
 
@@ -347,7 +399,7 @@ mod tests {
 
     #[test]
     fn it_parses_spaces() {
-        let (ast, expected) = parse_and_read_json_only(String::from(" \n"), "spaces.json");
+        let (ast, expected) = parse_and_read_json_only(" \n", "spaces.json");
         assert_eq!(ast, expected);
     }
 
@@ -357,24 +409,15 @@ mod tests {
         assert_eq!(ast, expected);
     }
 
-    fn parse_and_read_json_only(css: String, json_path: &str) -> (Node, Node) {
-        let mut parser = Parser::new(&css).unwrap();
-        let ast = parser.parse();
+    fn parse_and_read_json_only(
+        css: &str,
+        json_path: &str,
+    ) -> (serde_json::Value, serde_json::Value) {
+        let mut parser = Parser::new(css).unwrap();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let ast = sink.finish();
         let json = serde_json::to_string_pretty(&ast).unwrap();
-
-        let expected_ast: Node = serde_json::from_str(&read(json_path)).unwrap();
-
-        #[cfg(feature = "output")]
-        write(json_path, &json);
-
-        return (ast, expected_ast);
-    }
-
-    fn parse_and_read(css_path: &str, json_path: &str) -> (serde_json::Value, serde_json::Value) {
-        let css = read(css_path);
-        let mut parser = Parser::new(&css).expect("Failed to create parser");
-        let ast = parser.parse();
-        let json = serde_json::to_string_pretty(&ast).expect("Failed to serialize AST");
 
         #[cfg(feature = "output")]
         write(json_path, &json);
@@ -386,7 +429,25 @@ mod tests {
         let expected_value: serde_json::Value =
             serde_json::from_str(&read(json_path)).expect("Failed to parse expected JSON");
 
-        return (actual_value, expected_value);
+        (actual_value, expected_value)
+    }
+
+    fn parse_and_read(css_path: &str, json_path: &str) -> (serde_json::Value, serde_json::Value) {
+        let css = read(css_path);
+        let mut parser = Parser::new(&css).unwrap();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let ast = sink.finish();
+        let json = serde_json::to_string_pretty(&ast).unwrap();
+
+        #[cfg(feature = "output")]
+        write(json_path, &json);
+
+        // Parse both as JSON Values for field-order-independent comparison
+        let actual_value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        let expected_value: serde_json::Value = serde_json::from_str(&read(json_path)).unwrap();
+
+        (actual_value, expected_value)
     }
 
     fn read(file: &str) -> String {

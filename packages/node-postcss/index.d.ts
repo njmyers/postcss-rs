@@ -10,96 +10,96 @@
  */
 export interface NodeSlotLayout {
   /** `type_tag` value for a Root node */
-  typeRoot: number;
+  typeRoot: number
   /** `type_tag` value for a Rule node */
-  typeRule: number;
+  typeRule: number
   /** `type_tag` value for a Declaration node */
-  typeDecl: number;
+  typeDecl: number
   /** `type_tag` value for an AtRule node */
-  typeAtrule: number;
+  typeAtrule: number
   /** `type_tag` value for a Comment node */
-  typeComment: number;
+  typeComment: number
   /** Number of u32 slots per node in the buffer (= 25) */
-  stride: number;
+  stride: number
   /** Sentinel value meaning a field is absent/null (= 0xFFFF_FFFF) */
-  absent: number;
+  absent: number
   /** Slot index of the node type tag (see `type_*` constants) */
-  idxTypeTag: number;
+  idxTypeTag: number
   /** Slot index of the parent node's index in the flat array; `absent` for the root */
-  idxParentIdx: number;
+  idxParentIdx: number
   /** Slot index of `source.start` JS char offset */
-  idxSourceStartOff: number;
+  idxSourceStartOff: number
   /** Slot index of `source.start` 1-based line number */
-  idxSourceStartLine: number;
+  idxSourceStartLine: number
   /** Slot index of `source.start` 1-based column number */
-  idxSourceStartCol: number;
+  idxSourceStartCol: number
   /** Slot index of `source.end` JS char offset; `absent` if missing */
-  idxSourceEndOff: number;
+  idxSourceEndOff: number
   /** Slot index of `source.end` 1-based line number */
-  idxSourceEndLine: number;
+  idxSourceEndLine: number
   /** Slot index of `source.end` 1-based column number */
-  idxSourceEndCol: number;
+  idxSourceEndCol: number
   /** Slot index of field1 start: selector (Rule), prop (Decl), name (AtRule), text (Comment) */
-  idxField1Start: number;
+  idxField1Start: number
   /** Slot index of field1 end (exclusive) */
-  idxField1End: number;
+  idxField1End: number
   /** Slot index of field2 start: value (Decl), params (AtRule); `absent` if not present */
-  idxField2Start: number;
+  idxField2Start: number
   /** Slot index of field2 end (exclusive) */
-  idxField2End: number;
+  idxField2End: number
   /** Slot index of `raws.before` start; `absent` if not present */
-  idxRawsBeforeStart: number;
+  idxRawsBeforeStart: number
   /** Slot index of `raws.before` end (exclusive) */
-  idxRawsBeforeEnd: number;
+  idxRawsBeforeEnd: number
   /** Slot index of `raws.between` start; `absent` if not present */
-  idxRawsBetweenStart: number;
+  idxRawsBetweenStart: number
   /** Slot index of `raws.between` end (exclusive) */
-  idxRawsBetweenEnd: number;
+  idxRawsBetweenEnd: number
   /** Slot index of `raws.after` start; `absent` if not present */
-  idxRawsAfterStart: number;
+  idxRawsAfterStart: number
   /** Slot index of `raws.after` end (exclusive) */
-  idxRawsAfterEnd: number;
+  idxRawsAfterEnd: number
   /**
    * Slot index of extra1 start: `raws.afterName` (AtRule), `raws.left` (Comment),
    * `raws.ownSemicolon` (Rule); `absent` if not present
    */
-  idxRawsExtra1Start: number;
+  idxRawsExtra1Start: number
   /** Slot index of extra1 end (exclusive) */
-  idxRawsExtra1End: number;
+  idxRawsExtra1End: number
   /**
    * Slot index of extra2 start: `raws.important` (Decl), `raws.right` (Comment);
    * `absent` if not present
    */
-  idxRawsExtra2Start: number;
+  idxRawsExtra2Start: number
   /** Slot index of extra2 end (exclusive) */
-  idxRawsExtra2End: number;
+  idxRawsExtra2End: number
   /** Slot index of the bit-flag word (see `flag_*` constants) */
-  idxFlags: number;
+  idxFlags: number
   /**
    * Slot index of clean-string start in the trailing UTF-8 string table;
    * only meaningful when `flag_has_clean_str` is set
    */
-  idxCleanStart: number;
+  idxCleanStart: number
   /** Slot index of clean-string end (exclusive) in the string table */
-  idxCleanEnd: number;
+  idxCleanEnd: number
   /** Flag bit: declaration has `!important` */
-  flagImportant: number;
+  flagImportant: number
   /** Flag bit: root/rule has an explicit trailing semicolon in `raws.semicolon` */
-  flagSemiPresent: number;
+  flagSemiPresent: number
   /** Flag bit: the `raws.semicolon` value is `true` (semicolon present after last child) */
-  flagSemiValue: number;
+  flagSemiValue: number
   /**
    * Flag bit: a clean string is stored in the trailing table (selector or value
    * differs from its raw CSS form)
    */
-  flagHasCleanStr: number;
+  flagHasCleanStr: number
   /**
    * Flag bit: the clean string belongs to field2 (declaration value);
    * when clear it belongs to field1 (rule selector)
    */
-  flagCleanIsField2: number;
+  flagCleanIsField2: number
   /** Flag bit: node has a `nodes` array (rule, at-rule with block) */
-  flagHasNodes: number;
+  flagHasNodes: number
 }
 
 export declare namespace postcss {
@@ -110,28 +110,19 @@ export declare namespace postcss {
    * layout via `offset_of!`, so they stay in sync with the Rust code
    * automatically.  Call once at module startup and cache the result.
    */
-  export function nodeSlotLayout(): NodeSlotLayout;
-  export function parseToJsonAsync(
-    css: string,
-    from?: string | undefined | null
-  ): Promise<unknown>;
+  export function nodeSlotLayout(): NodeSlotLayout
+  export function parseToJsonAsync(css: string, from?: string | undefined | null): Promise<unknown>
   /**
    * Synchronous JSON parse. Blocks the event loop while parsing.
    * Faster than parse_to_json_async() for small/medium CSS because it
    * avoids the Promise + thread-pool round-trip overhead (~0.05–0.1 ms).
    */
-  export function parseToJsonSync(
-    css: string,
-    from?: string | undefined | null
-  ): string;
+  export function parseToJsonSync(css: string, from?: string | undefined | null): string
   /**
    * Async offset-array parse.  Same output as `parse_to_offsets_sync` but
    * runs on the thread pool so the event loop is not blocked.
    */
-  export function parseToOffsetsAsync(
-    css: string,
-    from?: string | undefined | null
-  ): Promise<unknown>;
+  export function parseToOffsetsAsync(css: string, from?: string | undefined | null): Promise<unknown>
   /**
    * Synchronous offset-array parse.  Returns a compact binary buffer
    * containing a flat `Uint32Array` of CSS byte offsets plus a UTF-8
@@ -139,9 +130,6 @@ export declare namespace postcss {
    * The JS side reconstructs strings with `css.slice(start, end)` and
    * never needs to call `JSON.parse()`.
    */
-  export function parseToOffsetsSync(
-    css: string,
-    from?: string | undefined | null
-  ): Buffer;
-  export function stringify(json: string): string;
+  export function parseToOffsetsSync(css: string, from?: string | undefined | null): Buffer
+  export function stringify(json: string): string
 }

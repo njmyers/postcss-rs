@@ -10,15 +10,12 @@
 /// Run with:
 ///   cargo bench --target x86_64-unknown-linux-gnu -p postcss-rs-node-postcss
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
-use postcss_rs_parser::Parser;
+use postcss_rs_parser::{sinks::offset::OffsetSink, ParseSink, Parser};
 
 // Pull in serialisers without going through the NAPI lib.
 #[path = "../src/json.rs"]
 #[allow(dead_code)]
 mod json;
-#[path = "../src/offset.rs"]
-#[allow(dead_code)]
-mod offset;
 
 static SMALL_CSS: &str =
     unsafe { std::str::from_utf8_unchecked(include_bytes!("fixtures/small.css")) };
@@ -43,8 +40,10 @@ fn bench_parse(c: &mut Criterion) {
     for (label, css) in fixtures() {
         group.bench_with_input(BenchmarkId::from_parameter(label), css, |b, css| {
             b.iter(|| {
+                let mut sink = postcss_rs_parser::sinks::TreeSink::new();
                 let mut p = Parser::new(black_box(css)).unwrap();
-                black_box(p.parse())
+                p.parse(&mut sink);
+                black_box(sink.finish())
             })
         });
     }
@@ -56,8 +55,10 @@ fn bench_json(c: &mut Criterion) {
     for (label, css) in fixtures() {
         group.bench_with_input(BenchmarkId::from_parameter(label), css, |b, css| {
             b.iter(|| {
+                let mut sink = postcss_rs_parser::sinks::TreeSink::new();
                 let mut p = Parser::new(black_box(css)).unwrap();
-                let node = p.parse();
+                p.parse(&mut sink);
+                let node = sink.finish();
                 black_box(json::serialize(&node, css))
             })
         });
@@ -70,9 +71,10 @@ fn bench_offsets(c: &mut Criterion) {
     for (label, css) in fixtures() {
         group.bench_with_input(BenchmarkId::from_parameter(label), css, |b, css| {
             b.iter(|| {
+                let mut sink = OffsetSink::new(black_box(css));
                 let mut p = Parser::new(black_box(css)).unwrap();
-                let node = p.parse();
-                black_box(offset::OffsetSerializer::serialize(&node, css))
+                p.parse(&mut sink);
+                black_box(sink.finish())
             })
         });
     }

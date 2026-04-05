@@ -5,7 +5,7 @@
  * preserving all original formatting information stored in the `raws` fields.
  */
 
-use postcss_rs_parser::{AtRule, CommentData, Data, Declaration, Node, Rule};
+use postcss_rs_parser::{AtRule, Comment, Data, Declaration, Node, Rule};
 
 /// Options for stringification
 #[derive(Debug, Default)]
@@ -34,14 +34,14 @@ impl Stringifier {
     }
 
     /// Main entry point: stringify a node
-    pub fn stringify(node: &Node, options: StringifyOptions) -> String {
+    pub fn stringify(node: &Node<'_>, options: StringifyOptions) -> String {
         let mut stringifier = Self::new(options);
         stringifier.visit_node(node);
         stringifier.output
     }
 
     /// Visit a node and dispatch to appropriate handler
-    fn visit_node(&mut self, node: &Node) {
+    fn visit_node(&mut self, node: &Node<'_>) {
         match &node.data {
             Data::Root => self.visit_root(node),
             Data::Rule(rule) => self.visit_rule(node, rule),
@@ -52,9 +52,9 @@ impl Stringifier {
     }
 
     /// Stringify a root node
-    fn visit_root(&mut self, node: &Node) {
+    fn visit_root(&mut self, node: &Node<'_>) {
         // Add before whitespace
-        if let Some(before) = node.raws.before.as_ref() {
+        if let Some(before) = node.raws.before.as_deref() {
             self.output.push_str(before);
         }
 
@@ -66,15 +66,15 @@ impl Stringifier {
         }
 
         // Add after whitespace
-        if let Some(after) = node.raws.after.as_ref() {
+        if let Some(after) = node.raws.after.as_deref() {
             self.output.push_str(after);
         }
     }
 
     /// Stringify a rule node
-    fn visit_rule(&mut self, node: &Node, rule: &Rule) {
+    fn visit_rule(&mut self, node: &Node<'_>, rule: &Rule<'_>) {
         // Add before whitespace
-        if let Some(before) = node.raws.before.as_ref() {
+        if let Some(before) = node.raws.before.as_deref() {
             self.output.push_str(before);
         }
 
@@ -87,7 +87,7 @@ impl Stringifier {
         }
 
         // Add between whitespace (between selector and {)
-        if let Some(between) = node.raws.between.as_ref() {
+        if let Some(between) = node.raws.between.as_deref() {
             self.output.push_str(between);
         }
 
@@ -108,7 +108,7 @@ impl Stringifier {
         self.indent_level -= 1;
 
         // Add after whitespace (before closing brace)
-        if let Some(after) = node.raws.after.as_ref() {
+        if let Some(after) = node.raws.after.as_deref() {
             self.output.push_str(after);
         }
 
@@ -117,9 +117,9 @@ impl Stringifier {
     }
 
     /// Stringify a declaration node
-    fn visit_declaration(&mut self, node: &Node, decl: &Declaration) {
+    fn visit_declaration(&mut self, node: &Node<'_>, decl: &Declaration<'_>) {
         // Add before whitespace
-        if let Some(before) = node.raws.before.as_ref() {
+        if let Some(before) = node.raws.before.as_deref() {
             self.output.push_str(before);
         }
 
@@ -127,7 +127,7 @@ impl Stringifier {
         self.output.push_str(&decl.prop);
 
         // Add between whitespace (between prop and value, typically ": ")
-        if let Some(between) = node.raws.between.as_ref() {
+        if let Some(between) = node.raws.between.as_deref() {
             self.output.push_str(between);
         }
 
@@ -141,7 +141,7 @@ impl Stringifier {
 
         // Add !important if present
         if decl.important.unwrap_or(false) {
-            if let Some(important_raw) = node.raws.important.as_ref() {
+            if let Some(important_raw) = node.raws.important.as_deref() {
                 if !important_raw.is_empty() {
                     self.output.push_str(important_raw);
                 }
@@ -151,7 +151,7 @@ impl Stringifier {
         }
 
         // Add semicolon if needed
-        match node.raws.semicolon.as_ref() {
+        match node.raws.semicolon.value() {
             Some(true) => self.output.push(';'),
             Some(false) => {} // No semicolon
             None => {}        // Default: no semicolon
@@ -159,9 +159,9 @@ impl Stringifier {
     }
 
     /// Stringify an at-rule node
-    fn visit_atrule(&mut self, node: &Node, atrule: &AtRule) {
+    fn visit_atrule(&mut self, node: &Node<'_>, atrule: &AtRule<'_>) {
         // Add before whitespace
-        if let Some(before) = node.raws.before.as_ref() {
+        if let Some(before) = node.raws.before.as_deref() {
             self.output.push_str(before);
         }
 
@@ -170,7 +170,7 @@ impl Stringifier {
         self.output.push_str(&atrule.name);
 
         // Add after-name whitespace
-        if let Some(after_name) = node.raws.after_name.as_ref() {
+        if let Some(after_name) = node.raws.after_name.as_deref() {
             self.output.push_str(after_name);
         }
 
@@ -183,7 +183,7 @@ impl Stringifier {
 
         // has_block() encodes whether this is a block at-rule ({ }) or a statement
         if node.has_block() {
-            if let Some(between) = node.raws.between.as_ref() {
+            if let Some(between) = node.raws.between.as_deref() {
                 self.output.push_str(between);
             }
             self.output.push('{');
@@ -198,13 +198,13 @@ impl Stringifier {
 
             self.indent_level -= 1;
 
-            if let Some(after) = node.raws.after.as_ref() {
+            if let Some(after) = node.raws.after.as_deref() {
                 self.output.push_str(after);
             }
             self.output.push('}');
         } else {
             // Statement at-rule - emit semicolon
-            match node.raws.semicolon.as_ref() {
+            match node.raws.semicolon.value() {
                 Some(true) => self.output.push(';'),
                 Some(false) => {}              // No semicolon
                 None => self.output.push(';'), // Default: semicolon for at-rules
@@ -213,15 +213,15 @@ impl Stringifier {
     }
 
     /// Stringify a comment node
-    fn visit_comment(&mut self, node: &Node, comment: &CommentData) {
+    fn visit_comment(&mut self, node: &Node<'_>, comment: &Comment<'_>) {
         // Add before whitespace
-        if let Some(before) = node.raws.before.as_ref() {
+        if let Some(before) = node.raws.before.as_deref() {
             self.output.push_str(before);
         }
 
         // Add left whitespace inside comment
         self.output.push_str("/*");
-        if let Some(left) = node.raws.left.as_ref() {
+        if let Some(left) = node.raws.left.as_deref() {
             self.output.push_str(left);
         }
 
@@ -229,7 +229,7 @@ impl Stringifier {
         self.output.push_str(&comment.text);
 
         // Add right whitespace inside comment
-        if let Some(right) = node.raws.right.as_ref() {
+        if let Some(right) = node.raws.right.as_deref() {
             self.output.push_str(right);
         }
         self.output.push_str("*/");
@@ -239,13 +239,15 @@ impl Stringifier {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use postcss_rs_parser::Parser;
+    use postcss_rs_parser::{sinks::TreeSink, ParseSink, Parser};
 
     #[test]
     fn test_stringify_simple_rule() {
         let css = ".test { color: red; }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         // Parser may not preserve semicolons in all cases
@@ -256,7 +258,9 @@ mod tests {
     fn test_stringify_preserves_whitespace() {
         let css = "\n.test  {  color:  red;  }\n";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         // Note: trailing newline is not preserved in raws.after (PostCSS compatibility)
@@ -267,7 +271,9 @@ mod tests {
     fn test_stringify_at_rule() {
         let css = "@media screen { .test { color: red; } }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, "@media screen { .test { color: red } }");
@@ -277,7 +283,9 @@ mod tests {
     fn test_stringify_comment() {
         let css = "/* comment */ .test { color: red; }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, "/* comment */ .test { color: red }");
@@ -287,7 +295,9 @@ mod tests {
     fn test_stringify_important() {
         let css = ".test { color: red !important; }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, ".test { color: red !important }");
@@ -297,7 +307,9 @@ mod tests {
     fn test_stringify_multiple_declarations() {
         let css = ".a { color: red; background: blue; }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         // Inter-declaration semicolons are consumed by the parser and not stored
@@ -309,7 +321,9 @@ mod tests {
     fn test_stringify_import_at_rule() {
         let css = "@import \"style.css\";";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, "@import \"style.css\";");
@@ -319,7 +333,9 @@ mod tests {
     fn test_stringify_empty_rule() {
         let css = ".empty {}";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, ".empty {}");
@@ -329,7 +345,9 @@ mod tests {
     fn test_stringify_nested_at_rule() {
         let css = "@media (max-width: 600px) { .x { display: none; } }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, "@media (max-width: 600px) { .x { display: none } }");
@@ -339,7 +357,9 @@ mod tests {
     fn test_stringify_multiline_comment() {
         let css = "/* line1\nline2 */";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, "/* line1\nline2 */");
@@ -349,7 +369,9 @@ mod tests {
     fn test_stringify_colon_in_selector() {
         let css = "a:hover { color: green; }";
         let mut parser = Parser::new(css).unwrap();
-        let node = parser.parse();
+        let mut sink = TreeSink::new();
+        parser.parse(&mut sink);
+        let node = sink.finish();
 
         let output = Stringifier::stringify(&node, StringifyOptions::default());
         assert_eq!(output, "a:hover { color: green }");

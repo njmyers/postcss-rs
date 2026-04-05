@@ -51,7 +51,7 @@ impl SingleString {
             }
         }
 
-        return count - 1;
+        count - 1
     }
 }
 
@@ -82,7 +82,7 @@ impl DoubleString {
             }
         }
 
-        return count - 1;
+        count - 1
     }
 }
 

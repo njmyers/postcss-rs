@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
-use postcss_rs_parser::Parser;
+use postcss_rs_parser::{sinks::offset::OffsetSink, ParseSink, Parser};
 
 const SMALL_CSS: &str = "a { color: red; font-size: 14px; }";
 
@@ -17,8 +17,9 @@ const ATRULE_RULES_CSS: &str =
     include_str!("../node_modules/postcss-parser-tests/cases/atrule-rules.css");
 
 fn parse(css: &str) {
-    let node = Parser::new(css).unwrap().parse();
-    black_box(node);
+    let mut sink = OffsetSink::new(css);
+    Parser::new(css).unwrap().parse(&mut sink);
+    black_box(sink.finish());
 }
 
 fn bench_parse_small(c: &mut Criterion) {

@@ -38,9 +38,9 @@ pub enum Kind {
     /// `]`
     CloseSquare,
     /// `(`
-    OpenCurvy,
+    OpenParen,
     /// `)`
-    CloseCurvy,
+    CloseParen,
     /// `;`
     Semicolon,
     /// `:`
@@ -51,22 +51,7 @@ pub enum Kind {
 
 impl fmt::Display for Kind {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Kind::Space => write!(formatter, "Space"),
-            Kind::Word => write!(formatter, "Word"),
-            Kind::Brackets => write!(formatter, "Brackets"),
-            Kind::String => write!(formatter, "String"),
-            Kind::AtWord => write!(formatter, "AtWord"),
-            Kind::OpenCurly => write!(formatter, "OpenCurly"),
-            Kind::CloseCurly => write!(formatter, "CloseCurly"),
-            Kind::OpenSquare => write!(formatter, "OpenSquare"),
-            Kind::CloseSquare => write!(formatter, "CloseSquare"),
-            Kind::OpenCurvy => write!(formatter, "OpenCurvy"),
-            Kind::CloseCurvy => write!(formatter, "CloseCurvy"),
-            Kind::Semicolon => write!(formatter, "Semicolon"),
-            Kind::Colon => write!(formatter, "Colon"),
-            Kind::Comment => write!(formatter, "Comment"),
-        }
+        write!(formatter, "{:?}", self)
     }
 }
 
@@ -159,16 +144,13 @@ impl<'src> Token<'src> {
             column: self.column,
         };
 
-        let second_token = match self.value.len() {
-            len if len > split_index => Some(Token {
-                kind: second_kind,
-                value: &self.value[split_index..],
-                start: self.start + split_index,
-                end: self.end,
-                column: self.column + split_index,
-            }),
-            _ => None,
-        };
+        let second_token = (split_index < self.value.len()).then(|| Token {
+            kind: second_kind,
+            value: &self.value[split_index..],
+            start: self.start + split_index,
+            end: self.end,
+            column: self.column + split_index,
+        });
 
         (first_token, second_token)
     }
@@ -184,12 +166,12 @@ pub struct Tokens<'src>(Vec<Token<'src>>);
 impl<'src> Tokens<'src> {
     /// Creates an empty token collection.
     pub fn new() -> Self {
-        return Self(Vec::new());
+        Self(Vec::new())
     }
 
     /// Creates an empty token collection pre-allocated for at least `capacity` tokens.
     pub fn with_capacity(capacity: usize) -> Self {
-        return Self(Vec::with_capacity(capacity));
+        Self(Vec::with_capacity(capacity))
     }
 
     /// Appends `token` to the end of this collection.
@@ -224,13 +206,13 @@ impl<'src> fmt::Display for Tokens<'src> {
             write!(formatter, "{}", token.value)?;
         }
 
-        return Ok(());
+        Ok(())
     }
 }
 
 impl<'src> Default for Tokens<'src> {
     fn default() -> Self {
-        return Self::new();
+        Self::new()
     }
 }
 
@@ -238,7 +220,7 @@ impl<'src> Deref for Tokens<'src> {
     type Target = Vec<Token<'src>>;
 
     fn deref(&self) -> &Self::Target {
-        return &self.0;
+        &self.0
     }
 }
 
@@ -281,12 +263,12 @@ pub struct Tokenizer<'src> {
 impl<'src> Tokenizer<'src> {
     /// Creates a new `Tokenizer` for the given CSS source string.
     pub fn new(css: &'src str) -> Self {
-        return Self {
+        Self {
             css,
             index: 0,
             prev_value: None,
             lines: Lines::new(),
-        };
+        }
     }
 
     /// Returns a reference to the full CSS source string.
@@ -433,79 +415,63 @@ impl<'src> Iterator for Tokenizer<'src> {
             // Space/whitespace — may contain newlines (\n, \r)
             b if Whitespace::test(b) => {
                 let length = Whitespace::tokenize(remaining);
-                return Some(self.create(length, Kind::Space));
+                Some(self.create(length, Kind::Space))
             }
 
             // At-rule name, e.g. @media — identifiers never contain newlines
             b if AtWord::test(b, next) => {
                 let length = AtWord::tokenize(remaining);
-                return Some(self.create_fast(length, Kind::AtWord));
+                Some(self.create_fast(length, Kind::AtWord))
             }
 
             // Regular CSS identifier/keyword — never contains newlines
             b if Word::test(b, next) => {
                 let length = Word::tokenize(remaining);
-                return Some(self.create_fast(length, Kind::Word));
+                Some(self.create_fast(length, Kind::Word))
             }
 
             // Balanced brackets e.g. url(...) — may contain strings with newlines
             b if Bracket::test(b, next, self.prev()) => {
                 let length = Bracket::tokenize(remaining);
-                return Some(self.create(length, Kind::Brackets));
+                Some(self.create(length, Kind::Brackets))
             }
 
             // Single-byte symbol tokens — never newlines, use fast path
-            b if OpenCurly::test(b) => {
-                return Some(self.create_fast(0, Kind::OpenCurly));
-            }
-            b if CloseCurly::test(b) => {
-                return Some(self.create_fast(0, Kind::CloseCurly));
-            }
-            b if OpenSquare::test(b) => {
-                return Some(self.create_fast(0, Kind::OpenSquare));
-            }
-            b if CloseSquare::test(b) => {
-                return Some(self.create_fast(0, Kind::CloseSquare));
-            }
-            b if OpenCurvy::test(b) => {
-                return Some(self.create_fast(0, Kind::OpenCurvy));
-            }
-            b if CloseCurvy::test(b) => {
-                return Some(self.create_fast(0, Kind::CloseCurvy));
-            }
-            b if Semicolon::test(b) => {
-                return Some(self.create_fast(0, Kind::Semicolon));
-            }
-            b if Colon::test(b) => {
-                return Some(self.create_fast(0, Kind::Colon));
-            }
+            b if OpenCurly::test(b) => Some(self.create_fast(0, Kind::OpenCurly)),
+            b if CloseCurly::test(b) => Some(self.create_fast(0, Kind::CloseCurly)),
+            b if OpenSquare::test(b) => Some(self.create_fast(0, Kind::OpenSquare)),
+            b if CloseSquare::test(b) => Some(self.create_fast(0, Kind::CloseSquare)),
+            b if OpenParen::test(b) => Some(self.create_fast(0, Kind::OpenParen)),
+            b if CloseParen::test(b) => Some(self.create_fast(0, Kind::CloseParen)),
+            b if Semicolon::test(b) => Some(self.create_fast(0, Kind::Semicolon)),
+            b if Colon::test(b) => Some(self.create_fast(0, Kind::Colon)),
 
             // Block comment /* … */ — may span multiple lines
             b if Comment::test(b, next) => {
                 let length = Comment::tokenize(&remaining[2..]);
-                return Some(self.create(length + 3, Kind::Comment));
+                Some(self.create(length + 3, Kind::Comment))
             }
 
             // CSS escape sequence `\` — hex escapes like `\62\n` contain newlines
             b if Escape::test(b) => {
                 let length = Escape::tokenize(remaining);
-                return Some(self.create(length, Kind::Word));
+                Some(self.create(length, Kind::Word))
             }
 
             // Quoted strings — may contain escaped newlines
             b if SingleString::test(b) => {
                 let length = SingleString::tokenize(remaining);
-                return Some(self.create(length, Kind::String));
+                Some(self.create(length, Kind::String))
             }
             b if DoubleString::test(b) => {
                 let length = DoubleString::tokenize(remaining);
-                return Some(self.create(length, Kind::String));
+                Some(self.create(length, Kind::String))
             }
 
             // Catch-all: treat as word (unknown bytes, never newlines in practice)
             _ => {
                 let length = Word::tokenize(remaining);
-                return Some(self.create_fast(length, Kind::Word));
+                Some(self.create_fast(length, Kind::Word))
             }
         }
     }
@@ -639,7 +605,7 @@ mod tests {
             tokens.push(token)
         }
 
-        return tokens;
+        tokens
     }
 
     #[test]
@@ -898,7 +864,7 @@ mod tests {
             tokenizer("(())(\"\")(/**/)(\\\\)(\n)("),
             [
                 Token {
-                    kind: Kind::OpenCurvy,
+                    kind: Kind::OpenParen,
                     start: 0,
                     end: 0,
                     value: "(",
@@ -912,14 +878,14 @@ mod tests {
                     column: 2,
                 },
                 Token {
-                    kind: Kind::CloseCurvy,
+                    kind: Kind::CloseParen,
                     start: 3,
                     end: 3,
                     value: ")",
                     column: 4,
                 },
                 Token {
-                    kind: Kind::OpenCurvy,
+                    kind: Kind::OpenParen,
                     start: 4,
                     end: 4,
                     value: "(",
@@ -933,14 +899,14 @@ mod tests {
                     column: 6,
                 },
                 Token {
-                    kind: Kind::CloseCurvy,
+                    kind: Kind::CloseParen,
                     start: 7,
                     end: 7,
                     value: ")",
                     column: 8,
                 },
                 Token {
-                    kind: Kind::OpenCurvy,
+                    kind: Kind::OpenParen,
                     start: 8,
                     end: 8,
                     value: "(",
@@ -954,14 +920,14 @@ mod tests {
                     column: 10,
                 },
                 Token {
-                    kind: Kind::CloseCurvy,
+                    kind: Kind::CloseParen,
                     start: 13,
                     end: 13,
                     value: ")",
                     column: 14,
                 },
                 Token {
-                    kind: Kind::OpenCurvy,
+                    kind: Kind::OpenParen,
                     start: 14,
                     end: 14,
                     value: "(",
@@ -975,14 +941,14 @@ mod tests {
                     column: 16,
                 },
                 Token {
-                    kind: Kind::CloseCurvy,
+                    kind: Kind::CloseParen,
                     start: 17,
                     end: 17,
                     value: ")",
                     column: 18,
                 },
                 Token {
-                    kind: Kind::OpenCurvy,
+                    kind: Kind::OpenParen,
                     start: 18,
                     end: 18,
                     value: "(",
@@ -996,14 +962,14 @@ mod tests {
                     column: 20,
                 },
                 Token {
-                    kind: Kind::CloseCurvy,
+                    kind: Kind::CloseParen,
                     start: 20,
                     end: 20,
                     value: ")",
                     column: 1,
                 },
                 Token {
-                    kind: Kind::OpenCurvy,
+                    kind: Kind::OpenParen,
                     start: 21,
                     end: 21,
                     value: "(",
@@ -1198,7 +1164,7 @@ mod tests {
                     column: 1,
                 },
                 Token {
-                    kind: Kind::OpenCurvy,
+                    kind: Kind::OpenParen,
                     start: 3,
                     end: 3,
                     value: "(",
@@ -1212,7 +1178,7 @@ mod tests {
                     column: 5,
                 },
                 Token {
-                    kind: Kind::CloseCurvy,
+                    kind: Kind::CloseParen,
                     start: 7,
                     end: 7,
                     value: ")",

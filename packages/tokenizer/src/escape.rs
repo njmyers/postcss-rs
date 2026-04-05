@@ -46,7 +46,7 @@ impl HexEscape {
         }
 
         // No trailing space, just backslash + hex digits
-        return hex_count; // (total: \ + hex)
+        hex_count // (total: \ + hex)
     }
 }
 
@@ -55,7 +55,7 @@ pub struct Escape;
 impl Escape {
     /// Return whether a byte is a backslash `\`
     pub fn test(byte: u8) -> bool {
-        return byte == BACKSLASH;
+        byte == BACKSLASH
     }
 
     /// Tokenize the "word" created by escape sequences like `\(`, `\\`, or `\62 `.
@@ -80,9 +80,8 @@ impl Escape {
         // Not a hex escape - handle backslash sequences like \\, \(, \", etc.
         let mut bytes_lookbehind = bytes.iter().zip(bytes.iter().skip(lookbehind));
 
-        let result = bytes_lookbehind.position(|(previous_byte, byte)| {
-            return !Self::test(*previous_byte) || !Self::test(*byte);
-        });
+        let result = bytes_lookbehind
+            .position(|(previous_byte, byte)| !Self::test(*previous_byte) || !Self::test(*byte));
 
         let position = utils::unwrap_position(result, bytes.len());
         let string_length = cmp::min(position + lookbehind, count);
@@ -91,7 +90,7 @@ impl Escape {
             return utils::back(string_length);
         }
 
-        return string_length;
+        string_length
     }
 }
 
