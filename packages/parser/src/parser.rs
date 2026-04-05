@@ -423,8 +423,11 @@ mod tests {
         write(json_path, &json);
 
         // Parse both as JSON Values for field-order-independent comparison
-        let actual_value: serde_json::Value = serde_json::from_str(&json).unwrap();
-        let expected_value: serde_json::Value = serde_json::from_str(&read(json_path)).unwrap();
+        let actual_value: serde_json::Value =
+            serde_json::from_str(&json).expect("Failed to parse actual JSON");
+
+        let expected_value: serde_json::Value =
+            serde_json::from_str(&read(json_path)).expect("Failed to parse expected JSON");
 
         (actual_value, expected_value)
     }
@@ -448,8 +451,10 @@ mod tests {
     }
 
     fn read(file: &str) -> String {
-        let test_path = path::Path::new("../../tests/cases").join(path::Path::new(file));
-        fs::read_to_string(test_path).expect("failed to read test fixture")
+        let test_path = path::Path::new("./node_modules/postcss-parser-tests/cases")
+            .join(path::Path::new(file));
+
+        fs::read_to_string(test_path).expect("Failed to read test file")
     }
 
     fn write(file: &str, contents: &str) {

@@ -3,14 +3,18 @@ use postcss_rs_parser::{sinks::offset::OffsetSink, ParseSink, Parser};
 
 const SMALL_CSS: &str = "a { color: red; font-size: 14px; }";
 
-const CUSTOM_PROPERTIES_CSS: &str = include_str!("../../../tests/cases/custom-properties.css");
-const AT_RULE_BRACKETS_CSS: &str = include_str!("../../../tests/cases/at-rule-brackets.css");
-const ESCAPE_CSS: &str = include_str!("../../../tests/cases/escape.css");
-const COMMENTS_CSS: &str = include_str!("../../../tests/cases/comments.css");
-const SELECTOR_CSS: &str = include_str!("../../../tests/cases/selector.css");
-const DECLS_CSS: &str = include_str!("../../../tests/cases/decls.css");
-const ATRULE_DECLS_CSS: &str = include_str!("../../../tests/cases/atrule-decls.css");
-const ATRULE_RULES_CSS: &str = include_str!("../../../tests/cases/atrule-rules.css");
+const CUSTOM_PROPERTIES_CSS: &str =
+    include_str!("../node_modules/postcss-parser-tests/cases/custom-properties.css");
+const AT_RULE_BRACKETS_CSS: &str =
+    include_str!("../node_modules/postcss-parser-tests/cases/at-rule-brackets.css");
+const ESCAPE_CSS: &str = include_str!("../node_modules/postcss-parser-tests/cases/escape.css");
+const COMMENTS_CSS: &str = include_str!("../node_modules/postcss-parser-tests/cases/comments.css");
+const SELECTOR_CSS: &str = include_str!("../node_modules/postcss-parser-tests/cases/selector.css");
+const DECLS_CSS: &str = include_str!("../node_modules/postcss-parser-tests/cases/decls.css");
+const ATRULE_DECLS_CSS: &str =
+    include_str!("../node_modules/postcss-parser-tests/cases/atrule-decls.css");
+const ATRULE_RULES_CSS: &str =
+    include_str!("../node_modules/postcss-parser-tests/cases/atrule-rules.css");
 
 fn parse(css: &str) {
     let mut sink = OffsetSink::new(css);
