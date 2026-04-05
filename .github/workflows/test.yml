@@ -19,6 +19,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Create BOM fixture
+        run: . ./scripts/create-bom.sh
+
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
 
@@ -54,6 +57,9 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+
+      - name: Create BOM fixture
+        run: . ./scripts/create-bom.sh
 
       - name: Test Rust
         run: cargo test --all-features
