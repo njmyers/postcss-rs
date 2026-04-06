@@ -203,11 +203,7 @@ impl<'src> Declaration<'src> {
             }
         };
 
-        let raws_value_raw: Option<String> = if raw_value != clean_value.as_ref() {
-            Some(raw_value.to_string())
-        } else {
-            None
-        };
+        let has_raw_value = raw_value != clean_value.as_ref();
 
         let important = important_raw.as_ref().map(|_| true);
 
@@ -225,11 +221,13 @@ impl<'src> Declaration<'src> {
         let mut emit_raws = Raws::default();
         emit_raws.before = raws_before;
         emit_raws.between = raws_between;
-        if let Some(raw_val) = raws_value_raw {
-            emit_raws.value = ValueRaw::new(clean_value.to_string(), raw_val);
+        if has_raw_value {
+            // clean_value is cloned (cheap Cow::Borrowed copy, or String clone for Owned).
+            // raw_value borrows directly from CSS source — zero allocation.
+            emit_raws.value = ValueRaw::new(clean_value.clone(), raw_value);
         }
         if let Some(imp) = important_raw {
-            emit_raws.important = Raw::new(&imp);
+            emit_raws.important = Raw::new(imp);
         }
 
         sink.emit(

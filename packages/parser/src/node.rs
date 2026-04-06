@@ -118,7 +118,8 @@ impl<'src> Default for Data<'src> {
 /// - `source` — source position information.
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
 pub struct Node<'src> {
-    pub raws: Raws,
+    #[serde(borrow)]
+    pub raws: Raws<'src>,
     #[serde(flatten)]
     pub data: Data<'src>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -192,11 +193,11 @@ impl<'src> NodeBuilder<'src> {
     }
 
     /// Consumes the builder and returns the accumulated `Raws`.
-    pub fn into_raws(self) -> Raws {
+    pub fn into_raws(self) -> Raws<'src> {
         self.node.raws
     }
 
-    pub fn new(token: &Token<'_>, tokenizer: &mut Tokenizer<'_>, spaces: &[Token<'_>]) -> Self {
+    pub fn new(token: &Token<'_>, tokenizer: &mut Tokenizer<'_>, spaces: &[Token<'src>]) -> Self {
         let mut node = Node::default();
         node.source.start = Source::create_start(token, tokenizer);
         node.raws.before.push_tokens(spaces);
@@ -248,15 +249,23 @@ impl<'src> NodeBuilder<'src> {
         self.node.raws.right.push_str(right);
     }
 
-    pub fn value_raw(&mut self, value: &str, raw: &str) {
-        self.node.raws.value = ValueRaw::new(String::from(value), String::from(raw));
+    pub fn value_raw(
+        &mut self,
+        value: impl Into<Cow<'src, str>>,
+        raw: impl Into<Cow<'src, str>>,
+    ) {
+        self.node.raws.value = ValueRaw::new(value, raw);
     }
 
-    pub fn selector_raw(&mut self, value: &str, raw: &str) {
-        self.node.raws.selector = ValueRaw::new(String::from(value), String::from(raw));
+    pub fn selector_raw(
+        &mut self,
+        value: impl Into<Cow<'src, str>>,
+        raw: impl Into<Cow<'src, str>>,
+    ) {
+        self.node.raws.selector = ValueRaw::new(value, raw);
     }
 
-    pub fn important_raw(&mut self, value: &str) {
+    pub fn important_raw(&mut self, value: impl Into<Cow<'src, str>>) {
         self.node.raws.important = Raw::new(value);
     }
 
@@ -264,7 +273,7 @@ impl<'src> NodeBuilder<'src> {
         self.node.raws.before.push_str("");
     }
 
-    pub fn before(&mut self, token: &Token<'_>) {
+    pub fn before(&mut self, token: &Token<'src>) {
         self.node.raws.before.push(token);
     }
 
@@ -276,7 +285,7 @@ impl<'src> NodeBuilder<'src> {
         self.node.raws.between.push_str("");
     }
 
-    pub fn between(&mut self, token: &Token<'_>) {
+    pub fn between(&mut self, token: &Token<'src>) {
         self.node.raws.between.push(token);
     }
 
@@ -284,7 +293,7 @@ impl<'src> NodeBuilder<'src> {
         self.node.raws.after.push_str("");
     }
 
-    pub fn after(&mut self, token: &Token<'_>) {
+    pub fn after(&mut self, token: &Token<'src>) {
         self.node.raws.after.push(token);
     }
 
@@ -292,7 +301,7 @@ impl<'src> NodeBuilder<'src> {
         self.node.raws.after_name.push_str("");
     }
 
-    pub fn after_name(&mut self, token: &Token<'_>) {
+    pub fn after_name(&mut self, token: &Token<'src>) {
         self.node.raws.after_name.push(token);
     }
 
@@ -308,7 +317,7 @@ impl<'src> NodeBuilder<'src> {
         self.node.raws.semicolon.set_true();
     }
 
-    pub fn build(mut self, tokenizer: &mut Tokenizer<'_>, after: &[Token<'_>]) -> Node<'src> {
+    pub fn build(mut self, tokenizer: &mut Tokenizer<'_>, after: &[Token<'src>]) -> Node<'src> {
         self.node.raws.after.push_tokens(after);
         self.node.source.end = Some(Source::create_end(tokenizer));
 
@@ -318,7 +327,7 @@ impl<'src> NodeBuilder<'src> {
     pub fn build_with_end_index(
         mut self,
         tokenizer: &Tokenizer<'_>,
-        after: &[Token<'_>],
+        after: &[Token<'src>],
         end_index: usize,
     ) -> Node<'src> {
         self.node.raws.after.push_tokens(after);
@@ -333,7 +342,7 @@ impl<'src> NodeBuilder<'src> {
         self.node
     }
 
-    pub fn build_root(mut self, tokenizer: &Tokenizer<'_>, after: &[Token<'_>]) -> Node<'src> {
+    pub fn build_root(mut self, tokenizer: &Tokenizer<'_>, after: &[Token<'src>]) -> Node<'src> {
         let semicolon = self.node.raws.semicolon.value().unwrap_or(false);
 
         if self.node.has_nodes() && !semicolon {

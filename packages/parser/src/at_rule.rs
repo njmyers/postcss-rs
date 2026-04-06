@@ -375,7 +375,7 @@ impl Params {
     fn spaces<'src>(
         statement: &Statement<'_>,
         parent: &mut NodeBuilder<'src>,
-        spaces: &Tokens<'_>,
+        spaces: &Tokens<'src>,
     ) {
         for token in spaces.iter() {
             if !statement.is_empty() {

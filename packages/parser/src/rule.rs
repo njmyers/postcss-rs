@@ -335,7 +335,7 @@ impl Selector {
 
         // If raw and clean differ, set the raw selector in builder
         if raw_selector != selector.as_ref() {
-            builder.selector_raw(selector.as_ref(), raw_selector);
+            builder.selector_raw(selector.clone(), raw_selector);
         }
 
         selector
