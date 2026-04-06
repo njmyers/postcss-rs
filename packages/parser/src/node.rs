@@ -16,7 +16,7 @@ use postcss_rs_tokenizer::Token;
 use postcss_rs_tokenizer::Tokenizer;
 
 /// A single source-map position (line, column, and byte offset).
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone, Copy)]
 pub struct Source {
     /// Byte offset from the start of the CSS source.
     pub offset: usize,
@@ -188,7 +188,7 @@ pub struct NodeBuilder<'src> {
 impl<'src> NodeBuilder<'src> {
     /// Returns a clone of the node's source start position.
     pub fn source_start(&self) -> Source {
-        self.node.source.start.clone()
+        self.node.source.start
     }
 
     /// Consumes the builder and returns the accumulated `Raws`.

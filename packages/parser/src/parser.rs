@@ -94,13 +94,6 @@ impl<'a> Parser<'a> {
 
         let has_children = last_child_end.is_some();
 
-        // Compute raws_after for root (mirrors build_root logic)
-        let raws_after = if has_children {
-            Some(String::new())
-        } else {
-            Some(spaces.iter().map(|t| t.value).collect::<String>())
-        };
-
         // Compute semicolon (mirrors build_root logic):
         // only set when children exist; value = last child's semicolon status.
         let semicolon = if has_children {
@@ -121,9 +114,11 @@ impl<'a> Parser<'a> {
         };
 
         let mut close_raws = Raws::default();
-        close_raws
-            .after
-            .push_str(raws_after.as_deref().unwrap_or(""));
+        if has_children {
+            close_raws.after.push_str("");
+        } else {
+            close_raws.after.push_tokens_or_empty(&spaces);
+        }
         match semicolon {
             Some(true) => close_raws.semicolon.set_true(),
             Some(false) => close_raws.semicolon.set_false(),

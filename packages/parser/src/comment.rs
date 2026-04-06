@@ -1,5 +1,5 @@
 use crate::node::{Source, Sources};
-use crate::raws::Raws;
+use crate::raws::{Raw, Raws};
 use crate::sinks::{ParseSink, SinkNode};
 
 use serde::Deserialize;
@@ -32,7 +32,8 @@ impl<'src> Comment<'src> {
         parent: S::NodeRef,
     ) -> Source {
         let source_start = Source::create_start(&token, tokenizer);
-        let raws_before = Self::raws_before(spaces);
+        let mut raws_before = Raw::default();
+        raws_before.push_tokens_or_empty(spaces);
 
         let value = &token.value;
         let (text, left, right) = if value.len() >= 4 {
@@ -59,9 +60,7 @@ impl<'src> Comment<'src> {
         let source_end = Source::create_end(tokenizer);
 
         let mut emit_raws = Raws::default();
-        emit_raws
-            .before
-            .push_str(raws_before.as_deref().unwrap_or(""));
+        emit_raws.before = raws_before;
         emit_raws.left.push_str(left);
         emit_raws.right.push_str(right);
 
@@ -70,7 +69,7 @@ impl<'src> Comment<'src> {
             SinkNode::Comment {
                 sources: Sources {
                     start: source_start,
-                    end: Some(source_end.clone()),
+                    end: Some(source_end),
                 },
                 text,
                 raws: emit_raws,
@@ -80,10 +79,4 @@ impl<'src> Comment<'src> {
         source_end
     }
 
-    /// Build an `Option<String>` from accumulated space tokens (for `raws.before`).
-    fn raws_before(spaces: &[Token<'_>]) -> Option<String> {
-        // Always Some (ensure_empty_before semantics): even empty → Some("")
-        let s: String = spaces.iter().map(|t| t.value).collect();
-        Some(s)
-    }
 }

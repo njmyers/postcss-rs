@@ -84,6 +84,20 @@ impl Raw {
         };
     }
 
+    /// Push tokens, or ensure `Some("")` when the slice is empty.
+    ///
+    /// This matches the semantics of `spaces.iter().map(|t| t.value).collect::<String>()`
+    /// followed by `push_str(&s)`, which always sets at least `Some("")`.
+    pub fn push_tokens_or_empty(&mut self, tokens: &[Token<'_>]) {
+        if tokens.is_empty() {
+            if self.0.is_none() {
+                self.0 = Some(String::new());
+            }
+            return;
+        }
+        self.push_tokens(tokens);
+    }
+
     pub fn push_tokens(&mut self, tokens: &[Token<'_>]) {
         if tokens.is_empty() {
             return;

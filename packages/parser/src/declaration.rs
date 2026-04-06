@@ -1,6 +1,6 @@
 use crate::characters;
 use crate::node::{Source, Sources};
-use crate::raws::{Raws, ValueRaw};
+use crate::raws::{Raw, Raws, ValueRaw};
 use crate::sinks::{ParseSink, SinkNode};
 use crate::Statement;
 use crate::StatementTerminator;
@@ -39,8 +39,9 @@ impl<'src> Declaration<'src> {
         parent: S::NodeRef,
     ) -> (Source, StatementTerminator) {
         let source_start = Source::create_start(&prop, tokenizer);
-        let mut raws_before: String = spaces.iter().map(|t| t.value).collect();
-        let mut raws_between = String::new();
+        let mut raws_before = Raw::default();
+        raws_before.push_tokens_or_empty(spaces);
+        let mut raws_between = Raw::default();
 
         let (actual_prop, ie_hack_prefix) = Self::extract_ie_hack_prefix(prop.value);
         if let Some(prefix) = ie_hack_prefix {
@@ -222,13 +223,13 @@ impl<'src> Declaration<'src> {
         }
 
         let mut emit_raws = Raws::default();
-        emit_raws.before.push_str(&raws_before);
-        emit_raws.between.push_str(&raws_between);
+        emit_raws.before = raws_before;
+        emit_raws.between = raws_between;
         if let Some(raw_val) = raws_value_raw {
             emit_raws.value = ValueRaw::new(clean_value.to_string(), raw_val);
         }
-        if let Some(ref imp) = important_raw {
-            emit_raws.important.push_str(imp);
+        if let Some(imp) = important_raw {
+            emit_raws.important = Raw::new(&imp);
         }
 
         sink.emit(
@@ -236,7 +237,7 @@ impl<'src> Declaration<'src> {
             SinkNode::Declaration {
                 sources: Sources {
                     start: source_start,
-                    end: Some(source_end.clone()),
+                    end: Some(source_end),
                 },
                 prop: Cow::Borrowed(actual_prop),
                 value: clean_value,
