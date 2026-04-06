@@ -1,15 +1,15 @@
 {
-  "name": "@postcss-rs/node-postcss-win32-x64-msvc",
+  "name": "@postcss-rs/postcss-win32-arm64-msvc",
   "version": "0.0.0",
   "os": [
     "win32"
   ],
   "cpu": [
-    "x64"
+    "arm64"
   ],
-  "main": "postcss.win32-x64-msvc.node",
+  "main": "postcss.win32-arm64-msvc.node",
   "files": [
-    "postcss.win32-x64-msvc.node"
+    "postcss.win32-arm64-msvc.node"
   ],
   "license": "MIT",
   "engines": {

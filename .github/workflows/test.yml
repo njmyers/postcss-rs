@@ -34,8 +34,8 @@ jobs:
       - name: ESLint (tests)
         run: pnpm --filter postcss-parser-tests run test:lint
 
-      - name: ESLint (node-postcss)
-        run: pnpm --filter @postcss-rs/node-postcss run lint
+      - name: ESLint (postcss)
+        run: pnpm --filter @postcss-rs/postcss run lint
 
       - name: ESLint (docs)
         run: pnpm --filter @postcss-rs/docs run lint
@@ -85,7 +85,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build native addon (node-postcss)
+      - name: Build native addon (postcss)
         run: pnpm run build:debug
 
       - name: Test Node

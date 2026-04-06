@@ -8,7 +8,7 @@
 ///   offsets — parse + flat offset-array serialize
 ///
 /// Run with:
-///   cargo bench --target x86_64-unknown-linux-gnu -p postcss-rs-node-postcss
+///   cargo bench --target x86_64-unknown-linux-gnu -p postcss-rs-postcss
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use postcss_rs_parser::{sinks::offset::OffsetSink, ParseSink, Parser};
 

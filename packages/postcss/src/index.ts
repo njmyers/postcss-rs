@@ -1,5 +1,5 @@
 /**
- * @postcss-rs/node-postcss
+ * @postcss-rs/postcss
  *
  * A high-performance PostCSS-compatible parser powered by Rust.
  *

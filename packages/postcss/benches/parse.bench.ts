@@ -1,5 +1,5 @@
 /**
- * Benchmarks comparing @postcss-rs/node-postcss (Rust) vs postcss (JS)
+ * Benchmarks comparing @postcss-rs/postcss (Rust) vs postcss (JS)
  *
  * Run with: pnpm bench
  *

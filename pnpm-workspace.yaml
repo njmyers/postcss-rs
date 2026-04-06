@@ -1,5 +1,5 @@
 packages:
-  - "packages/node-postcss"
+  - "packages/postcss"
   - "packages/parser"
   - "packages/tokenizer"
   - "packages/docs"

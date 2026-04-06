@@ -1,5 +1,5 @@
 {
-  "name": "@postcss-rs/node-postcss",
+  "name": "@postcss-rs/postcss",
   "version": "0.1.0",
   "description": "High-performance PostCSS-compatible parser powered by Rust",
   "keywords": [

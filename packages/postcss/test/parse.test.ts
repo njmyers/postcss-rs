@@ -1,5 +1,5 @@
 /**
- * Basic tests for @postcss-rs/node-postcss
+ * Basic tests for @postcss-rs/postcss
  */
 
 import * as postcss from 'postcss';
@@ -22,7 +22,7 @@ const parsers: [string, ParseFn][] = [
   ['parseOffsetsAsync', css => parseOffsetsAsync(css)],
 ];
 
-describe.each(parsers)('@postcss-rs/node-postcss (%s)', (_name, parse) => {
+describe.each(parsers)('@postcss-rs/postcss (%s)', (_name, parse) => {
   test('Parse simple CSS', async () => {
     const root = await parse('.test { color: red; }');
     expect(root.type).toBe('root');
