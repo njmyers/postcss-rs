@@ -59,8 +59,10 @@ impl<'src> Comment<'src> {
 
         let source_end = Source::create_end(tokenizer);
 
-        let mut emit_raws = Raws::default();
-        emit_raws.before = raws_before;
+        let mut emit_raws = Raws {
+            before: raws_before,
+            ..Default::default()
+        };
         emit_raws.left.push_str(left);
         emit_raws.right.push_str(right);
 
@@ -78,5 +80,4 @@ impl<'src> Comment<'src> {
 
         source_end
     }
-
 }

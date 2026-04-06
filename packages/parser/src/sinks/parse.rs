@@ -38,7 +38,10 @@ pub enum SinkNode<'src> {
     /// Finalises the most-recently-opened container node.
     ///
     /// Raws: `after`, `semicolon`, and `own_semicolon` are populated.
-    Close { source_end: Source, raws: Raws<'src> },
+    Close {
+        source_end: Source,
+        raws: Raws<'src>,
+    },
 
     // ── Leaf variants ────────────────────────────────────────────────────────
     /// A property declaration, e.g. `color: red`.

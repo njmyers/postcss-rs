@@ -218,9 +218,11 @@ impl<'src> Declaration<'src> {
             }
         }
 
-        let mut emit_raws = Raws::default();
-        emit_raws.before = raws_before;
-        emit_raws.between = raws_between;
+        let mut emit_raws = Raws {
+            before: raws_before,
+            between: raws_between,
+            ..Default::default()
+        };
         if has_raw_value {
             // clean_value is cloned (cheap Cow::Borrowed copy, or String clone for Owned).
             // raw_value borrows directly from CSS source — zero allocation.

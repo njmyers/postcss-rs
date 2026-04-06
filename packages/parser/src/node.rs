@@ -249,11 +249,7 @@ impl<'src> NodeBuilder<'src> {
         self.node.raws.right.push_str(right);
     }
 
-    pub fn value_raw(
-        &mut self,
-        value: impl Into<Cow<'src, str>>,
-        raw: impl Into<Cow<'src, str>>,
-    ) {
+    pub fn value_raw(&mut self, value: impl Into<Cow<'src, str>>, raw: impl Into<Cow<'src, str>>) {
         self.node.raws.value = ValueRaw::new(value, raw);
     }
 
