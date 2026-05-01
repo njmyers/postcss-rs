@@ -20,7 +20,7 @@ pub enum SinkNode<'src> {
         /// Comment-stripped selector string.
         selector: Cow<'src, str>,
         /// Raws: `before`, `between`, and `selector` (ValueRaw) are populated.
-        raws: Raws,
+        raws: Raws<'src>,
     },
 
     /// An at-rule with a block body, e.g. `@media screen { … }`.
@@ -31,14 +31,17 @@ pub enum SinkNode<'src> {
         /// At-rule params; `None` when there are none.
         params: Option<Cow<'src, str>>,
         /// Raws: `before`, `after_name`, and `between` are populated.
-        raws: Raws,
+        raws: Raws<'src>,
     },
 
     // ── Container-close variant ──────────────────────────────────────────────
     /// Finalises the most-recently-opened container node.
     ///
     /// Raws: `after`, `semicolon`, and `own_semicolon` are populated.
-    Close { source_end: Source, raws: Raws },
+    Close {
+        source_end: Source,
+        raws: Raws<'src>,
+    },
 
     // ── Leaf variants ────────────────────────────────────────────────────────
     /// A property declaration, e.g. `color: red`.
@@ -49,7 +52,7 @@ pub enum SinkNode<'src> {
         value: Cow<'src, str>,
         important: Option<bool>,
         /// Raws: `before`, `between`, `value` (ValueRaw), and `important` are populated.
-        raws: Raws,
+        raws: Raws<'src>,
     },
 
     /// A block comment, e.g. `/* text */`.
@@ -57,7 +60,7 @@ pub enum SinkNode<'src> {
         sources: Sources,
         text: &'src str,
         /// Raws: `before`, `left`, and `right` are populated.
-        raws: Raws,
+        raws: Raws<'src>,
     },
 
     /// A statement at-rule (no block), e.g. `@import "…";`.
@@ -66,7 +69,7 @@ pub enum SinkNode<'src> {
         name: &'src str,
         params: Option<Cow<'src, str>>,
         /// Raws: `before`, `after_name`, and `between` are populated.
-        raws: Raws,
+        raws: Raws<'src>,
     },
 }
 

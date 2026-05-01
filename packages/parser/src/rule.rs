@@ -102,10 +102,9 @@ impl<'src> Rule<'src> {
 
         // Check for trailing semicolon (ownSemicolon)
         if let Some((end_source, own_semicolon)) = Self::consume_trailing_semicolon(tokenizer) {
-            let raws_after: String = spaces_buf.iter().map(|t| t.value).collect();
             let semicolon = body_terminator.map(|bt| bt.semicolon);
             let mut close_raws = Raws::default();
-            close_raws.after.push_str(&raws_after);
+            close_raws.after.push_tokens_or_empty(&spaces_buf);
             match semicolon {
                 Some(true) => close_raws.semicolon.set_true(),
                 Some(false) => close_raws.semicolon.set_false(),
@@ -115,7 +114,7 @@ impl<'src> Rule<'src> {
             sink.close(
                 handle,
                 SinkNode::Close {
-                    source_end: end_source.clone(),
+                    source_end: end_source,
                     raws: close_raws,
                 },
             );
@@ -123,10 +122,9 @@ impl<'src> Rule<'src> {
         }
 
         let source_end = Source::create_end(tokenizer);
-        let raws_after: String = spaces_buf.iter().map(|t| t.value).collect();
         let semicolon = body_terminator.map(|bt| bt.semicolon);
         let mut close_raws = Raws::default();
-        close_raws.after.push_str(&raws_after);
+        close_raws.after.push_tokens_or_empty(&spaces_buf);
         match semicolon {
             Some(true) => close_raws.semicolon.set_true(),
             Some(false) => close_raws.semicolon.set_false(),
@@ -135,7 +133,7 @@ impl<'src> Rule<'src> {
         sink.close(
             handle,
             SinkNode::Close {
-                source_end: source_end.clone(),
+                source_end,
                 raws: close_raws,
             },
         );
@@ -337,7 +335,7 @@ impl Selector {
 
         // If raw and clean differ, set the raw selector in builder
         if raw_selector != selector.as_ref() {
-            builder.selector_raw(selector.as_ref(), raw_selector);
+            builder.selector_raw(selector.clone(), raw_selector);
         }
 
         selector

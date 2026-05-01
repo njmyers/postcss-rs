@@ -123,11 +123,9 @@ impl<'src> AtRule<'src> {
 
                 let source_end = Source::create_end(tokenizer);
 
-                // raws_after = trailing spaces before '}' inside the block
-                let raws_after: String = spaces_buf.iter().map(|t| t.value).collect();
                 let semicolon = body_terminator.map(|bt| bt.semicolon);
                 let mut close_raws = Raws::default();
-                close_raws.after.push_str(&raws_after);
+                close_raws.after.push_tokens_or_empty(&spaces_buf);
                 match semicolon {
                     Some(true) => close_raws.semicolon.set_true(),
                     Some(false) => close_raws.semicolon.set_false(),
@@ -137,7 +135,7 @@ impl<'src> AtRule<'src> {
                 sink.close(
                     handle,
                     SinkNode::Close {
-                        source_end: source_end.clone(),
+                        source_end,
                         raws: close_raws,
                     },
                 );
@@ -197,7 +195,7 @@ impl<'src> AtRule<'src> {
                     SinkNode::AtRuleStatement {
                         sources: Sources {
                             start: source_start,
-                            end: Some(source_end.clone()),
+                            end: Some(source_end),
                         },
                         name,
                         params: params_cow,
@@ -377,7 +375,7 @@ impl Params {
     fn spaces<'src>(
         statement: &Statement<'_>,
         parent: &mut NodeBuilder<'src>,
-        spaces: &Tokens<'_>,
+        spaces: &Tokens<'src>,
     ) {
         for token in spaces.iter() {
             if !statement.is_empty() {

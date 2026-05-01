@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use postcss_rs_tokenizer::Token;
 
 use serde::Deserialize;
@@ -7,41 +9,48 @@ use serde::Serialize;
 ///
 /// For specification please see postcss api documentation <https://postcss.org/api/#node-raws>
 #[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone, Default)]
-pub struct Raws {
+#[serde(bound(deserialize = "'de: 'src"))]
+pub struct Raws<'src> {
     #[serde(default, skip_serializing_if = "Raw::skip")]
-    pub before: Raw,
+    pub before: Raw<'src>,
     #[serde(default, skip_serializing_if = "Raw::skip")]
-    pub between: Raw,
+    pub between: Raw<'src>,
     #[serde(default, rename = "afterName", skip_serializing_if = "Raw::skip")]
-    pub after_name: Raw,
+    pub after_name: Raw<'src>,
     #[serde(default, skip_serializing_if = "Semicolon::skip")]
     pub semicolon: Semicolon,
     #[serde(default, skip_serializing_if = "Raw::skip")]
-    pub after: Raw,
+    pub after: Raw<'src>,
     #[serde(default, skip_serializing_if = "Raw::skip")]
-    pub left: Raw,
+    pub left: Raw<'src>,
     #[serde(default, skip_serializing_if = "Raw::skip")]
-    pub right: Raw,
+    pub right: Raw<'src>,
     #[serde(default, skip_serializing_if = "Raw::skip")]
-    pub important: Raw,
+    pub important: Raw<'src>,
     #[serde(default, rename = "ownSemicolon", skip_serializing_if = "Raw::skip")]
-    pub own_semicolon: Raw,
+    pub own_semicolon: Raw<'src>,
     #[serde(default, skip_serializing_if = "ValueRaw::skip")]
-    pub value: ValueRaw,
+    pub value: ValueRaw<'src>,
     #[serde(default, skip_serializing_if = "ValueRaw::skip")]
-    pub selector: ValueRaw,
+    pub selector: ValueRaw<'src>,
 }
 
 #[derive(PartialEq, Eq, Debug, Serialize, Deserialize, Clone, Default)]
-pub struct Raw(Option<String>);
+pub struct Raw<'src>(#[serde(borrow)] Option<Cow<'src, str>>);
 
-impl Raw {
-    /// Return a new raw struct
-    pub fn new(raw: &str) -> Self {
-        Self(Some(String::from(raw)))
+impl<'src> Raw<'src> {
+    /// Return a new raw struct, borrowing from the source CSS when possible.
+    ///
+    /// Pass a `&'src str` (from CSS source) to get zero-copy `Cow::Borrowed`,
+    /// or a `String` / `Cow` for owned data.
+    pub fn new(raw: impl Into<Cow<'src, str>>) -> Self {
+        Self(Some(raw.into()))
     }
 
-    /// Push a new token value to a raw value
+    /// Push a new token value to a raw value.
+    ///
+    /// When the raw is currently empty, borrows the token value directly
+    /// (zero-copy). When appending to an existing value, converts to owned.
     ///
     /// # Example
     ///
@@ -61,11 +70,14 @@ impl Raw {
     ///
     /// assert_eq!(&raw, &"\n");
     /// ```
-    pub fn push(&mut self, token: &Token<'_>) {
-        self.push_str(token.value);
+    pub fn push(&mut self, token: &Token<'src>) {
+        match &mut self.0 {
+            Some(cow) => cow.to_mut().push_str(token.value),
+            None => self.0 = Some(Cow::Borrowed(token.value)),
+        }
     }
 
-    /// Push a new string slice to a raw value
+    /// Push a new string slice to a raw value.
     ///
     /// # Example
     ///
@@ -78,23 +90,44 @@ impl Raw {
     /// assert_eq!(&raw, &"\n");
     /// ```
     pub fn push_str(&mut self, raws: &str) {
-        match self.0 {
-            Some(ref mut value) => value.push_str(raws),
-            None => self.0 = Some(String::from(raws)),
+        match &mut self.0 {
+            Some(cow) => cow.to_mut().push_str(raws),
+            None => self.0 = Some(Cow::Owned(raws.to_string())),
         };
     }
 
-    pub fn push_tokens(&mut self, tokens: &[Token<'_>]) {
+    /// Push tokens, or ensure `Some("")` when the slice is empty.
+    ///
+    /// When the slice has exactly one token and the raw is currently empty,
+    /// borrows the token value directly (zero-copy). Uses `Cow::Borrowed("")`
+    /// for the empty case to avoid even a zero-capacity `String` allocation.
+    pub fn push_tokens_or_empty(&mut self, tokens: &[Token<'src>]) {
+        if tokens.is_empty() {
+            if self.0.is_none() {
+                self.0 = Some(Cow::Borrowed(""));
+            }
+            return;
+        }
+        self.push_tokens(tokens);
+    }
+
+    pub fn push_tokens(&mut self, tokens: &[Token<'src>]) {
         if tokens.is_empty() {
             return;
         }
-        // Pre-compute total length so we only allocate once.
+        // Single token: borrow directly when possible.
+        if tokens.len() == 1 {
+            self.push(&tokens[0]);
+            return;
+        }
+        // Multiple tokens: pre-compute total length, allocate once.
         let total: usize = tokens.iter().map(|t| t.value.len()).sum();
-        match self.0 {
-            Some(ref mut value) => {
-                value.reserve(total);
+        match &mut self.0 {
+            Some(cow) => {
+                let s = cow.to_mut();
+                s.reserve(total);
                 for token in tokens {
-                    value.push_str(token.value);
+                    s.push_str(token.value);
                 }
             }
             None => {
@@ -102,7 +135,7 @@ impl Raw {
                 for token in tokens {
                     s.push_str(token.value);
                 }
-                self.0 = Some(s);
+                self.0 = Some(Cow::Owned(s));
             }
         }
     }
@@ -127,10 +160,10 @@ impl Raw {
     }
 }
 
-impl PartialEq<&str> for Raw {
+impl PartialEq<&str> for Raw<'_> {
     fn eq(&self, other: &&str) -> bool {
         match &self.0 {
-            Some(string) => string == other,
+            Some(cow) => cow.as_ref() == *other,
             None => false,
         }
     }
@@ -204,21 +237,21 @@ impl Semicolon {
 
 /// A struct representing value raws with both the raw (with comments) and clean (without comments) versions
 #[derive(PartialEq, Eq, Debug, Deserialize, Serialize, Clone, Default)]
-pub struct ValueRaw {
+pub struct ValueRaw<'src> {
     /// The comment-stripped (clean) value, e.g. `"red"`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub value: Option<String>,
+    #[serde(borrow, skip_serializing_if = "Option::is_none")]
+    pub value: Option<Cow<'src, str>>,
     /// The raw value preserving inline comments, e.g. `"red /* note */"`.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub raw: Option<String>,
+    pub raw: Option<Cow<'src, str>>,
 }
 
-impl ValueRaw {
+impl<'src> ValueRaw<'src> {
     /// Creates a new `ValueRaw` with both a clean `value` and a `raw` string.
-    pub fn new(value: String, raw: String) -> Self {
+    pub fn new(value: impl Into<Cow<'src, str>>, raw: impl Into<Cow<'src, str>>) -> Self {
         Self {
-            value: Some(value),
-            raw: Some(raw),
+            value: Some(value.into()),
+            raw: Some(raw.into()),
         }
     }
 
@@ -289,6 +322,30 @@ mod tests {
         assert!(!raw.skip());
     }
 
+    #[test]
+    fn test_raw_single_token_borrows() {
+        let mut raw = Raw::default();
+        raw.push(&space_token("\n"));
+        // Single token push on empty Raw should produce Cow::Borrowed
+        assert!(matches!(raw.0, Some(Cow::Borrowed(_))));
+    }
+
+    #[test]
+    fn test_raw_push_tokens_or_empty_borrows_empty() {
+        let mut raw = Raw::default();
+        raw.push_tokens_or_empty(&[]);
+        // Empty push should produce Cow::Borrowed("")
+        assert!(matches!(raw.0, Some(Cow::Borrowed(""))));
+    }
+
+    #[test]
+    fn test_raw_push_tokens_single_borrows() {
+        let mut raw = Raw::default();
+        raw.push_tokens(&[space_token(" ")]);
+        // Single token should borrow
+        assert!(matches!(raw.0, Some(Cow::Borrowed(_))));
+    }
+
     // ---- Semicolon tests ----
 
     #[test]
@@ -329,7 +386,7 @@ mod tests {
 
     #[test]
     fn test_value_raw_new() {
-        let vr = ValueRaw::new("red".to_string(), "red /* comment */".to_string());
+        let vr = ValueRaw::new("red", "red /* comment */");
         assert!(!vr.skip());
         assert_eq!(vr.value.as_deref(), Some("red"));
         assert_eq!(vr.raw.as_deref(), Some("red /* comment */"));
