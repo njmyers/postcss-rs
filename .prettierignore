@@ -10,5 +10,5 @@ packages/docs/public/rustdoc/
 packages/docs/.vitepress/cache/
 pnpm-lock.yaml
 **/*.css
-packages/node-postcss/index.js
-packages/node-postcss/index.d.ts
+packages/postcss/index.js
+packages/postcss/index.d.ts
