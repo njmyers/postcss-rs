@@ -1,16 +1,23 @@
 # postcss-rs
 
 [![CI](https://github.com/njmyers/postcss-rs/actions/workflows/test.yml/badge.svg)](https://github.com/njmyers/postcss-rs/actions/workflows/test.yml)
-[![npm](https://img.shields.io/npm/v/@postcss-rs/node-postcss)](https://www.npmjs.com/package/@postcss-rs/node-postcss)
-[![license](https://img.shields.io/npm/l/@postcss-rs/node-postcss)](./LICENSE.md)
+[![license](https://img.shields.io/badge/license-MIT-blue)](./LICENSE.md)
 
-A drop-in replacement for the PostCSS parser — 100% compatible, 6–39% faster than postcss.
+> **Educational project.** postcss-rs is a learning exercise: a rewrite of the [PostCSS](https://github.com/postcss/postcss) parser in Rust, built to explore Rust, parser design, and Node.js native addons. It is not published to npm and is not maintained for production use. For real projects, use [PostCSS](https://postcss.org).
 
-postcss-rs implements the PostCSS parser in Rust and exposes it to Node.js via NAPI. It returns real PostCSS `Root` instances, so it works with all existing PostCSS plugins and tooling without any migration.
+postcss-rs implements the PostCSS parser in Rust and exposes it to Node.js via [NAPI-RS](https://napi.rs). It returns real PostCSS `Root` instances, so the result can be passed to existing PostCSS plugins and tooling. The parser is tested against PostCSS's own parser test suite, [`postcss-parser-tests`](https://github.com/postcss/postcss-parser-tests).
 
-## Benchmark Results
+## What's in the repo
 
-Measured with `pnpm bench` (ops/s, higher is better):
+- `packages/tokenizer`: CSS tokenizer
+- `packages/parser`: single-pass parser that builds PostCSS-compatible nodes
+- `packages/stringifier`: turns parsed nodes back into CSS
+- `packages/postcss`: the Node.js package (`@postcss-rs/postcss`), with NAPI bindings, TypeScript types, tests, and benchmarks
+- `packages/docs`: guides and API reference
+
+## Benchmarks
+
+Measured locally with the package's benchmark script (ops/s, higher is better). Results will vary by machine.
 
 | Mode                     | Small (~200 B) | Medium (~2 KB) | Large (~30 KB) |
 | ------------------------ | -------------- | -------------- | -------------- |
@@ -20,34 +27,37 @@ Measured with `pnpm bench` (ops/s, higher is better):
 | postcss-rs json async    | 10,287         | 3,311          | 299            |
 | postcss original         | 69,799         | 9,499          | 558            |
 
-The offsets sync mode is consistently the fastest, outperforming postcss original by ~6% on small CSS, ~17% on medium, and ~39% on large. The single-pass Rust parser eliminates the intermediate AST allocation for the offsets path. The json modes carry additional overhead from full AST serialization and are considerably slower.
+In these runs, offsets sync mode beat the original PostCSS parser by ~6% on small CSS, ~17% on medium, and ~39% on large. The single-pass Rust parser skips the intermediate AST allocation on the offsets path. The json modes carry extra overhead from full AST serialization and are considerably slower.
 
-## Installation
+## Building from source
+
+Requires Node.js 20.12+, pnpm 8+, and a Rust toolchain (version pinned in `rust-toolchain.toml`).
 
 ```bash
-npm install @postcss-rs/node-postcss
-# or
-pnpm add @postcss-rs/node-postcss
+git clone https://github.com/njmyers/postcss-rs.git
+cd postcss-rs
+pnpm install
+pnpm build:release
+pnpm test
+pnpm --filter @postcss-rs/postcss bench
 ```
 
-No Rust toolchain required — pre-compiled native binaries are included for all major platforms.
-
-## Quick Start
+## Usage
 
 ```typescript
-import { parse } from '@postcss-rs/node-postcss';
+import { parseOffsetsSync } from '@postcss-rs/postcss';
 
-const root = await parse('.button { color: red; padding: 8px; }');
+const root = parseOffsetsSync('.button { color: red; padding: 8px; }');
 
 console.log(root.first.selector); // '.button'
 console.log(root.first.first.prop); // 'color'
 console.log(root.first.first.value); // 'red'
 ```
 
-To use with PostCSS plugins, use the default export:
+To run PostCSS plugins, use the default export:
 
 ```typescript
-import postcssRs from '@postcss-rs/node-postcss';
+import postcssRs from '@postcss-rs/postcss';
 import autoprefixer from 'autoprefixer';
 
 const result = await postcssRs([autoprefixer]).process(css, {
@@ -57,12 +67,13 @@ const result = await postcssRs([autoprefixer]).process(css, {
 
 ## Documentation
 
-<!-- docs site link will go here once deployed -->
-
-- [Getting Started](packages/docs/guide/getting-started.md)
 - [Why postcss-rs?](packages/docs/guide/why.md)
 - [Architecture](packages/docs/guide/architecture.md)
 - [API Reference](packages/docs/api/index.md)
+
+## Credits
+
+This project reimplements the parser from [PostCSS](https://github.com/postcss/postcss) by Andrey Sitnik and contributors (MIT license), and tests against their [`postcss-parser-tests`](https://github.com/postcss/postcss-parser-tests) suite. All credit for PostCSS's design and API belongs to that project.
 
 ## License
 
