@@ -43,13 +43,13 @@ export function RustProcessorFactory(
     process(css: Root | string, opts: ProcessOptions = {}): any {
       if (typeof css !== 'string') {
         return super.process(css, {
-          stringifier: stringifyFn as Stringifier,
+          stringifier: stringifyFn,
           ...opts,
         });
       }
 
       const mergedOpts: ProcessOptions = {
-        stringifier: stringifyFn as Stringifier,
+        stringifier: stringifyFn,
         ...opts,
       };
 
