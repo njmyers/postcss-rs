@@ -1,5 +1,5 @@
 /**
- * Tests for packages/node-postcss/src/index.ts
+ * Tests for packages/postcss/src/index.ts
  * Includes tests for parse(), restoreRaws(), and PostCSS integration
  */
 
